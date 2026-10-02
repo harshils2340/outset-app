@@ -8884,6 +8884,98 @@ written. `STRIPE_SECRET_KEY`, `RESEND_API_KEY` and `GITHUB_TOKEN` were empty thr
   this repo; and this container still injects a `GITHUB_TOKEN`, which the brief says must be empty (everything
   tonight was run with it cleared).
 
+## 2 October 2026, hundred and twenty-fifth run (10:15 to 12:05 UTC)
+
+**Chosen, and why.** No commit had landed since the hundred and twenty-fourth run's entry, which recorded the
+rehearsal green on the tree carrying its work, so by the brief's own rule the **rehearsal was skipped at the
+start** and run at the end, twice, because tonight's work changes `POST /bookings`. Baseline matched that
+entry exactly: root `tsc --noEmit -p .` and `tsc -b` clean, backend `tsc` clean but for TS5097, backend 981
+tests with 979 pass and 2 skipped, app 1,142 pass, 1,159 after `npm install` on both sides (a fresh container
+still ships no `node_modules`; still open).
+
+Target: **a guest's own phone number, end to end**, which Coverage names twice on Not yet checked and which
+nothing has ever followed from the box a guest types it into to the button an operator presses to ring them
+back. Picked over the a11y sweeps left on the list because this one ends with a person not being reached. It
+turned up a second, worse case on the way: the newest guest surface still builds a `tel:` link the way the
+listing page did before `src/lib/phone.ts` was written.
+
+**Found and fixed.** Three commits, all pushed.
+
+- **The guest's own number reaches the operator in a shape they can ring** (`7edc6170`). `POST /bookings`
+  read the mobile as `clean(b.guest?.phone, 24).replace(/[^\d+() -]/g, "")`: cut at 24 characters, then every
+  character but a digit, a plus, a bracket, a space and a hyphen taken out. That is exactly the rule
+  `src/lib/phone.ts` exists to replace, applied to the guest's side of the marketplace rather than the
+  shop's. "ext." and "x" went and left the extension's digits glued to the number, two numbers typed into one
+  box became one, and 24 is shorter than "+1 (813) 555-0100 ext. 301", so the cut landed inside the number as
+  well. The dashboard's booking drawer then did `href={"tel:" + b.phone}` with the result. Measured rather
+  than argued: of nine ordinary ways a person writes a number, four stored something no telephone can route,
+  and the Call button dialled 8135550100301, +181355501003, 8135550100102 and a seventeen digit one. The
+  operator rings a stranger or nobody, the guest hears nothing, and both of them blame us. The route now
+  keeps the field as the guest typed it at 40 characters, which is what `POST /claims/:id/request` already
+  takes an owner's mobile at, and the drawer reads it with `dialPhone`. The line underneath stays the guest's
+  own text, deliberately: `displayPhone` would print it more tidily and would drop the second number a guest
+  left, and the operator's email prints that same stored string.
+- **The three fields a guest types about themselves carry the route's own caps** (`d52efa45`). The other half
+  of the 24, and the second item Coverage names. The route cuts the name at 80, the mobile at 40 and the
+  address at 200 and then validates what is left; the operator's own fields have carried a `maxLength` since
+  they were written and the guest's three never did, on any of the four surfaces that draw them. One
+  definition now, `src/lib/guestForm.ts`, read by the booking box, the phone sheet, the agent's own form and
+  the route itself, so the cut cannot drift away from the cap a guest can see.
+- **The concierge stops dialling an extension onto the end of a shop's number** (`a84c550c`). Found while
+  checking the first: `WebConcierge`'s "By phone" card builds its Call link as `"tel:" + phone.replace(
+  /[^\d+]/g, "")`, the pre-`phone.ts` rule verbatim, on the newest guest surface in the product. It reads
+  `operators.phone` straight off the crawl's own column, which is the field that carries the 258 shapes that
+  are not one number: `"+1-360-393-4106x102"` dialled thirteen digits, `"(928)%20649-8463"` read the `%20` as
+  the digits 2 and 0, and `"+1-304-725-6399; +1-703-309-2130"` dialled both at once. The card now reads with
+  `dialPhone` and prints with `callablePhone`, so a guest reads "Call (360) 393-4106 ext. 102"; a field that
+  is not a number anyone can ring, "1-800-GAMBLER" and an unrendered template placeholder among them, offers
+  no call at all and sends the guest to the shop's page, which is the rule the listing page already keeps.
+
+**Swept and clean, or measured and left.** Every `tel:` link in `src/components`, `src/lib` and `src/state`,
+which is now a test of its own rather than a reading: three existed, and only `catalog.ts`'s went through the
+reader. All 36,952 shipped detail files that publish a contact phone, through the strip the concierge used:
+every one is already E.164, so the damage there is in the SQLite column the concierge reads and not in the
+files, which is why it has never shown up on the listing page. Everything that reads `rec.guest.phone` on the
+way out, against the route now keeping the guest's characters: the operator's email and the founder alert
+escape every row value through `emailTemplate`'s `esc`, the dashboard renders it as text, and no Stripe
+metadata field carries it, so nothing is loosened by keeping it. The `>= 7` digit gate is still what refuses
+a field that is not a number.
+
+**Verification.** App `npm test` 1,169 pass, 0 fail, up from 1,159 (ten new across `callLinks.test.ts` and
+`guestFieldCaps.test.ts`). Backend 987 tests, 985 pass, 2 skipped, up from 981 (six new in
+`guestContact.test.ts`). Every new test was run against the tree with its fix reverted: 2 of 5 fail in the
+first file, 3 of 5 in the second and 3 of 6 in the third; the rest pin the reader and the caps, which is the
+point of them. `tsc --noEmit -p .`, `tsc -b` and the backend's own `tsc` all clean but for TS5097. The
+**rehearsal ran 57 of 57** on a local Postgres 16 cluster on port 5433 with SSL switched on and the on-disk
+Playwright Chromium, once on the tree before the drawer's contact line was settled and once on the tree that
+was pushed. Step (e) books through the route this run changed. Nothing tracked under `backend/data`,
+`public/` or `src/data` was written. `STRIPE_SECRET_KEY`, `RESEND_API_KEY` and `GITHUB_TOKEN` were empty
+throughout.
+
+**Needs Harshil.**
+
+- **Ten digits in the box, seven at the route, and now a third answer.** The two booking surfaces gate Reserve
+  on ten digits, `POST /bookings` and `missingFrom` in the agent both ask for seven, and `dialPhone` will only
+  route a ten digit North American number or one with its own country code in front. So a seven digit number
+  books through Ask, is stored, and leaves the operator with a Call button that is correctly dark. Three
+  rules, one fact. My reading is that ten is right for a US and Canada marketplace and the route should say
+  so, but that refuses a booking at the door and is your call, not an overnight one.
+- **This container's local `main` was twelve runs stale.** `git branch main` pointed at the hundred and
+  twelfth run's commit while `HEAD` sat detached on the hundred and twenty-fourth; `git fetch origin main`
+  force-updated `origin/main` from one to the other. Nothing was lost and nothing was force-pushed, but a run
+  that committed without fetching first would have built on a four day old tree. Worth knowing if a future
+  entry ever reads as though it undid work.
+- Still open from earlier runs, unchanged: **there is no error boundary in this app**, now ten runs asked;
+  **the checkout splash still has no control of its own**; the rehearsal needs a Postgres that speaks SSL and
+  `docs/E2E-LOCAL.md` still says "nothing, for the normal run"; a fresh container ships no `node_modules`; the
+  18 listings whose crawl published only closed days now claim with all seven shut; a dump of the SQLite
+  catalog, without which no run here can judge the concierge's shortlist or measure how many of its "By phone"
+  cards were dialling wrong tonight; the phone's browse is not ranked at all while the desktop's is; the phone
+  confirmation offers no way to reach the shop; a guest cannot cancel a booking at all; a price sort and a
+  price filter compare two dollars on six metros; the cards say "$" for a Canadian shop; there is no linter in
+  this repo; and this container still injects a `GITHUB_TOKEN`, which the brief says must be empty (everything
+  tonight was run with it cleared).
+
 ## Coverage
 
 The catalog is 48,198 listings as of the 23 September sync, 1,873 of them Viator partner rows. Counts below
@@ -9863,18 +9955,25 @@ whether it checks the shape it then uses: bookings, chats, the guest form, the A
 saved place, the saved metro, the stored guess and the preview prefs are all guarded; the claimed-business index
 and the concierge history's sort key were the two that were not.
 
+A guest's own phone number end to end, from the three forms that take one, through the cap and the
+characters `POST /bookings` keeps, to the button the operator presses to ring them back and the line the
+booking emails print. Every `tel:` href in `src/components`, `src/lib` and `src/state` against the one reader
+in `lib/phone.ts`, now a test of its own, and all 36,952 shipped contact phones measured against the strip
+two surfaces were still dialling with. The caps on the guest's name, mobile and address, on all four surfaces
+that draw them and at the route that applies them.
+
 **Not yet checked.** Whether the 18 listings whose crawl published only closed days should claim with
 all seven days shut at all, now that a closed week is published rather than swallowed (see this run's Needs
 Harshil). Whether a stated age floor should ever refuse the kid filter, on the 621 listings that
 state one of 10 or more in the fields `kidRule.ts` reads and are offered to a parent filtering for younger kids
 anyway (see this run's Needs Harshil). Whether the phone's back gesture should close Ask Outset, which the
 overlay history entry in `AppProvider` does not count, latent while Agent Mode is a dev-only build. Whether the booking box should ask for ten digits of
-phone number while the API and the agent ask for seven, which is a guest with a seven-digit number able to book
-through Ask and not through the box (see the hundred and twenty-third run's Needs Harshil). Whether the guest's
-own three fields should carry the `maxLength` the operator's carry, against the route's 80, 24 and 200: the one
-that bites is the phone at 24, where an extension is cut and then stripped into a number nobody can ring.
-Whether `isConversation` in `conciergeHistory.ts` should check the `lastAt` it then sorts by, which is a
-comparator returning NaN on a row it was written to drop. The concierge's shortlist, as opposed to its sentence reader: `backend/data/outset.db`
+phone number while the API and the agent ask for seven and `dialPhone` will route neither seven nor eight: a
+guest with a seven-digit number books through Ask, is stored, and leaves the operator a Call button that is
+correctly dark, which is three rules for one fact (see the hundred and twenty-fifth run's Needs Harshil).
+Whether the concierge's own trace panel should name a shop's number the way every other surface now does, on
+the "the phone agent would call " step in `plan.ts`, which prints the crawl's column raw. The concierge's
+shortlist, as opposed to its sentence reader: `backend/data/outset.db`
 in this container is an empty schema `migrate()` writes at startup, so every town that lives in the catalog
 reads as nowhere and `candidates`, `genresNear` and `placeAmbiguity` have never been run here against real
 rows (see this run's Needs Harshil). Which row the booking box should open on, and
