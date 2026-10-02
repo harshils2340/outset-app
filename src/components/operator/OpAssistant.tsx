@@ -9,6 +9,7 @@ import { fmtTime, money } from "../../lib/format";
 import { DAY_SHORT } from "../../lib/operator";
 import { Markup } from "../Markup";
 import { OD_ICONS, useOp } from "./opContext";
+import { askedBubbles, bubbleId, settleBubble, type Bubble } from "./chatBubbles";
 
 /**
  * The assistant page: what Otto knows, what it refuses, and a test chat that runs the same code guests get.
@@ -33,7 +34,7 @@ export function OpAssistant() {
     return () => { alive = false; };
   }, [u.id]);
   const ctx = useMemo(() => ({ item: u, contact: contactFor(u), live }), [u, live]);
-  const [msgs, setMsgs] = useState<{ who: "me" | "them"; t: string; pending?: boolean }[]>(() => [{ who: "them", t: companyGreeting(ctx) }]);
+  const [msgs, setMsgs] = useState<Bubble[]>(() => [{ id: bubbleId(), who: "them", t: companyGreeting(ctx) }]);
   const [text, setText] = useState("");
   const facts = useMemo(() => listingFacts(u), [u]);
   const suggestions = useMemo(() => companySuggestions(ctx), [ctx]);
@@ -43,12 +44,13 @@ export function OpAssistant() {
     if (!t) return;
     const a = companyAnswer(ctx, t);
     const history = msgs.slice(-6).map((m) => ({ who: m.who, t: m.t }));
-    setMsgs((cur) => [...cur, { who: "me", t }, { who: "them", t: a.text, pending: !!a.gap }]);
+    const [asked, answer] = askedBubbles(t, a.text, !!a.gap);
+    setMsgs((cur) => [...cur, asked, answer]);
     setText("");
     // The same grounded fallback guests get: with no fact in the rules, the model reads the same published
-    // facts, and the bubble settles on its answer or on the rules' own line.
+    // facts, and this bubble, named by its own id, settles on its answer or on the rules' own line.
     if (a.gap) {
-      const settle = (m: string | null) => setMsgs((cur) => cur.map((x) => (x.pending && x.t === a.text ? { who: "them", t: m || a.text } : x)));
+      const settle = (m: string | null) => setMsgs((cur) => settleBubble(cur, answer.id, m));
       void askOttoModel(ctx, t, history).then(settle, () => settle(null));
     }
   };
@@ -113,7 +115,7 @@ export function OpAssistant() {
               would be untrue. Trying it here still works, which is the point: see what it would say, then decide. */}
           <div className="odcardhead"><h3>Try it</h3><small className="odmuted">{p.assistant ? "Same answers guests get" : "Guests can't reach it while it's off"}</small></div>
           <div className="odchatlog">
-            {msgs.map((m, i) => <div key={i} className={"odmsg " + m.who + (m.pending ? " wait" : "")}>{m.pending ? "Checking what's published…" : m.t}</div>)}
+            {msgs.map((m) => <div key={m.id} className={"odmsg " + m.who + (m.pending ? " wait" : "")}>{m.pending ? "Checking what's published…" : m.t}</div>)}
           </div>
           <div className="odchips">
             {suggestions.map((s) => <button type="button" key={s} onClick={() => send(s)}>{s}</button>)}
