@@ -8427,6 +8427,105 @@ there, `outset.db` and `claim-secret.txt`, are written by importing the backend 
   listings are filed under a neighbouring metro; there is no linter in this repo; and this container still
   injects a `GITHUB_TOKEN`, which the brief says must be empty (everything tonight was run with it cleared).
 
+## 2 October 2026, hundred and twenty-first run (07:19 to 07:50 UTC)
+
+**Chosen, and why.** One commit has landed since the hundred and twentieth run's entry and it is that entry,
+so nothing has touched `src/`, `backend/src` or the scripts, and that entry recorded the rehearsal green twice.
+By the brief's own rule the **rehearsal was skipped at the start** and run once at the end, on the tree carrying
+tonight's three fixes, because all three are in the operator dashboard the rehearsal drives in a real browser.
+Baseline matched that entry exactly: root `tsc --noEmit -p .` and `tsc -b` clean, backend `tsc` clean but for
+TS5097, backend 977 tests with 975 pass and 2 skipped, app 1,102 pass. Both `node_modules` were missing again
+and a Postgres 16 cluster with TLS on 5433 was built from scratch; `su postgres` does not inherit a PATH here,
+so `initdb` and `pg_ctl` need their absolute paths under `/usr/lib/postgresql/16/bin`.
+
+Target: the brief's fourth area, the dashboard pages beyond Bookings, narrowed to **every control in the
+dashboard that carries no words of its own**, plus the most destructive button on Settings. The Coverage list
+already claims those pages were driven in a real Chromium "for a control with no name", and the Not yet checked
+list still named the Calendar's identical "Block slot" buttons and the unexplained trash, so the naming had
+been seen and not done. Five such controls were found, all five inside a `.map()`, and Settings' Release button
+turned out to be the service-delete fault the last run fixed, one size up.
+
+**Found and fixed.** Three commits.
+
+- **Releasing a listing stops being silent about the guests still booked on it** (`af01c02e`). Release drops the
+  owner's profile on the server and on this device, logs them out and puts the listing back to unclaimed. What
+  it does not do is cancel the bookings guests hold, or tell them, and afterwards the owner has no dashboard
+  left to reach those guests from. The copy said only "Removes your edits everywhere and puts the listing back
+  the way we built it", so an owner tidying up could walk away from four confirmed guests without ever being
+  told they were there. This is exactly the confirm `upcomingBookingsFor` now puts in front of the trash on one
+  service, for the whole business: `heldBookings` reads the list the dashboard itself draws rather than
+  `p.bookings`, for the reason that run found, and leaves sample rows out, because a count of the product's own
+  fixtures would be a count of nobody.
+- **Two dashboard controls with no words in them say which one they are** (`952355cc`). The Calendar's week view
+  draws up to seven empty cells per time row, each holding one button with no text, and every one of them was
+  called "Block slot": a reader tabbing the grid heard the same two words over and over, and the only way to
+  tell Tuesday at 11 from Saturday at 3 was to count Tab presses across a row that skips every closed, past and
+  booked cell. Each now names its own cell off the day being drawn. The Services editor has the same shape in a
+  column, and on a service's last price option the trash is disabled, which is right, with nothing said about
+  why: a dimmed icon among dimmed icons. It now names the option and gives the reason, in the tooltip and in
+  the accessible name both, because a phone shows no tooltip.
+- **The dashboard's three remaining trash buttons say what they would remove** (`9e398f1e`). The sweep behind
+  the fix above: one "Remove" per day off on Availability, one per line in a Listing list, one per photo. On
+  the Listing lists the controls either side have been indexed all along ("Edit line 3", "Move up"), so the
+  trash between them was the odd one out. A day off is put back by its own date, read from the string the row
+  already draws, and a line and a photo by their own number.
+
+**Swept and clean, or measured and left.** `src/lib/kidRule.ts` over all 52,815 shipped detail files, against
+the filter it answers ("Only places whose published rules allow younger kids"). 621 listings state an age floor
+of 10 or more in the four fields the rule reads and `kidVerdict` refuses none of them: 361 read as "their site
+does not say", which `kidFriendly` turns into welcome for every kind but skydive, paintball and axe, and 260
+read as welcome outright. It looks like a hole in a promise and mostly is not one: the floors are about alcohol
+("Must be 21 or older to receive wine delivery"), about the driver ("Operators must be 16+ with valid photo
+ID"), about the website's own terms ("Users must be at least 13 years old to use the site"), or about the adult
+who has to come with the child ("All players under 13 must be accompanied by an adult 18 or older"), and
+refusing those would hide family businesses from families. The one piece of it that is a plain inconsistency
+rather than a judgement, `ADULTS_ONLY` reading "minimum age 21" and not "min age 21" or "minimum age of 21", was
+measured as well: loosening it moves exactly 1 listing of 52,815 and moves it the wrong way, so it was left.
+See Needs Harshil. Also read whole, with nothing wrong in any of them: the six `src/lib` modules the log had
+never named (`season.ts`, `site.ts`, `stripeJs.ts`, `wallet.ts`, `deadCovers.ts`, `groupSize.ts`) and four more
+it had named once (`reviews.ts`, `phone.ts`, `startTimes.ts`, `samePhoto.ts`). `src/state/AppProvider.tsx`,
+the reducer and every effect, which the last run had only read for chat settling: one gap, and it reaches no
+visitor. The history entry that makes a phone's back gesture close a panel instead of leaving the site counts
+`sheet` and the chat screen and not Ask Outset, so back with Ask open leaves onoutset.com; `AGENT_MODE_LIVE` is
+`import.meta.env.DEV`, so a production build ships no way to open it. Every constant `aria-label` in
+`src/components` against whether it sits inside a `.map()`: the five fixed tonight were the whole set on the
+operator side, and the rest ("Close", "Search", "Back", "Previous month") are one per surface.
+
+**Verification.** App `npm test` 1,120 pass, 0 fail, up from 1,102 (eighteen new across `releaseListing.test.ts`
+and `opLabels.test.ts`). Backend `npm test` 977 tests, 975 pass, 2 skipped, unchanged. Every new test was run
+against the tree with its fix reverted: 4 of 5 fail in the first batch and 3 of 3 in the second, with the em
+dash check as the control that must keep passing, and `releaseListing.test.ts` does not import at all. `tsc
+--noEmit -p .`, `tsc -b` and the backend's own `tsc` all clean but for TS5097. The rehearsal ran **57 of 57**,
+once, on the tree carrying all three fixes. Nothing tracked under `backend/data`, `public/` or `src/data` was
+written; the two untracked files there, `outset.db` and `claim-secret.txt`, are written by importing the
+backend at all, as on every run here. `STRIPE_SECRET_KEY`, `RESEND_API_KEY` and `GITHUB_TOKEN` were empty
+throughout.
+
+**Needs Harshil.**
+
+- **The checkout this container starts on was a detached HEAD, with the local `main` ref eight runs behind it
+  and the local `origin/main` ref 39 commits stale until a `git fetch`.** Nothing was lost, and after the fetch
+  `origin/main` and the checkout agreed, so tonight's commits sit on `main` as they should. But a run that
+  pushed without fetching first, or that trusted `git log main`, would have drawn the wrong conclusion about
+  what is already shipped, and a run that read `origin/main..HEAD` would have reported 39 unpushed commits.
+  Worth knowing if a future entry claims work went missing.
+- **Whether a stated age floor should ever refuse the kid filter**, which is the measurement above. 621 listings
+  turn on it and most of them would be refused wrongly, because the floor is about the bar, the driving seat,
+  the website's terms or the adult who comes along, not about who may walk in. Reading that difference needs the
+  subject of the rule, which is the same thing the hours lines have been asking for, and it is a supply
+  judgement rather than a regex. Left alone on purpose: the filter over-includes today, which shows a family a
+  shop they will have to read twice, and the other way round would hide shops that welcome them.
+- Still open from earlier runs, unchanged: **there is no error boundary in this app**, so a throw anywhere in
+  render is a white page over prose crawled from 48,198 other people's websites. Seven runs have now asked.
+- Also still open: the 18 listings whose crawl published only closed days now claim with all seven shut; a dump
+  of the SQLite catalog, without which no run here can judge the concierge's shortlist; the booking box opens
+  on a row the page's own headline contradicts; the phone's browse is not ranked at all while the desktop's is;
+  the listing page a chain's card opens heads the primary town; the phone confirmation offers no way to reach
+  the shop; a guest cannot cancel a booking at all; a price sort and a price filter compare two dollars on six
+  metros; the cards say "$" for a Canadian shop; 69 Toronto-address listings are filed under a neighbouring
+  metro; there is no linter in this repo; and this container still injects a `GITHUB_TOKEN`, which the brief
+  says must be empty (everything tonight was run with it cleared).
+
 ## Coverage
 
 The catalog is 48,198 listings as of the 23 September sync, 1,873 of them Viator partner rows. Counts below
@@ -9366,14 +9465,26 @@ used with `.test()` or `.exec()`, for a `lastIndex` surviving between calls. Eve
 rendered in full, text and HTML, against the outreach folder's own rules, and the `family` column the pool
 sync added.
 
+Every control in the operator dashboard that carries no words of its own, against whether a reader can tell one
+from the next: the Calendar's empty-slot buttons, the trash on a price option including the disabled one on a
+service's last, and the three "Remove" buttons on Availability and Listing, with every constant `aria-label` in
+`src/components` checked for the same shape. Settings' Release button against the guests holding bookings on the
+listing it hands back, which is the service-delete confirm one size up. Six more `src/lib` modules read whole
+(`season.ts`, `site.ts`, `stripeJs.ts`, `wallet.ts`, `deadCovers.ts`, `groupSize.ts`) and four re-read
+(`reviews.ts`, `phone.ts`, `startTimes.ts`, `samePhoto.ts`). `src/state/AppProvider.tsx` whole, the reducer and
+every effect in it, for a screen the guest cannot get out of, a deep link that lands nowhere and an overlay with
+no history entry. `src/lib/kidRule.ts` over all 52,815 shipped detail files, against the promise the kid filter
+makes a parent.
+
 **Not yet checked.** Whether the 18 listings whose crawl published only closed days should claim with
 all seven days shut at all, now that a closed week is published rather than swallowed (see this run's Needs
-Harshil). Whether releasing a listing should warn about the guests holding confirmed bookings on it, which the
-Settings copy does not mention. Whether the Calendar's empty-slot buttons should say which day and time they
-block: a screen reader meets a grid of identically labelled "Block slot" buttons. Whether the trash on a
-service's last price option, which is disabled with no title, should say why. The six `src/lib` modules still
-never named here: `season.ts`, `site.ts`, `stripeJs.ts`, `wallet.ts`, `deadCovers.ts`, `groupSize.ts`, and
-`src/state/AppProvider.tsx` beyond the chat settling read tonight. The concierge's shortlist, as opposed to its sentence reader: `backend/data/outset.db`
+Harshil). Whether a stated age floor should ever refuse the kid filter, on the 621 listings that
+state one of 10 or more in the fields `kidRule.ts` reads and are offered to a parent filtering for younger kids
+anyway (see this run's Needs Harshil). Whether the phone's back gesture should close Ask Outset, which the
+overlay history entry in `AppProvider` does not count, latent while Agent Mode is a dev-only build. Whether the
+Move up and Move earlier buttons disabled at the ends of a list should say why, the way the trash on a service's
+last price option now does. Whether the dashboard's own disabled controls should be swept for the same thing
+the trash was. The concierge's shortlist, as opposed to its sentence reader: `backend/data/outset.db`
 in this container is an empty schema `migrate()` writes at startup, so every town that lives in the catalog
 reads as nowhere and `candidates`, `genresNear` and `placeAmbiguity` have never been run here against real
 rows (see this run's Needs Harshil). Which row the booking box should open on, and
