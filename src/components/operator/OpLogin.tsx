@@ -634,7 +634,7 @@ export function OpLogin({ claimId, claimToken, compact, onEnter, onBack }: { cla
             <div className="odor"><span>already claimed?</span></div>
             <label className="odfield"><span>Sign in with the email on your listing</span><input type="email" maxLength={200} value={signinEmail} onChange={(e) => { setSigninEmail(e.target.value); setVerifiedIds(null); if (mode === "signin") setErr(null); }} placeholder="you@business.com" onKeyDown={(e) => e.key === "Enter" && isApi && !sending && EMAIL.test(signinEmail.trim()) && (setMode("signin"), void startSignIn())} /></label>
             {err && mode === "signin" ? <p className="oderr">{err}</p> : null}
-            <button type="button" className="cta odwide" disabled={!EMAIL.test(signinEmail.trim()) || sending || !isApi} onClick={() => { setMode("signin"); void startSignIn(); }}>{sending ? "Sending…" : "Email me a sign-in code"}</button>
+            <button type="button" className="cta odwide" disabled={!EMAIL.test(signinEmail.trim()) || sending || !isApi} title={!isApi ? "Signing in needs the Outset API, which this demo is not connected to" : !EMAIL.test(signinEmail.trim()) ? "Type the email address you claimed with" : undefined} onClick={() => { setMode("signin"); void startSignIn(); }}>{sending ? "Sending…" : "Email me a sign-in code"}</button>
             {!isApi ? <p className="odfine">Sign-in codes switch on once the API is connected.</p> : null}
             <div className="odor"><span>or</span></div>
             <button type="button" className="cta ghost odwide" onClick={demo}>See the demo dashboard</button>

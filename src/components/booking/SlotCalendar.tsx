@@ -78,11 +78,12 @@ export function SlotCalendar({
     <div className="slotcal">
       <div className="slotcalmonth">
         <div className="slotcalhead">
-          <button type="button" onClick={() => shift(-1)} disabled={!canPrev} aria-label="Previous month">
+          {/* Greyed because the booking window does not reach that way, which the arrow alone cannot say. */}
+          <button type="button" onClick={() => shift(-1)} disabled={!canPrev} aria-label="Previous month" title={canPrev ? "Previous month" : "Nothing can be booked before this month"}>
             <Markup html={ICONS.back} />
           </button>
           <b>{MONTHS[month.getMonth()]} {month.getFullYear()}</b>
-          <button type="button" onClick={() => shift(1)} disabled={!canNext} aria-label="Next month">
+          <button type="button" onClick={() => shift(1)} disabled={!canNext} aria-label="Next month" title={canNext ? "Next month" : "The booking window ends this month"}>
             <Markup html={ICONS.arrow} />
           </button>
         </div>

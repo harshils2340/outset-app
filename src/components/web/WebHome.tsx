@@ -697,7 +697,7 @@ function Calendar({ dates, idx, onPick }: { dates: Date[]; idx: number; onPick: 
   };
   return (
     <div className="ah-cal">
-      <button type="button" className="ah-calnav prev" aria-label="Previous month" disabled={offset === 0} onClick={() => setOffset((o) => o - 1)}><Markup html={SVG.left} /></button>
+      <button type="button" className="ah-calnav prev" aria-label="Previous month" title={offset === 0 ? "This is as far back as the calendar goes" : "Previous month"} disabled={offset === 0} onClick={() => setOffset((o) => o - 1)}><Markup html={SVG.left} /></button>
       <button type="button" className="ah-calnav next" aria-label="Next month" disabled={offset + 1 >= Math.max(1, span)} onClick={() => setOffset((o) => o + 1)}><Markup html={SVG.right} /></button>
       {month(0)}
       {month(1)}

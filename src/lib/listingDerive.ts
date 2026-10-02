@@ -262,6 +262,22 @@ export function tidyName(text: string): string {
   return words.map((w, i) => (i > 0 && TITLE_SMALL.has(w.toLowerCase()) ? w : w.replace(/^([a-z])/, (c) => c.toUpperCase()))).join(" ");
 }
 
+/**
+ * What one row of the booking menu is called out loud: "Pink Paradise, 4 hours, $499 / trip".
+ *
+ * A row's visible content is the tier and the price. The shop's own name for the thing being booked is the
+ * heading above the row, and no screen reader reads a heading as part of the button under it. Mad Beach Party
+ * Charter sells four boats at one price for one length, so its picker was four buttons all called "4 hours
+ * $499 / trip" with nothing in any of them to say which boat a guest was choosing. A service whose only tier
+ * is called "Standard" already named itself here, and that way round lost the price instead: an `aria-label`
+ * replaces the content rather than adding to it, so those rows were announced with no money in them at all.
+ *
+ * Everything the row shows, in the order it is read: what, how long, what it costs, and the shop's own note.
+ */
+export function variantPickLabel(service: string, tier: string | null | undefined, price: string, note?: string | null): string {
+  return [tidyName(service), (tier || "").trim(), price, (note || "").trim()].filter(Boolean).join(", ");
+}
+
 /** A variant label that is only a length: "1.5 hour" reads "1.5 hours", "1 hours" reads "1 hour". */
 export function tidyLength(text: string): string {
   return lengthWords(tidyLine(text));

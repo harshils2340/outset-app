@@ -73,4 +73,6 @@ test("the dashboard's remaining disabled buttons each carry a reason", () => {
   const listing = read("OpListing.tsx");
   assert.match(listing, /title=\{!hasApi\(\) \? "Uploading needs the Outset API/);
   assert.match(listing, /title=\{p\.photos\.length >= PHOTOS_MAX \? "Your gallery is full/);
+  // The claim screen's own: "Email me a sign-in code" is off until there is an address to send it to.
+  assert.match(read("OpLogin.tsx"), /title=\{!isApi \? "Signing in needs the Outset API/);
 });

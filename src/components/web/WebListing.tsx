@@ -14,7 +14,7 @@ import { addressLine, bookingPaused, contactFor, fmtPhone, fromPrice, getCatalog
 import { clockOfMinutes, DAYS, dayPickLabel, fmtDate, fmtReviews, fmtTime, money, moneyIn, priceWith, reviewsLine } from "../../lib/format";
 import { srcSet, thumb } from "../../lib/images";
 import { embedAutoplay, isGif, listingMedia, photoCandidates, probePhotos, type Media } from "../../lib/media";
-import { arrivalWords, bringLine, cleanDesc, durationLabel, groupCap as readGroupCap, lengthWords, minAge, notAlreadyShown, placeName, splitIncluded, splitPolicies, tidyLength, tidyLine, tidyName } from "../../lib/listingDerive";
+import { arrivalWords, bringLine, cleanDesc, durationLabel, groupCap as readGroupCap, lengthWords, minAge, notAlreadyShown, placeName, splitIncluded, splitPolicies, tidyLength, tidyLine, tidyName, variantPickLabel } from "../../lib/listingDerive";
 import { sayLength } from "../../lib/duration";
 import { freeCancelBadge } from "../../lib/cancellation";
 import { reportDeadCover, useDeadCovers } from "../../lib/deadCovers";
@@ -240,6 +240,7 @@ export function isStandardOnly(svc: { variants: { label: string }[] }): boolean 
   return svc.variants.length === 1 && svc.variants[0].label.trim().toLowerCase() === "standard";
 }
 
+
 /** Tiers shown straight away, and those folded under "More options". The picked tier always stays visible. */
 export function splitVariants<V extends { optionIdx: number; moreOptions?: true }>(variants: V[], picked: number | null, open: boolean): { shown: V[]; hidden: number } {
   const folded = variants.filter((v) => v.moreOptions);
@@ -446,9 +447,13 @@ function Modal({ label, onClose, children, wide = false }: { label: string; onCl
 }
 
 /** Airbnb's underlined text button with the trailing chevron: "Show more >". */
-function MoreLink({ children, onClick }: { children: ReactNode; onClick: () => void }) {
+/**
+ * The "Show more" under a block. `label` names what it opens: a listing draws one for the description and one
+ * per "Things to know" column, so up to five buttons on the page read out as the same two words.
+ */
+function MoreLink({ children, onClick, label }: { children: ReactNode; onClick: () => void; label?: string }) {
   return (
-    <button type="button" className="almore" onClick={onClick}>
+    <button type="button" className="almore" onClick={onClick} aria-label={label}>
       <span>{children}</span>
       <Markup html={I.chevRight} />
     </button>
@@ -484,8 +489,9 @@ export function ReviewCard({ r }: { r: ShownReview }) {
         </span>
       ) : null}
       <p ref={textRef} className={open ? "open" : ""}>{r.text}</p>
+      {/* A listing draws up to a dozen of these, so each one names the review it opens. */}
       {over || open ? (
-        <button type="button" className="alreviewmore" onClick={() => setOpen((v) => !v)} aria-expanded={open}>{open ? "Show less" : "Show more"}</button>
+        <button type="button" className="alreviewmore" onClick={() => setOpen((v) => !v)} aria-expanded={open} aria-label={(open ? "Show less of " : "Show more of ") + possessive(r.name || "A guest") + " review"}>{open ? "Show less" : "Show more"}</button>
       ) : null}
     </article>
   );
@@ -540,10 +546,10 @@ function MonthPair({ dates, dateIdx, onPickDate, chipsFor }: { dates: Date[]; da
   const months = [month, new Date(month.getFullYear(), month.getMonth() + 1, 1)];
   return (
     <div className="alcal">
-      <button type="button" className="alround alcalprev" onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() - 1, 1))} disabled={!canPrev} aria-label="Previous month">
+      <button type="button" className="alround alcalprev" onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() - 1, 1))} disabled={!canPrev} aria-label="Previous month" title={canPrev ? "Previous month" : "Nothing can be booked before this month"}>
         <Markup html={I.chevLeft} />
       </button>
-      <button type="button" className="alround alcalnext" onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() + 1, 1))} disabled={!canNext} aria-label="Next month">
+      <button type="button" className="alround alcalnext" onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() + 1, 1))} disabled={!canNext} aria-label="Next month" title={canNext ? "Next month" : "The booking window ends this month"}>
         <Markup html={I.chevRight} />
       </button>
       {months.map((m) => {
@@ -704,11 +710,11 @@ function DayTimePicker({ dates, dateIdx, onPickDate, chipsFor, time, onPickTime,
     <div className="bkpick">
       <div className="bkcal">
         <div className="bkcalhead">
-          <button type="button" onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() - 1, 1))} disabled={!canPrev} aria-label="Previous month">
+          <button type="button" onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() - 1, 1))} disabled={!canPrev} aria-label="Previous month" title={canPrev ? "Previous month" : "Nothing can be booked before this month"}>
             <Markup html={ICONS.back} />
           </button>
           <b aria-live="polite">{MONTHS[month.getMonth()]} {month.getFullYear()}</b>
-          <button type="button" onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() + 1, 1))} disabled={!canNext} aria-label="Next month">
+          <button type="button" onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() + 1, 1))} disabled={!canNext} aria-label="Next month" title={canNext ? "Next month" : "The booking window ends this month"}>
             <Markup html={ICONS.arrow} />
           </button>
         </div>
@@ -1535,7 +1541,7 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
                     </>
                   )}
                     </div>
-                {descOver || (blurb && highlights.length) ? <MoreLink onClick={() => setModal("desc")}>Show more</MoreLink> : null}
+                {descOver || (blurb && highlights.length) ? <MoreLink onClick={() => setModal("desc")} label={"Show more about " + item.title}>Show more</MoreLink> : null}
                 {guide ? (
                   <p className="aldescguide">
                     <MoreLink onClick={() => setModal("guide")}>What {KIND[item.art] || "this"} is actually like</MoreLink>
@@ -1568,7 +1574,7 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
                         {desc ? (
                           <p className="alsvcdesc">
                             {openSvc === svc.name || !long ? desc : desc.slice(0, 140).replace(/\s+\S*$/, "") + "…"}
-                            {long ? <> <button type="button" className="alunder" onClick={() => setOpenSvc(openSvc === svc.name ? null : svc.name)}>{openSvc === svc.name ? "Show less" : "Show more"}</button></> : null}
+                            {long ? <> <button type="button" className="alunder" onClick={() => setOpenSvc(openSvc === svc.name ? null : svc.name)} aria-expanded={openSvc === svc.name} aria-label={(openSvc === svc.name ? "Show less about " : "Show more about ") + tidyName(svc.name)}>{openSvc === svc.name ? "Show less" : "Show more"}</button></> : null}
                           </p>
                         ) : null}
                         <div className="alvariants">
@@ -1582,7 +1588,7 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
                                   const note = variantNote(v.explain, v.label);
                                   const length = single ? optionLength(item, v.optionIdx) : null;
                                   return (
-                                    <button key={v.optionIdx} type="button" className={"alvariant" + (single ? " single" : "")} aria-pressed={optionIdx === v.optionIdx} onClick={() => setOptionIdx(v.optionIdx)} aria-label={single ? tidyName(svc.name) : undefined}>
+                                    <button key={v.optionIdx} type="button" className={"alvariant" + (single ? " single" : "")} aria-pressed={optionIdx === v.optionIdx} onClick={() => setOptionIdx(v.optionIdx)} aria-label={variantPickLabel(svc.name, single ? length : tidyLength(v.label), hasPrice(v.price) ? priceWith(v.price, v.per) : "Price on request", note)}>
                                       <span className="alradio" aria-hidden="true" />
                                       <span className="alvarlabel">
                                         {single ? (length || "") : tidyLength(v.label)}
@@ -2136,7 +2142,7 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
                   <span className="alknowicon"><Markup html={c.icon} /></span>
                   <b>{c.title}</b>
                   <ul>{c.lines.slice(0, 3).map((l, i) => <li key={i}>{tidyLine(l)}</li>)}</ul>
-                  {c.lines.length > 3 || c.lines.some((l) => l.length > 90) || (c.key === "safety" && item.waiverUrl) ? <MoreLink onClick={() => setModal("know-" + c.key)}>Show more</MoreLink> : null}
+                  {c.lines.length > 3 || c.lines.some((l) => l.length > 90) || (c.key === "safety" && item.waiverUrl) ? <MoreLink onClick={() => setModal("know-" + c.key)} label={"Show more under " + c.title}>Show more</MoreLink> : null}
                 </div>
               ))}
             </div>

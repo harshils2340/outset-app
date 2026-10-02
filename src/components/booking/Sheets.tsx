@@ -37,7 +37,7 @@ import { AGENT_MODE_LIVE } from "../../lib/concierge";
 import { useApp } from "../../state/AppProvider";
 import { SIZES, srcSet, thumb } from "../../lib/images";
 import { embedAutoplay, listingMedia, photoCandidates, probePhotos, type Media } from "../../lib/media";
-import { cleanDesc, durationLabel, groupCap, meetPlace, minAge, notAlreadyShown, placeName, splitPolicies } from "../../lib/listingDerive";
+import { cleanDesc, durationLabel, groupCap, meetPlace, minAge, notAlreadyShown, placeName, splitPolicies, variantPickLabel } from "../../lib/listingDerive";
 import { freeCancelBadge } from "../../lib/cancellation";
 import { DAY_SHORT, clock12, companySuggestions, currentDeals, dayLabel, todaysDeals } from "../../lib/companyAgent";
 import { bookableStart, clockIn, hourLines, itemWeek, zoneFor } from "../../lib/openNow";
@@ -1012,7 +1012,7 @@ function RequestBody({
                       <div className="svchead2">
                         <b>{tidyName(svc.name)}</b>
                         {svc.desc && cleanDesc(svc.desc).length > 140 ? (
-                          <button type="button" className="svcabout" onClick={() => setOpenSvc(openSvc === svc.name ? null : svc.name)}>
+                          <button type="button" className="svcabout" aria-expanded={openSvc === svc.name} aria-label={(openSvc === svc.name ? "Show less about " : "Show more about ") + tidyName(svc.name)} onClick={() => setOpenSvc(openSvc === svc.name ? null : svc.name)}>
                             {openSvc === svc.name ? "Less" : "More"}
                           </button>
                         ) : null}
@@ -1029,7 +1029,7 @@ function RequestBody({
                               const note = variantNote(v.explain, v.label);
                               const length = single ? optionLength(item, v.optionIdx) : null;
                               return (
-                                <button key={svc.name + v.optionIdx} type="button" className={"addon" + (single ? " single" : "")} aria-pressed={optionIdx === v.optionIdx} onClick={() => setOptionIdx(v.optionIdx)} aria-label={single ? tidyName(svc.name) : undefined}>
+                                <button key={svc.name + v.optionIdx} type="button" className={"addon" + (single ? " single" : "")} aria-pressed={optionIdx === v.optionIdx} onClick={() => setOptionIdx(v.optionIdx)} aria-label={variantPickLabel(svc.name, single ? length : tidyLength(v.label), hasPrice(v.price) ? priceWith(v.price, v.per) : "Price on request", note)}>
                                   <span className="tick radio" />
                                   <span className="txt">
                                     {single ? (length ? <b>{length}</b> : null) : <b>{tidyLength(v.label)}</b>}
