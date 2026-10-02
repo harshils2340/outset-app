@@ -138,13 +138,17 @@ export function OpHours() {
               <button type="button" className="cta small" disabled={!newOff} onClick={addOff}><Markup html={OD_ICONS.plus} /> Add</button>
             </div>
             {p.blockedDates.length === 0 ? <p className="odfine">No days off scheduled.</p> : null}
-            {p.blockedDates.map((d) => (
-              <div className="odline" key={d}>
-                {/* A day off next year read "Wednesday, December 25" with nothing to say which December. */}
-                <span className="meta"><b>{isoToDate(d).toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: d.slice(0, 4) === todayKey.slice(0, 4) ? undefined : "numeric" })}</b><small>{relDay(d)}{heldOn(d) ? " · " + heldOn(d) + (heldOn(d) === 1 ? " booking" : " bookings") + " still on" : ""}</small></span>
-                <button type="button" className="odiconbtn" onClick={() => set({ blockedDates: p.blockedDates.filter((x) => x !== d) })} aria-label="Remove"><Markup html={OD_ICONS.trash} /></button>
-              </div>
-            ))}
+            {p.blockedDates.map((d) => {
+              // A day off next year read "Wednesday, December 25" with nothing to say which December.
+              const name = isoToDate(d).toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: d.slice(0, 4) === todayKey.slice(0, 4) ? undefined : "numeric" });
+              return (
+                <div className="odline" key={d}>
+                  <span className="meta"><b>{name}</b><small>{relDay(d)}{heldOn(d) ? " · " + heldOn(d) + (heldOn(d) === 1 ? " booking" : " bookings") + " still on" : ""}</small></span>
+                  {/* One of these per day off, and they all read "Remove": the day is in the row beside it and not in the button. */}
+                  <button type="button" className="odiconbtn" onClick={() => set({ blockedDates: p.blockedDates.filter((x) => x !== d) })} aria-label={"Put " + name + " back"}><Markup html={OD_ICONS.trash} /></button>
+                </div>
+              );
+            })}
             {p.blockedSlots.length ? <p className="odfine">{p.blockedSlots.length} single {p.blockedSlots.length === 1 ? "slot is" : "slots are"} blocked from the calendar. <button type="button" className="odlink tiny" onClick={() => set({ blockedSlots: [] })}>Clear them</button></p> : null}
           </section>
         </div>

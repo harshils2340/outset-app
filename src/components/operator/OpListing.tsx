@@ -111,7 +111,7 @@ function LineList({ items, onChange, max, maxLen, placeholder, numbered, empty, 
           <span className="odlinetools">
             <button type="button" className="odiconbtn small" disabled={i === 0} onClick={() => onChange(move(items, i, i - 1))} aria-label="Move up"><Markup html={OD_ICONS.chevUp} /></button>
             <button type="button" className="odiconbtn small" disabled={i === items.length - 1} onClick={() => onChange(move(items, i, i + 1))} aria-label="Move down"><Markup html={OD_ICONS.chevDown} /></button>
-            <button type="button" className="odiconbtn small" onClick={() => onChange(items.filter((_, j) => j !== i))} aria-label="Remove"><Markup html={OD_ICONS.trash} /></button>
+            <button type="button" className="odiconbtn small" onClick={() => onChange(items.filter((_, j) => j !== i))} aria-label={"Remove line " + (i + 1)}><Markup html={OD_ICONS.trash} /></button>
           </span>
         </div>
       ))}
@@ -448,7 +448,7 @@ export function OpListing() {
                 </div>
                 <div className="odphototools">
                   {src === p.cover ? <span className="odtag live">Cover</span> : <button type="button" disabled={broken.has(src)} onClick={() => set({ cover: src })}>Make cover</button>}
-                  <button type="button" onClick={() => removePhoto(src)} aria-label="Remove"><Markup html={OD_ICONS.trash} /></button>
+                  <button type="button" onClick={() => removePhoto(src)} aria-label={"Remove photo " + (i + 1)}><Markup html={OD_ICONS.trash} /></button>
                 </div>
               </div>
             ))}

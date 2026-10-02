@@ -65,3 +65,31 @@ test("neither label carries an em dash", () => {
   assert.doesNotMatch(label(CAL, "odcalfill"), /—/);
   assert.doesNotMatch(label(SVC, "disabled={!canRemove}"), /—/);
 });
+
+/**
+ * The same shape, swept. Three more trash buttons in the dashboard sat inside a `.map()` and were all called
+ * "Remove": one per day off on Availability, one per line in a Listing list, one per photo. The row beside each
+ * one says which it is, and the button does not, so a reader hears a column of identical words. The two beside
+ * them on the Listing lists ("Edit line 3", "Move up") have always been indexed, so the trash between them was
+ * the odd one out.
+ */
+const HOURS = readFileSync(new URL("../../components/operator/OpHours.tsx", import.meta.url), "utf8");
+const LISTING = readFileSync(new URL("../../components/operator/OpListing.tsx", import.meta.url), "utf8");
+
+test("no trash button in the dashboard is called just Remove any more", () => {
+  for (const [name, src] of [["OpHours", HOURS], ["OpListing", LISTING], ["OpServices", SVC], ["OpCalendar", CAL]] as const) {
+    assert.doesNotMatch(src, /aria-label="Remove"/, name + " still has an unnamed trash button");
+  }
+});
+
+test("a day off is put back by its own date", () => {
+  assert.match(HOURS, /aria-label=\{"Put " \+ name \+ " back"\}/);
+  // The name is the date already drawn in the row, not a second spelling of it.
+  assert.match(HOURS, /const name = isoToDate\(d\)\.toLocaleDateString\(/);
+  assert.match(HOURS, /<b>\{name\}<\/b>/);
+});
+
+test("a Listing line and a photo are removed by their own number", () => {
+  assert.match(LISTING, /aria-label=\{"Remove line " \+ \(i \+ 1\)\}/);
+  assert.match(LISTING, /aria-label=\{"Remove photo " \+ \(i \+ 1\)\}/);
+});
