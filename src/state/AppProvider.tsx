@@ -799,30 +799,54 @@ export function AppProvider({ children }: { children: ReactNode }) {
       // Consume a listing or remove link so a reload lands on the home page. A claim link keeps its hash:
       // the operator screen reads it and the URL should survive a refresh until the claim is done.
       if (r) window.history.replaceState(null, "", window.location.pathname + window.location.search);
-      booted.current = true;
 
       // Where the guest is was settled before the first render and refined by its own effect above. It used to
       // be decided here, inside this `.then()`, which gave it nothing it needed and cost it the whole catalog.
-
-      // A listing link pasted while the app is already open should still open that listing. The id comes off
-      // the event's own new URL rather than off `window.location`, because `hashchange` runs after every other
-      // handler for the same navigation and one of those (the address-bar effect below) can have rewritten
-      // the bar by then.
-      window.addEventListener("hashchange", (e: HashChangeEvent) => {
-        const id = listingInHash(e.newURL || window.location.hash);
-        if (!id || !experienceById(id)) return;
-        if (stateRef.current.sheet === "request" && stateRef.current.reqTargetId === id && stateRef.current.screen !== "confirm") return;
-        dispatch({ type: "openRequest", id });
-        loadListing(id).then((changed) => changed && dispatch({ type: "catalogLoaded", added: 1 }));
-      });
     }).catch(() => {
       // A stored profile that will not parse used to take the whole boot down with it: the catalog had landed
       // and nothing ever said so, so every screen that waits on it waited for good.
       if (alive) dispatch({ type: "catalogLoaded", added: 0, complete: true });
+    }).finally(() => {
+      // `booted` opens the three effects that own the address bar and the history stack, so it has to be set
+      // whichever way the boot ended. It used to be set inside the `.then()` above, and the `.catch()` next to
+      // it exists because that chain really does throw (a stored profile the catalog cannot take), which left
+      // a guest with a working catalog and no URL layer at all for the rest of the session: opening a listing
+      // never wrote `#o=` to the bar, so share and refresh landed on the home page, and no sheet got its own
+      // history entry, so one back gesture on a phone left the site from an open listing.
+      //
+      // Last, after the deep-link reads above: the path-sync effect erases a hash it does not recognise, and
+      // a `#claim=` link has to survive until the operator screen has read it.
+      booted.current = true;
     });
     return () => {
       alive = false;
     };
+  }, []);
+
+  /**
+   * A listing link that arrives while the app is already open: a shared `#o=` opened in this tab, or a guest
+   * typing one into the bar. Only the hash changes, so the browser never reloads and this is the one thing
+   * that hears it.
+   *
+   * Its own effect, with its own cleanup. It used to be registered inside the catalog fetch's `.then()`, which
+   * meant a boot that threw (see the `.catch()` above, which is there because that happens) left the app
+   * deaf to every listing link for the rest of the session, and registered a second copy, never removed, on
+   * React's development double-run of effects.
+   *
+   * The id comes off the event's own new URL rather than off `window.location`, because `hashchange` runs
+   * after every other handler for the same navigation and one of those (the address-bar effect below) can
+   * have rewritten the bar by then.
+   */
+  useEffect(() => {
+    const onHash = (e: HashChangeEvent) => {
+      const id = listingInHash(e.newURL || window.location.hash);
+      if (!id || !experienceById(id)) return;
+      if (stateRef.current.sheet === "request" && stateRef.current.reqTargetId === id && stateRef.current.screen !== "confirm") return;
+      dispatch({ type: "openRequest", id });
+      loadListing(id).then((changed) => changed && dispatch({ type: "catalogLoaded", added: 1 }));
+    };
+    window.addEventListener("hashchange", onHash);
+    return () => window.removeEventListener("hashchange", onHash);
   }, []);
 
   useEffect(() => {

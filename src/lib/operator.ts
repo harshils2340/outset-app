@@ -432,7 +432,7 @@ export function loadProfile(id: string): OperatorProfile | null {
  */
 export function saveProfile(p: OperatorProfile): boolean {
   const ok = write(PROFILE_PREFIX + p.id, p);
-  const idx = new Set(read<string[]>(INDEX_KEY) || []);
+  const idx = new Set(claimedIds());
   idx.add(p.id);
   write(INDEX_KEY, Array.from(idx));
   pushToCatalog(p);
@@ -450,16 +450,26 @@ export function deleteProfile(id: string): void {
   } catch {
     /* ignore */
   }
-  const idx = (read<string[]>(INDEX_KEY) || []).filter((x) => x !== id);
+  const idx = claimedIds().filter((x) => x !== id);
   write(INDEX_KEY, idx);
   setOperatorOverride(id, null, true);
   forgetClaim(id);
   if (loadSession() === id) saveSession(null);
 }
 
-/** Every business claimed in this browser. */
+/**
+ * Every business claimed in this browser.
+ *
+ * The shape is checked rather than asserted, the way `storage.ts` checks every list it reads. A value left by
+ * an older build, or hand-edited in devtools, used to come straight back out of `JSON.parse` as whatever it
+ * happened to be: an object or a number made `for (const id of claimedIds())` throw, which took down the one
+ * caller that runs on every boot (`applyStoredProfiles`), and a bare string iterated its own characters and
+ * looked for a business called "o". `saveProfile` and `deleteProfile` read the index through here too, so a
+ * corrupt one no longer throws out of a save or a release either.
+ */
 export function claimedIds(): string[] {
-  return read<string[]>(INDEX_KEY) || [];
+  const raw = read<unknown>(INDEX_KEY);
+  return Array.isArray(raw) ? raw.filter((x): x is string => typeof x === "string" && !!x) : [];
 }
 
 /**
