@@ -42,10 +42,19 @@ function isTurn(v: unknown): v is Turn {
   return typeof t.q === "string" && typeof t.at === "number" && Number.isFinite(t.at) && (t.answer === null || typeof t.answer === "object");
 }
 
+/**
+ * `lastAt` is checked with the rest of the shape because it is the field the list is then sorted on: a row
+ * without a usable one made the comparator in `loadConversations` return NaN, which does not just misplace
+ * that row, it takes the ordering of the whole list with it. Both timestamps are checked finite rather than
+ * only `typeof number`, since `JSON.parse` has no NaN but a build that wrote one through `Date.parse` of
+ * something unparseable would.
+ */
 function isConversation(v: unknown): v is Conversation {
   if (!v || typeof v !== "object") return false;
   const c = v as Record<string, unknown>;
-  return typeof c.id === "string" && !!c.id && typeof c.startedAt === "number" && Array.isArray(c.turns) && c.turns.every(isTurn);
+  if (typeof c.startedAt !== "number" || !Number.isFinite(c.startedAt)) return false;
+  if (typeof c.lastAt !== "number" || !Number.isFinite(c.lastAt)) return false;
+  return typeof c.id === "string" && !!c.id && Array.isArray(c.turns) && c.turns.every(isTurn);
 }
 
 /**
