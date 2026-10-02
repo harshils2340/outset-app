@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { companyAnswer, type CompanyContext } from "../companyAgent";
 import type { LiveAvailability } from "../api";
+import { dayKeyIn, zoneFor } from "../openNow";
 import type { Unclaimed } from "../../data/types";
 
 /**
@@ -19,10 +20,19 @@ import type { Unclaimed } from "../../data/types";
 
 const HOURS = ["Monday: 9:00 AM - 5:00 PM", "Tuesday: 9:00 AM - 5:00 PM", "Wednesday: 9:00 AM - 5:00 PM", "Thursday: 9:00 AM - 5:00 PM", "Friday: 9:00 AM - 5:00 PM", "Saturday: 9:00 AM - 5:00 PM", "Sunday: 9:00 AM - 5:00 PM"];
 
+/** Tomorrow where the shop stands, so the live chip below is always still bookable and this file never names a date that goes stale. */
+function tomorrow(): string {
+  const zone = zoneFor({ area: "Clearwater Beach, FL" } as unknown as Unclaimed);
+  const base = new Date(dayKeyIn(zone) + "T12:00:00Z");
+  base.setUTCDate(base.getUTCDate() + 1);
+  return base.toISOString().slice(0, 10);
+}
+const LIVE_DATE = tomorrow();
+
 const LIVE: LiveAvailability = {
   vendor: "fareharbor",
   live: true,
-  days: [{ date: "2026-10-01", slots: [{ startsAt: "2026-10-01T14:00", label: "2:00 PM · Sunset Sail", bookUrl: "x" }] }],
+  days: [{ date: LIVE_DATE, slots: [{ startsAt: LIVE_DATE + "T14:00", label: "2:00 PM · Sunset Sail", bookUrl: "x" }] }],
 };
 
 const ctx = (extra: Partial<Unclaimed>, live: LiveAvailability | null = null): CompanyContext => ({

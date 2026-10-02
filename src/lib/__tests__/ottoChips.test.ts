@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 import { companyAnswer, companySuggestions, type CompanyContext } from "../companyAgent";
 import type { LiveAvailability } from "../api";
+import { dayKeyIn, zoneFor } from "../openNow";
 import type { Unclaimed } from "../../data/types";
 
 /**
@@ -21,10 +22,19 @@ const LOST = /I'?m not sure what you mean|Ask me about prices/i;
 
 const HOURS = ["Monday: 9:00 AM - 5:00 PM", "Tuesday: 9:00 AM - 5:00 PM", "Wednesday: 9:00 AM - 5:00 PM", "Thursday: 9:00 AM - 5:00 PM", "Friday: 9:00 AM - 5:00 PM", "Saturday: 10:00 AM - 4:00 PM", "Sunday: Closed"];
 
+/** Tomorrow where the shop stands, so the live chip below is always still bookable and this file never names a date that goes stale. */
+function tomorrow(): string {
+  const zone = zoneFor({ area: "Clearwater Beach, FL" } as unknown as Unclaimed);
+  const base = new Date(dayKeyIn(zone) + "T12:00:00Z");
+  base.setUTCDate(base.getUTCDate() + 1);
+  return base.toISOString().slice(0, 10);
+}
+const LIVE_DATE = tomorrow();
+
 const live: LiveAvailability = {
   vendor: "fareharbor",
   live: true,
-  days: [{ date: "2026-10-01", slots: [{ startsAt: "2026-10-01T14:00", label: "2:00 PM · Flight", bookUrl: "x" }] }],
+  days: [{ date: LIVE_DATE, slots: [{ startsAt: LIVE_DATE + "T14:00", label: "2:00 PM · Flight", bookUrl: "x" }] }],
 };
 
 const ctx: CompanyContext = {
