@@ -83,18 +83,18 @@ uploads.post("/uploads/:id", rateLimit(120, 60 * 60 * 1000), async (c) => {
   const id = String(c.req.param("id") ?? "");
   if (!ID.test(id) || !mayEdit(c, id)) return c.json({ error: "not allowed" }, 403);
   const body = (await c.req.json().catch(() => null)) as { data?: string; type?: string } | null;
-  if (!body?.data || typeof body.data !== "string") return c.json({ error: "no image" }, 400);
+  if (!body?.data || typeof body.data !== "string") return c.json({ error: "No image arrived. Try again." }, 400);
   const b64 = body.data.replace(/^data:image\/\w+;base64,/, "");
-  if (b64.length > MAX_BYTES * 1.4) return c.json({ error: "image too large; keep it under 1.8 MB" }, 413);
+  if (b64.length > MAX_BYTES * 1.4) return c.json({ error: "That image is too large. Keep it under 1.8 MB." }, 413);
   const bytes = Buffer.from(b64, "base64");
   // Only real JPEG or PNG bytes get stored, whatever the client claimed.
   const jpeg = bytes[0] === 0xff && bytes[1] === 0xd8;
   const png = bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47;
-  if (!jpeg && !png) return c.json({ error: "only JPEG or PNG" }, 415);
-  if (bytes.length > MAX_BYTES) return c.json({ error: "image too large; keep it under 1.8 MB" }, 413);
+  if (!jpeg && !png) return c.json({ error: "That has to be a JPEG or a PNG." }, 415);
+  if (bytes.length > MAX_BYTES) return c.json({ error: "That image is too large. Keep it under 1.8 MB." }, 413);
   // A pixel size big enough to be a decompression-style hog is not ruled out by a magic byte or a file-size
   // cap; the browser already resizes to 1600px before sending, so anything this much bigger is not real.
-  if (dimensionsTooLarge(bytes)) return c.json({ error: "that image's dimensions look wrong; try re-saving and uploading again" }, 415);
+  if (dimensionsTooLarge(bytes)) return c.json({ error: "That image is too many pixels across. Re-save it and try again." }, 415);
   // Strip EXIF/XMP (JPEG) or text/time metadata (PNG) before it rides into a public, permanent commit: a
   // phone photo's own EXIF carries GPS coordinates the uploader never chose to publish.
   const clean = stripImageMetadata(bytes, jpeg ? "jpeg" : "png");

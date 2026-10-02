@@ -170,12 +170,37 @@ function sweep(m: Map<string, number[]>, windowMs: number): void {
   }
 }
 
+/**
+ * How long until the oldest call in the window falls out of it, in words.
+ *
+ * "try again later" is not an answer a guest can act on, and every window here is an hour, so later can be
+ * fifty-nine minutes. The oldest hit is what has to expire before there is room again, so the wait is known
+ * exactly and may as well be said.
+ */
+export function tryAgainIn(ms: number): string {
+  const mins = Math.ceil(Math.max(0, ms) / 60000);
+  if (mins <= 1) return "Try again in a minute.";
+  if (mins < 60) return "Try again in " + mins + " minutes.";
+  const hours = Math.round(mins / 60);
+  return "Try again in " + (hours <= 1 ? "an hour" : hours + " hours") + ".";
+}
+
+/**
+ * The per-caller ceiling on a public route.
+ *
+ * The 429 it answers with is read by a person on every route it guards: the guest's booking box prints it
+ * under the Reserve button, the claim screen and both sign-in screens print it as their error line, and the
+ * unsubscribe page prints it on the page. "too many requests, try again later" was written for a log, and
+ * `guestWords` in the app refuses to say a line that is not a sentence out loud, so on the booking box it
+ * became "Check the details and try again", which is advice about the wrong thing entirely: nothing is wrong
+ * with the details and trying again now cannot work. It says what happened and when to come back instead.
+ */
 export function rateLimit(limit: number, windowMs: number) {
   return async (c: Context, next: Next) => {
     const key = clientIp(c) + "|" + c.req.routePath;
     const now = Date.now();
     const arr = (hits.get(key) || []).filter((t) => now - t < windowMs);
-    if (arr.length >= limit) return c.json({ error: "too many requests, try again later" }, 429);
+    if (arr.length >= limit) return c.json({ error: "Too many tries from this connection. " + tryAgainIn(arr[0] + windowMs - now) }, 429);
     arr.push(now);
     hits.set(key, arr);
     if (hits.size > 50000) sweep(hits, windowMs);
@@ -209,7 +234,7 @@ export const auth = new Hono();
 auth.post("/auth/request-code", rateLimit(20, 60 * 60 * 1000), async (c) => {
   const body = await jsonBody<{ email: string }>(c);
   const email = bodyText(body.email).trim().toLowerCase();
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return c.json({ error: "enter a valid email" }, 400);
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return c.json({ error: "Enter a valid email address." }, 400);
   // Same answer either way, in the same time either way: an address with no account must not make this
   // route wait on a real mail send while one with an account does, or the response latency alone tells an
   // attacker which addresses have an operator account.
@@ -238,16 +263,16 @@ auth.post("/auth/verify", rateLimit(30, 60 * 60 * 1000), async (c) => {
   const body = await jsonBody<{ email: string; code: string }>(c);
   const email = bodyText(body.email).trim().toLowerCase();
   const code = bodyText(body.code).replace(/\D/g, "");
-  if (!emailLimit("ver:" + email, 15, 60 * 60 * 1000)) return c.json({ error: "too many attempts, try again later" }, 429);
+  if (!emailLimit("ver:" + email, 15, 60 * 60 * 1000)) return c.json({ error: "Too many attempts on that address. " + tryAgainIn(60 * 60 * 1000) }, 429);
   const rec = codes.get(email);
-  if (!rec || rec.exp < Date.now()) return c.json({ error: "code expired, request a new one" }, 400);
+  if (!rec || rec.exp < Date.now()) return c.json({ error: "That code has expired. Request a new one." }, 400);
   rec.tries += 1;
   if (rec.tries > 5) {
     codes.delete(email);
-    return c.json({ error: "too many attempts, request a new code" }, 400);
+    return c.json({ error: "Too many attempts. Request a new code." }, 400);
   }
   const want = codeHash(email, code);
-  if (want.length !== rec.hash.length || !timingSafeEqual(Buffer.from(want), Buffer.from(rec.hash))) return c.json({ error: "that code does not match" }, 400);
+  if (want.length !== rec.hash.length || !timingSafeEqual(Buffer.from(want), Buffer.from(rec.hash))) return c.json({ error: "That code does not match." }, 400);
   codes.delete(email);
   const ids = idsMerged(verifySession(c.req.header("x-session")), await idsForEmail(email));
   // The one place an address is proven: the code was mailed to it and came back. See the Session type.

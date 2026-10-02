@@ -152,9 +152,9 @@ payouts.put("/payouts/:id/schedule", rateLimit(60, 60 * 60 * 1000), async (c) =>
   const id = String(c.req.param("id") ?? "");
   if (!ID.test(id) || !mayEdit(c, id)) return c.json({ error: "not allowed" }, 403);
   const body = await jsonBody<{ interval: string }>(c);
-  if (body.interval !== "weekly" && body.interval !== "biweekly") return c.json({ error: "interval is weekly or biweekly" }, 400);
+  if (body.interval !== "weekly" && body.interval !== "biweekly") return c.json({ error: "A pay schedule is weekly or every two weeks." }, 400);
   const rec = await getProfile<ProfileWithPayout>(id);
-  if (!rec?.payout) return c.json({ error: "set up payouts first" }, 404);
+  if (!rec?.payout) return c.json({ error: "Set up payouts first." }, 404);
   const interval = body.interval as Interval;
   await updateProfile<ProfileWithPayout>(id, rec, (cur) => ({ ...cur, payout: { ...cur.payout!, interval, updatedAt: new Date().toISOString() } }));
   return c.json({ ok: true, interval });
@@ -246,9 +246,9 @@ payouts.post("/admin/payouts/run", rateLimit(10, 60 * 60 * 1000), async (c) => {
 payouts.post("/payouts/:id/connect", rateLimit(20, 60 * 60 * 1000), async (c) => {
   const id = String(c.req.param("id") ?? "");
   if (!ID.test(id) || !mayEdit(c, id)) return c.json({ error: "not allowed" }, 403);
-  if (!stripeEnabled()) return c.json({ error: "payouts are not switched on yet" }, 503);
+  if (!stripeEnabled()) return c.json({ error: "Payouts are not switched on yet." }, 503);
   const rec = await getProfile<ProfileWithPayout>(id);
-  if (!rec) return c.json({ error: "claim the listing first" }, 404);
+  if (!rec) return c.json({ error: "Claim the listing first." }, 404);
   try {
     let account = rec.payout?.account;
     if (!account) {
