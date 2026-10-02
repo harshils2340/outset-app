@@ -219,8 +219,8 @@ export function OpServices() {
                   </small>
                 </button>
                 <div className="odsvctools">
-                  <button type="button" className={"opavail" + (s.live ? "" : " off")} onClick={() => patchService(s.id, { live: !s.live })}>{s.live ? "Live" : "Hidden"}</button>
-                  <button type="button" className="odiconbtn" onClick={() => setOpenId(open ? null : s.id)} aria-label={open ? "Close" : "Edit"}><Markup html={open ? OD_ICONS.chevUp : OD_ICONS.chevDown} /></button>
+                  <button type="button" className={"opavail" + (s.live ? "" : " off")} onClick={() => patchService(s.id, { live: !s.live })} aria-label={(s.live ? "Hide " : "Show ") + (s.name.trim() || "this service") + " on your listing"} aria-pressed={s.live}>{s.live ? "Live" : "Hidden"}</button>
+                  <button type="button" className="odiconbtn" onClick={() => setOpenId(open ? null : s.id)} aria-label={(open ? "Close " : "Edit ") + (s.name.trim() || "this service")}><Markup html={open ? OD_ICONS.chevUp : OD_ICONS.chevDown} /></button>
                 </div>
               </div>
               {open ? (
@@ -347,6 +347,7 @@ function VariantList({ variants, jumpId, onChange }: { variants: OpVariant[]; ju
         <VariantRow
           key={v.id}
           v={v}
+          pos={i + 1}
           jumpHere={v.id === jumpId}
           rowProps={order.dragProps(v.id)}
           gripProps={{ ...order.gripProps(v.id), "aria-label": "Reorder " + (v.label || "this option") + ", position " + (i + 1) + " of " + variants.length }}
@@ -360,8 +361,10 @@ function VariantList({ variants, jumpId, onChange }: { variants: OpVariant[]; ju
   );
 }
 
-function VariantRow({ v, onChange, onRemove, canRemove, jumpHere, rowProps, gripProps, state }: {
+function VariantRow({ v, pos, onChange, onRemove, canRemove, jumpHere, rowProps, gripProps, state }: {
   v: OpVariant;
+  /** Where this row sits in its service, so the box that holds the option's own name can be named at all. */
+  pos: number;
   onChange: (patch: Partial<OpVariant>) => void;
   onRemove: () => void;
   canRemove: boolean;
@@ -374,7 +377,7 @@ function VariantRow({ v, onChange, onRemove, canRemove, jumpHere, rowProps, grip
   return (
     <div className={"odvar" + (!isPriced(v) ? " unpriced" : "") + state} {...rowProps}>
       <span className="odgrip" {...gripProps}><Markup html={OD_ICONS.grip} /></span>
-      <input value={v.label} maxLength={LABEL_MAX} placeholder="Option, like 1 hour or Tandem" aria-label="Option name" onChange={(e) => onChange({ label: e.target.value })} onBlur={(e) => { const t = e.target.value.trim(); if (t !== v.label) onChange({ label: t }); }} />
+      <input value={v.label} maxLength={LABEL_MAX} placeholder="Option, like 1 hour or Tandem" aria-label={"Name of option " + pos} onChange={(e) => onChange({ label: e.target.value })} onBlur={(e) => { const t = e.target.value.trim(); if (t !== v.label) onChange({ label: t }); }} />
       <label className="opinput" data-jump={jumpHere ? "price" : undefined}><span>$</span><NumBox value={v.price} parse={parsePrice} format={formatPrice} placeholder="Set" ariaLabel={"Price for " + (v.label || "this option")} onCommit={(n) => onChange({ price: n })} /></label>
       <label className="opinput odvarper">
         <span>per</span>

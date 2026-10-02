@@ -48,9 +48,15 @@ function move<T>(list: T[], from: number, to: number): T[] {
  * A list of short lines with add, edit in place, move up or down, and remove. Policies, guide steps and the
  * bring list all use it. Enter adds or saves, Escape cancels an edit, nothing empty is ever saved.
  */
-function LineList({ items, onChange, max, maxLen, placeholder, numbered, empty, jumpOn, onAdded }: {
+function LineList({ items, onChange, label, max, maxLen, placeholder, numbered, empty, jumpOn, onAdded }: {
   items: string[];
   onChange: (next: string[]) => void;
+  /**
+   * The heading this list sits under, lowercased into every control's name. Five of these lists share one
+   * page, so "Move up", "Move down", "Remove" and "Add" were eleven, eleven, eleven and six identically
+   * named buttons read out with nothing to say which list or which line they belonged to.
+   */
+  label: string;
   max: number;
   maxLen: number;
   placeholder: string;
@@ -97,7 +103,7 @@ function LineList({ items, onChange, max, maxLen, placeholder, numbered, empty, 
               autoFocus
               value={editing.text}
               maxLength={maxLen}
-              aria-label={"Edit line " + (i + 1)}
+              aria-label={"Edit " + label + " line " + (i + 1)}
               onChange={(e) => setEditing({ i, text: e.target.value })}
               onBlur={saveEdit}
               onKeyDown={(e) => {
@@ -109,9 +115,9 @@ function LineList({ items, onChange, max, maxLen, placeholder, numbered, empty, 
             <button type="button" className="odlinetext" onClick={() => setEditing({ i, text: line })} title="Click to edit">{line}</button>
           )}
           <span className="odlinetools">
-            <button type="button" className="odiconbtn small" disabled={i === 0} onClick={() => onChange(move(items, i, i - 1))} aria-label="Move up"><Markup html={OD_ICONS.chevUp} /></button>
-            <button type="button" className="odiconbtn small" disabled={i === items.length - 1} onClick={() => onChange(move(items, i, i + 1))} aria-label="Move down"><Markup html={OD_ICONS.chevDown} /></button>
-            <button type="button" className="odiconbtn small" onClick={() => onChange(items.filter((_, j) => j !== i))} aria-label={"Remove line " + (i + 1)}><Markup html={OD_ICONS.trash} /></button>
+            <button type="button" className="odiconbtn small" disabled={i === 0} onClick={() => onChange(move(items, i, i - 1))} aria-label={"Move " + label + " line " + (i + 1) + " up"} title={i === 0 ? "Already first" : "Move up"}><Markup html={OD_ICONS.chevUp} /></button>
+            <button type="button" className="odiconbtn small" disabled={i === items.length - 1} onClick={() => onChange(move(items, i, i + 1))} aria-label={"Move " + label + " line " + (i + 1) + " down"} title={i === items.length - 1 ? "Already last" : "Move down"}><Markup html={OD_ICONS.chevDown} /></button>
+            <button type="button" className="odiconbtn small" onClick={() => onChange(items.filter((_, j) => j !== i))} aria-label={"Remove " + label + " line " + (i + 1)} title="Remove this line"><Markup html={OD_ICONS.trash} /></button>
           </span>
         </div>
       ))}
@@ -126,7 +132,7 @@ function LineList({ items, onChange, max, maxLen, placeholder, numbered, empty, 
           placeholder={full ? "That's the most you can add (" + max + ")" : placeholder}
           onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); add(); } }}
         />
-        <button type="button" className="cta small" disabled={full || !draft.trim()} onClick={add}><Markup html={OD_ICONS.plus} /> Add</button>
+        <button type="button" className="cta small" disabled={full || !draft.trim()} onClick={add} aria-label={"Add to " + label} title={full ? "That's the most you can add (" + max + ")" : !draft.trim() ? "Type a line first" : undefined}><Markup html={OD_ICONS.plus} /> Add</button>
       </div>
       {draft.length >= maxLen ? <p className="odfine">Keep it to {maxLen} characters. Long lines get cut off on the listing.</p> : null}
     </div>
@@ -344,6 +350,7 @@ export function OpListing() {
             <h4 className="odsub">Who can go</h4>
             <LineList
               items={p.requirements ?? []}
+              label="who can go"
               onChange={(requirements) => set({ requirements })}
               max={KNOW_LIMITS.requirements}
               maxLen={KNOW_LIMITS.requirement}
@@ -354,6 +361,7 @@ export function OpListing() {
             <h4 className="odsub">What's included</h4>
             <LineList
               items={p.includes ?? []}
+              label="what is included"
               onChange={(includes) => set({ includes })}
               max={KNOW_LIMITS.includes}
               maxLen={KNOW_LIMITS.include}
@@ -369,6 +377,7 @@ export function OpListing() {
             <h4 className="odsub">Other policies</h4>
             <LineList
               items={p.policy}
+              label="other policies"
               onChange={setPolicy}
               max={POLICY_LINES}
               maxLen={POLICY_MAX}
@@ -379,7 +388,10 @@ export function OpListing() {
             {u.specs.length ? (
               <details className="oddetails">
                 <summary>Facts we pulled from your site ({u.specs.length})</summary>
-                <ul>{u.specs.map((s, i) => <li key={i}>{s} <button type="button" className="odlink tiny" disabled={p.policy.some((x) => x.toLowerCase() === oneLine(s, POLICY_MAX).trim().toLowerCase())} onClick={() => addPolicy(s)}>Add</button></li>)}</ul>
+                <ul>{u.specs.map((s, i) => {
+                  const already = p.policy.some((x) => x.toLowerCase() === oneLine(s, POLICY_MAX).trim().toLowerCase());
+                  return <li key={i}>{s} <button type="button" className="odlink tiny" disabled={already} onClick={() => addPolicy(s)} aria-label={(already ? "Already in your policies: " : "Add to your policies: ") + s} title={already ? "Already in your policies" : "Add this to your policies"}>Add</button></li>;
+                })}</ul>
               </details>
             ) : null}
 
@@ -399,6 +411,7 @@ export function OpListing() {
             <h4 className="odsub">How the day goes, in order</h4>
             <LineList
               items={guide.steps}
+              label="how the day goes"
               onChange={(steps) => setGuide({ steps })}
               max={GUIDE_LIMITS.steps}
               maxLen={GUIDE_LIMITS.step}
@@ -409,6 +422,7 @@ export function OpListing() {
             <h4 className="odsub">What to bring or wear</h4>
             <LineList
               items={guide.bring}
+              label="what to bring"
               onChange={(bring) => setGuide({ bring })}
               max={GUIDE_LIMITS.bring}
               maxLen={GUIDE_LIMITS.bringItem}
@@ -427,7 +441,7 @@ export function OpListing() {
           <p className="odmuted">Copied from your website. Pick the cover, remove any that don't sell the trip, and add your own from your phone or computer.</p>
           <div className="odupload">
             <input ref={fileRef} type="file" accept="image/*" multiple hidden onChange={(e) => void onFiles(e.target.files)} />
-            <button type="button" className="cta" disabled={!hasApi() || uploading > 0} onClick={() => fileRef.current?.click()}>
+            <button type="button" className="cta" disabled={!hasApi() || uploading > 0} onClick={() => fileRef.current?.click()} title={!hasApi() ? "Uploading needs the Outset API, which this demo is not connected to" : uploading > 0 ? "Wait for the photos already going up" : "Pick photos from this device"}>
               <Markup html={OD_ICONS.plus} /> {uploading > 0 ? `Uploading ${uploading}…` : "Upload photos"}
             </button>
             <small className="odfine">{photoNote}</small>
@@ -441,14 +455,15 @@ export function OpListing() {
                 ) : (
                   <Photo src={src} kind={u.art} id={"e" + src.slice(-12)} alt="" fallback={false} onBroken={() => setBroken((b) => (b.has(src) ? b : new Set(b).add(src)))} />
                 )}
+                {/* A gallery of twelve is twelve of each of these, so each one carries its own position. */}
                 <div className="odphotoorder">
-                  <button type="button" disabled={i === 0} onClick={() => set({ photos: move(p.photos, i, i - 1) })} aria-label="Move earlier"><Markup html={OD_ICONS.back} /></button>
+                  <button type="button" disabled={i === 0} onClick={() => set({ photos: move(p.photos, i, i - 1) })} aria-label={"Move photo " + (i + 1) + " earlier"} title={i === 0 ? "Already first" : "Move earlier"}><Markup html={OD_ICONS.back} /></button>
                   <span>{i + 1}</span>
-                  <button type="button" disabled={i === p.photos.length - 1} onClick={() => set({ photos: move(p.photos, i, i + 1) })} aria-label="Move later"><Markup html={OD_ICONS.chev} /></button>
+                  <button type="button" disabled={i === p.photos.length - 1} onClick={() => set({ photos: move(p.photos, i, i + 1) })} aria-label={"Move photo " + (i + 1) + " later"} title={i === p.photos.length - 1 ? "Already last" : "Move later"}><Markup html={OD_ICONS.chev} /></button>
                 </div>
                 <div className="odphototools">
-                  {src === p.cover ? <span className="odtag live">Cover</span> : <button type="button" disabled={broken.has(src)} onClick={() => set({ cover: src })}>Make cover</button>}
-                  <button type="button" onClick={() => removePhoto(src)} aria-label={"Remove photo " + (i + 1)}><Markup html={OD_ICONS.trash} /></button>
+                  {src === p.cover ? <span className="odtag live">Cover</span> : <button type="button" disabled={broken.has(src)} onClick={() => set({ cover: src })} aria-label={"Make photo " + (i + 1) + " the cover"} title={broken.has(src) ? "This photo will not load, so it cannot be your cover" : "Make this your cover photo"}>Make cover</button>}
+                  <button type="button" onClick={() => removePhoto(src)} aria-label={"Remove photo " + (i + 1)} title="Remove this photo"><Markup html={OD_ICONS.trash} /></button>
                 </div>
               </div>
             ))}
@@ -457,7 +472,7 @@ export function OpListing() {
           {p.photos.length > 1 ? <p className="odfine">The cover is the big photo on your listing. Guests see the rest in this order.</p> : null}
           <div className="odaddoff">
             <input value={newPhoto} disabled={p.photos.length >= PHOTOS_MAX} onChange={(e) => setNewPhoto(e.target.value)} aria-label="Photo web address" placeholder={p.photos.length >= PHOTOS_MAX ? "Gallery is full (" + PHOTOS_MAX + ")" : "https://yoursite.com/photo.jpg"} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addPhoto(); } }} />
-            <button type="button" className="cta small" disabled={!photoUrlOk(newPhoto) || p.photos.length >= PHOTOS_MAX} onClick={addPhoto}><Markup html={OD_ICONS.plus} /> Add</button>
+            <button type="button" className="cta small" disabled={!photoUrlOk(newPhoto) || p.photos.length >= PHOTOS_MAX} onClick={addPhoto} title={p.photos.length >= PHOTOS_MAX ? "Your gallery is full (" + PHOTOS_MAX + ")" : !photoUrlOk(newPhoto) ? "Paste the web address of a photo first" : "Add this photo"} aria-label="Add a photo by web address"><Markup html={OD_ICONS.plus} /> Add</button>
           </div>
           {newPhoto.trim() && !photoUrlOk(newPhoto) ? <p className="odfine warn">Paste the full link to the image, starting with https://</p> : null}
         </section>

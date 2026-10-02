@@ -92,6 +92,7 @@ test("a day off is put back by its own date", () => {
 });
 
 test("a Listing line and a photo are removed by their own number", () => {
-  assert.match(LISTING, /aria-label=\{"Remove line " \+ \(i \+ 1\)\}/);
+  // Five of these lists share one page, so the line's own list is in the name as well as its number.
+  assert.match(LISTING, /aria-label=\{"Remove " \+ label \+ " line " \+ \(i \+ 1\)\}/);
   assert.match(LISTING, /aria-label=\{"Remove photo " \+ \(i \+ 1\)\}/);
 });

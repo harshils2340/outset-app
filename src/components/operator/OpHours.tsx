@@ -135,7 +135,7 @@ export function OpHours() {
             <p className="odmuted">Holidays, maintenance, weather days. Guests can't book these dates.</p>
             <div className="odaddoff">
               <input type="date" aria-label="Date to take off" value={newOff} min={todayKey} onChange={(e) => setNewOff(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && newOff) { e.preventDefault(); addOff(); } }} />
-              <button type="button" className="cta small" disabled={!newOff} onClick={addOff}><Markup html={OD_ICONS.plus} /> Add</button>
+              <button type="button" className="cta small" disabled={!newOff} onClick={addOff} title={newOff ? "Add this day off" : "Pick a date first"}><Markup html={OD_ICONS.plus} /> Add</button>
             </div>
             {p.blockedDates.length === 0 ? <p className="odfine">No days off scheduled.</p> : null}
             {p.blockedDates.map((d) => {

@@ -44,8 +44,10 @@ export function BookingRow({ b, actions = false }: { b: OpBooking; actions?: boo
       </button>
       {actions && b.status === "new" ? (
         <div className="odbkactions">
-          <button type="button" className="cta ghost" onClick={() => decide(b, "declined")}>Decline</button>
-          <button type="button" className="cta" onClick={() => decide(b, "accepted")}>Accept</button>
+          {/* Three new requests are three Declines and three Accepts. Named for the guest they answer, so
+              the pair read out is the pair the operator meant. */}
+          <button type="button" className="cta ghost" onClick={() => decide(b, "declined")} aria-label={"Decline " + b.guest + ", " + relDay(b.date) + " at " + fmtTime(b.slot)}>Decline</button>
+          <button type="button" className="cta" onClick={() => decide(b, "accepted")} aria-label={"Accept " + b.guest + ", " + relDay(b.date) + " at " + fmtTime(b.slot)}>Accept</button>
         </div>
       ) : null}
     </div>
