@@ -996,6 +996,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const onPop = () => {
+      /* Back out of the checkout splash. `window.location.assign` to Stripe's hosted page is asynchronous and
+         can simply never land (the guest's connection drops, a network blocks checkout.stripe.com), and the
+         splash over it is fixed across the whole app with no control on it at all: the API already has the
+         booking, so the guest sat on "Sending you to secure checkout" until they thought to reload. Back did
+         not help either, because it only closed the sheet underneath and left `checkingOut` set.
+
+         The sibling of the `pageshow` handler above, which covers back FROM Stripe's page once the navigation
+         did land. This one covers the navigation that never happened, and the embedded form, where back is
+         what a guest means by giving up on paying. `checkoutDone` leaves them on the booking box they can
+         use again, and says why that is not a confirmation. */
+      if (stateRef.current.checkingOut) dispatch({ type: "checkoutDone" });
       if (overlayRef.current) {
         // Chrome queues `popstate` before `hashchange` for a fragment navigation, so a shared #o= link opened
         // in a tab that already has a listing or a chat open arrives here first and looks exactly like back.
