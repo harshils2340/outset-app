@@ -8648,6 +8648,125 @@ ninety-fourth runs), and it is on the Needs Harshil list below.
   Canadian shop; 69 Toronto-address listings are filed under a neighbouring metro; there is no linter in this
   repo; and this container still injects a `GITHUB_TOKEN`, which the brief says must be empty.
 
+## 2 October 2026, hundred and twenty-third run (08:12 to 09:40 UTC)
+
+**Chosen, and why.** One commit had landed since the hundred and twenty-first run's entry when this run read it
+and it was that entry, so nothing had touched `src/`, `backend/src` or the scripts, and that entry recorded the
+rehearsal green. (The hundred and twenty-second run was working the same hour and pushed first, which is why
+this is the twenty-third; see Needs Harshil.) By the
+brief's own rule the **rehearsal was skipped at the start** and run at the end, on the tree carrying tonight's
+work, because all of it is in the booking box, `AppProvider` and three API routes the rehearsal drives. Baseline
+matched that entry exactly: root `tsc --noEmit -p .` and `tsc -b` clean, backend `tsc` clean but for TS5097,
+backend 977 tests with 975 pass and 2 skipped, app 1,120 pass.
+
+Target: the brief's first area, the guest listing page and its booking box, narrowed to **the three fields a
+guest types into it and the words a guest reads when the API refuses the booking**. Every area the brief lists
+is marked verified in Coverage, and what Coverage claims about this one is "booking validation and odd input on
+every route that takes it", which is the server. Nothing had read the other direction: what the client lets a
+guest send that the server will refuse outright, and what the screen then says about it.
+
+**Found and fixed.** Three commits.
+
+- **A mistyped email stops losing the whole booking** (`5ed1afe8`). The email box is optional, so no surface read
+  it: the desktop reserve box, the phone review-and-pay sheet and the agent's own form all gated the button on
+  the name and the mobile, sent the address exactly as typed, and let `POST /bookings` have the last word. That
+  route refuses an address it cannot parse with a 400 and the words "bad email", so five ordinary typos lost the
+  whole booking: a missing TLD ("harshil@gmial"), a missing "@", a stray space, a comma for the dot, and a name
+  typed in the email box. What the guest read was the API's own two words, "bad email.", as an alert under a
+  Reserve button whose label still said "Add your name and number", with nothing pointing at the field. On the
+  phone it was the same two words over a toast. And it compounds: both surfaces write the form to
+  `outset.guest` before they send it and read it back on the next listing, so one typo saved once refused every
+  booking that device ever tried, with the same two words each time. `lib/guestEmail.ts` is the API's own regex
+  and the API's own cap, deliberately not a stricter one (`validOwnerEmail` next door wants a two-letter TLD,
+  which is a different promise), read by all three surfaces; the field says what is wrong, the button names it,
+  and the press moves focus there. The operator's own Listing page has had exactly this check on its published
+  address all along.
+- **A refusal a person reads is a sentence, not a line written for the log** (`ee1460c4`). The second half of the
+  same fault. `guestWords` exists in `lib/concierge.ts` precisely to keep "bad email", "duplicate code" and "no
+  such listing" out of the agent's thread, and it was written for the agent and left there, so the two surfaces
+  that take every real booking kept printing them. `AppProvider.confirmUnclaimed` reads it now, and a sentence
+  that arrives without a full stop gets one, which the agent's thread had been dropping too. That exposed a
+  second defect: the per-caller ceiling answered "too many requests, try again later", which `guestWords` will
+  not say out loud, so under the Reserve button it became "Check the details and try again" about details that
+  are fine, when nothing a guest types will help. It now says what happened and when to come back, and the when
+  is the real one: the oldest call in the window is what has to expire, so the wait is known exactly rather
+  than called "later", which on a one-hour window can be fifty-nine minutes. Nine more refusals in the same
+  shape, each printed by a screen as the whole of its error line: the four sign-in code lines both code screens
+  show ("that code does not match", beside the app's own tidier "That code does not match." in the fallback
+  right next to it), the four an operator reads as a toast after a photo upload, and the four on the payout
+  routes.
+- **The reserve button comment names the third field it now moves focus to** (`a9f2b598`).
+
+**Swept and clean, or measured and left.** Every one of the 78 `disabled=` controls in `src/components`, against
+whether a person can tell why, which is the Coverage item the last run left open: the end-of-list Move up, Move
+down, Move earlier and Move later arrows on the three dashboard lists are the only ones with nothing said, and
+on those the reason is the position itself. Everything else already says it, and says it in the control a person
+reads rather than in a tooltip: the `full` lists put the ceiling in the placeholder and in the button's own
+words, `photoNote` says uploads switch on with the API, a photo that would not load says so on its own tile
+above the greyed "Make cover", and the guest page's two calendar day buttons were read by an earlier run. Every
+400 `POST /bookings` can answer with, against the client gate in front of it: "bad email" was the only one a
+guest could reach, and with it closed the date, the slot, the party, the code, the listing, the name and the
+mobile are all gated on the page before the call is made, at numbers equal to or tighter than the route's.
+`makeCode` and `initials` over a title in any script, which is where a "bad code" could have come from: a
+non-Latin name falls back to "OS" and an accented one loses the accent, so the code always matches the route's
+own `[A-Z0-9-]{4,16}`. Every refusal the route can answer with, rendered the way the box renders it: all 18
+now read as a sentence, with a capital and a full stop, and the one that cannot be reached
+("name and mobile are required") would read as the generic line, which is the right advice for it.
+
+**Verification.** App `npm test` 1,127 pass, 0 fail, up from 1,120 (seven new in `guestEmail.test.ts`). Backend
+`npm test` 980 tests, 978 pass, 2 skipped, up from 977 (three new in `refusalWords.test.ts`, one of them driving
+`rateLimit` through a real Hono request for the body a guest would read). Every new test was run against the
+tree with its fix reverted: 3 of 7 fail in the first batch, with the four pure-rule ones passing because they
+test the new module itself, and 1 of 4 in the second under a partial revert. One existing test needed its anchor
+moved, `bookingCurrency.test.ts`, which pins a block of `Sheets.tsx` by its first line and that line changed.
+`tsc --noEmit -p .`, `tsc -b` and the backend's own `tsc` all clean but for TS5097. The rehearsal ran **57 of
+57** on the tree carrying all three commits. It also ran once before that at 56 of 57, where the one failure was
+a scratch test file of mine sitting in `backend/src/api/__tests__` when the run reached the unit tests: deleted,
+and the clean re-run is the 57. Nothing tracked under `backend/data`, `public/` or `src/data` was written.
+`STRIPE_SECRET_KEY`, `RESEND_API_KEY` and `GITHUB_TOKEN` were empty throughout.
+
+**Needs Harshil.**
+
+- **Two overnight runs worked this file in the same hour again.** The hundred and twenty-second run pushed its
+  entry while this one was running the rehearsal, both numbered themselves the twenty-second, and both swept a
+  disabled control from a different direction (that run off Chrome's own accessible names in a browser, this one
+  off every `disabled=` in the source). Nothing was lost: the rebase conflicted only in this file, both sweeps
+  are in Coverage, and this entry renumbered itself. The ninety-third and ninety-fourth runs raised the same
+  thing and one of the two was thrown away then. Worth deciding whether the schedule is meant to overlap.
+- **The booking box asks for ten digits of phone number, the API and the agent ask for seven.** `guestOk` on both
+  main surfaces wants `phone.replace(/\D/g, "").length >= 10`; `missingFrom` in `lib/concierge.ts` and `POST
+  /bookings` both want 7. So a guest with a seven-digit number can book through Ask and not through the box, and
+  the comment on `missingFrom` names this exact trap ("two copies of two letters and seven digits is how one of
+  them ends up refusing what the other took") while being one of the two copies. Ten is the right rule for a US
+  and Canada marketplace, because seven digits is a number with the area code missing and the shop cannot ring
+  it back; seven is what the server takes. Left alone because tightening the server is a behaviour change on a
+  public route and loosening the box would let an unreachable number through to an operator. Your call which way.
+- **The guest's three fields carry no `maxLength` while the operator's carry one.** `lib/operator.ts` has
+  `OWNER_NAME_MAX`, `OWNER_EMAIL_MAX` and `OWNER_PHONE_MAX` with the comment "the same caps the API applies, so
+  nothing is cut off silently on save", and the guest form has none, against the route's own 80, 24 and 200. The
+  one that can bite is the phone at 24: "+1 (727) 555-0100 ext 1234" is 26 characters, so it is cut to 24 and
+  then has its letters stripped, and the operator is handed "+1 (727) 555-0100  12" to ring. Not fixed because
+  the real question is whether the guest's number should keep an extension at all, the way `validOwnerPhone`
+  lets the operator's keep one.
+- **`isConversation` in `lib/conciergeHistory.ts` does not check the field it then sorts by.** It validates `id`,
+  `startedAt` and `turns` and drops a row that does not fit, which is what its own comment promises, and then
+  `loadConversations` sorts on `lastAt`, which nothing checked: a row without it makes the comparator return
+  NaN and takes the ordering of the whole list with it. Unreachable today (every writer sets it, and the key is
+  versioned `v1`), and the file is behind `AGENT_MODE_LIVE`, which a production build compiles out.
+- `claims.ts:70` is the one lowercase refusal left deliberately: the claim screen prints it after
+  "Could not send the link: ", so a capital there would read wrong. Worth knowing before the next sweep tidies it.
+- Still open from earlier runs, unchanged: **there is no error boundary in this app**, so a throw anywhere in
+  render is a white page over prose crawled from 48,198 other people's websites. Eight runs have now asked.
+- Also still open: the 18 listings whose crawl published only closed days now claim with all seven shut; a dump
+  of the SQLite catalog, without which no run here can judge the concierge's shortlist; the booking box opens on
+  a row the page's own headline contradicts; the phone's browse is not ranked at all while the desktop's is; the
+  listing page a chain's card opens heads the primary town; the phone confirmation offers no way to reach the
+  shop; a guest cannot cancel a booking at all; a price sort and a price filter compare two dollars on six
+  metros; the cards say "$" for a Canadian shop; 69 Toronto-address listings are filed under a neighbouring
+  metro; whether a stated age floor should refuse the kid filter; there is no linter in this repo; and this
+  container still injects a `GITHUB_TOKEN`, which the brief says must be empty (everything tonight was run with
+  it cleared).
+
 ## Coverage
 
 The catalog is 48,198 listings as of the 23 September sync, 1,873 of them Viator partner rows. Counts below
@@ -9608,15 +9727,28 @@ the week grid's empty cells and bookings, Accept and Decline, a service's live s
 two icon-only search labels, and every remaining disabled button on both sides. `ottoModel.ts`, read whole, and `deadCovers`' one shared Set against the
 dependency lists of all three consumers.
 
+The three fields a guest types into a booking form, and the words a guest reads when the API refuses the
+booking: the email every surface sent unread, against the regex and the cap `POST /bookings` refuses it by, on
+the desktop reserve box, the phone review-and-pay sheet and the agent's own form, with the address the device
+remembers held against the same rule; every 400 that route can answer with, against the client gate in front of
+it, and `makeCode` and `initials` over a title in any script, which is where a "bad code" would have come from;
+and every refusal the route can answer with, rendered the way the box renders it, all 18 now a sentence rather
+than a line written for the log. Every one of the 78 `disabled=` controls in `src/components`, against whether a
+person can tell why it is unavailable: the `full` list placeholders, the upload note, the dead-photo tile, and
+the end-of-list arrows whose reason is their position.
+
 **Not yet checked.** Whether the 18 listings whose crawl published only closed days should claim with
 all seven days shut at all, now that a closed week is published rather than swallowed (see this run's Needs
 Harshil). Whether a stated age floor should ever refuse the kid filter, on the 621 listings that
 state one of 10 or more in the fields `kidRule.ts` reads and are offered to a parent filtering for younger kids
 anyway (see this run's Needs Harshil). Whether the phone's back gesture should close Ask Outset, which the
-overlay history entry in `AppProvider` does not count, latent while Agent Mode is a dev-only build. Whether the
-Move up and Move earlier buttons disabled at the ends of a list should say why, the way the trash on a service's
-last price option now does. Whether the dashboard's own disabled controls should be swept for the same thing
-the trash was. The concierge's shortlist, as opposed to its sentence reader: `backend/data/outset.db`
+overlay history entry in `AppProvider` does not count, latent while Agent Mode is a dev-only build. Whether the booking box should ask for ten digits of
+phone number while the API and the agent ask for seven, which is a guest with a seven-digit number able to book
+through Ask and not through the box (see the hundred and twenty-third run's Needs Harshil). Whether the guest's
+own three fields should carry the `maxLength` the operator's carry, against the route's 80, 24 and 200: the one
+that bites is the phone at 24, where an extension is cut and then stripped into a number nobody can ring.
+Whether `isConversation` in `conciergeHistory.ts` should check the `lastAt` it then sorts by, which is a
+comparator returning NaN on a row it was written to drop. The concierge's shortlist, as opposed to its sentence reader: `backend/data/outset.db`
 in this container is an empty schema `migrate()` writes at startup, so every town that lives in the catalog
 reads as nowhere and `candidates`, `genresNear` and `placeAmbiguity` have never been run here against real
 rows (see this run's Needs Harshil). Which row the booking box should open on, and
