@@ -87,9 +87,11 @@ export function OpBookings() {
             </button>
           ))}
         </div>
+        {/* Named outright: an icon is this label's only content, which leaves the box nameless and takes
+            the placeholder fallback with it. */}
         <label className="odsearch small">
           <Markup html={OD_ICONS.search} />
-          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Guest, service or code" />
+          <input value={q} aria-label="Search bookings by guest, service or code" onChange={(e) => setQ(e.target.value)} placeholder="Guest, service or code" />
         </label>
       </div>
 

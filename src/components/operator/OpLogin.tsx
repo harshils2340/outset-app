@@ -580,9 +580,12 @@ export function OpLogin({ claimId, claimToken, compact, onEnter, onBack }: { cla
                  owner landed here on a bare "Find your business" screen with nothing said at all. */
               <p className="oderr">We couldn't load your listing. Check your connection and open the link from your email again, or search for your business by name below.</p>
             ) : null}
+            {/* The magnifying glass is the whole of this label's content, which leaves the box with no
+                accessible name at all and suppresses the placeholder a browser would otherwise fall back
+                to, so the name is said outright. */}
             <label className="odsearch">
               <Markup html={OD_ICONS.search} />
-              <input autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder="Business name, like Tampa Bay Jet Ski" />
+              <input autoFocus value={q} aria-label="Find your business by name" onChange={(e) => setQ(e.target.value)} placeholder="Business name, like Tampa Bay Jet Ski" />
             </label>
             {results.length ? (
               <div className="odresults">
