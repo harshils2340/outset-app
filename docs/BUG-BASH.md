@@ -8525,6 +8525,128 @@ throughout.
   metros; the cards say "$" for a Canadian shop; 69 Toronto-address listings are filed under a neighbouring
   metro; there is no linter in this repo; and this container still injects a `GITHUB_TOKEN`, which the brief
   says must be empty (everything tonight was run with it cleared).
+## 2 October 2026, hundred and twenty-second run (06:22 to 08:20 UTC)
+
+**Chosen, and why.** No commit had landed when this run started, and the hundred and twentieth run's entry says the
+rehearsal was 57 of 57, so **the rehearsal was skipped at the start** and run once at the end instead, over the
+five fixes below (it covers `src/`). Baseline matched that entry exactly: both `node_modules` missing again and
+reinstalled, root `tsc --noEmit -p .` and `tsc -b` clean, backend `tsc` clean but for TS5097, backend 977 tests
+with 975 pass and 2 skipped, app 1,087 plus the fifteen from last night, 1,102 pass.
+
+Every area on the brief is on the Verified list, so I took the brief's last bullet, accessibility on the
+booking flow, and asked it with a measure no run here has used: **Chrome's own accessible-name computation**,
+read straight off `Accessibility.getFullAXTree` in a headless Chromium, over every interactive node of all nine
+dashboard pages at 1440px and 400px, the guest home, three full listings on both widths, and the claim screen.
+Earlier runs swept "a control with no name". What that misses is a page full of controls that share one name,
+which reads out exactly as uselessly, and a disabled control that says nothing about why. 2 nameless inputs, 71
+colliding names and 24 silent disabled buttons fell out. The whole hunt is a11y, and all of it is a control a
+guest or an operator actually presses.
+
+**Found and fixed.** Five commits.
+
+- **The phone's booking calendar names the date it is offering, not just its number** (`632db854`). The booking
+  sheet's month grid at 400px was a row of buttons called "1", "12", "13": no month anywhere in the grid, and
+  nothing on a greyed date to say it could not be picked. `SlotCalendar` set a label only where the listing
+  happened to carry live seat counts; the desktop's two month grids have always spelled out "Thursday, October
+  1, not available" by hand. One calendar, named two ways depending on who opened it. All three read one
+  `dayPickLabel` now, which keeps the seat count the phone already had.
+- **The claim screen's search box and the booking search get a name back** (`741bad65`). Both are an `<input>`
+  inside a `<label>` whose only content is a magnifying glass. The icon carries no text alternative, so the
+  computed name is empty, and because the input is wrapped in a label at all the browser never falls back to
+  the placeholder either: announced as an unnamed text field. One is the first thing an owner types into and
+  the other is how they find a guest. The guest home's Where box is the same shape and has always carried
+  `aria-label="Where"`, so this is what two of the three already did.
+- **Every button in the dashboard's week grid says which day and time it is** (`6102531d`). Thirteen buttons
+  all called "Block slot", and where one guest had booked the same trip three times, three all called
+  "Priya N. 1 · Guided tour". An empty cell now reads "Block 2:30 PM on Tuesday, October 6" and carries the
+  same words as a title, so a mouse sees what a reader hears.
+- **A dashboard control says which line, photo, guest or price it acts on** (`93cb6db1`). Listing alone was
+  eleven "Move up", eleven "Move down", eleven "Remove" and six "Add" across its five line editors and its
+  gallery; Home and Bookings were three "Accept" and three "Decline"; Services was two "Live", a "Remove
+  option" naming no option and a box called "Option name" on every row. Nine disabled buttons also said nothing
+  about why, among them the trash on a service's last price option and "Make cover" on a photo that will not
+  load. The page already did this properly where somebody had thought about it (a drag handle reads "Reorder
+  Sunset cruise, position 2 of 4"); this is that rule everywhere else.
+- **A booking menu row says which thing it books, not just its length and price** (`45e4d625`). Mad Beach Party
+  Charter sells four boats at one price for one length, so its picker was four buttons all called "4 hours $499
+  / trip" and the boat's name is a heading, which no reader reads as part of the button under it. The other way
+  round was worse: a service whose only tier is "Standard" carried the service name as its `aria-label`, and an
+  `aria-label` replaces content rather than adding to it, so those rows were announced with no price in them at
+  all. Both pickers read one `variantPickLabel` now. The same sweep cleared the rest of a listing's repeated
+  two-word buttons, six on one page at worst: a "Show more" for the description and one per "Things to know"
+  column, a "Show more" per review card, a "More" per service description on a phone, plus the month arrows on
+  all four booking calendars and the claim screen's sign-in button.
+
+**Swept and clean, or measured and left.** The six `src/lib` modules the log had never named, read whole:
+`season.ts`, `site.ts`, `stripeJs.ts`, `wallet.ts`, `deadCovers.ts` and `groupSize.ts`, plus `ottoModel.ts`,
+which had never been named either. Nothing wrong in any of them. `deadCovers` was the one worth checking at its
+callers rather than in itself, because `useDeadCovers` hands back one module-level Set whose identity never
+changes: all three consumers pass `deadSet.size` beside it in their dependency list, so no memoised list goes
+stale. `src/state/AppProvider.tsx` read whole, 1,127 lines, against the screen flow it owns: nothing that
+changes what a guest sees. Three things measured and left there, none of them reachable today: `DATES` is
+computed once at module load, so a tab left open across midnight offers yesterday as "Today" (the API refuses a
+past date, so the money is safe and the fix is broad); the `hashchange` listener is registered inside the
+catalog fetch's `.then`, so it is never added at all if that fetch rejects, and never removed; and the Ask
+Outset overlay is not in the `overlay` set that gives a sheet its own history entry, so a phone's back gesture
+leaves the site rather than closing it. The guest home's two "List your business" buttons and two "About
+Outset" links share a name on purpose: same words, same destination, header and footer.
+
+**Verification.** App `npm test` 1,117 pass on this run's own tree and 1,135 with the hundred and twenty-first run's tests rebased under them, 0 fail either way, up from 1,102 (fifteen new across `dayPickLabel.test.ts`,
+`inputNames.test.ts`, `calendarNames.test.ts`, `controlNames.test.ts` and `pickerNames.test.ts`). Every new
+test was run against the tree with its own fix reverted and fails there: 1 of 3, 1 of 1, 1 of 2, 5 of 5 and the
+whole picker file, with the controls that must keep passing passing. Backend `npm test` 977 tests, 975 pass, 2
+skipped, unchanged; nothing under `backend/` was touched. `tsc -b` and the backend's own `tsc` clean but for
+TS5097. The **rehearsal ran 57 of 57** twice at the end, once on this run's five commits and again on the tree after the hundred and twenty-first run was rebased under them, on a Postgres 16 cluster with TLS on 5433 built here from
+scratch (as root, so `initdb` and `pg_ctl` run under the `postgres` user). Every page swept was re-driven in
+Chromium after the fixes: all nine dashboard pages, the guest home and three listings at both widths, and the
+claim screen now come back with no repeated name among their interactive controls and no disabled control
+without a reason, the `<option>`s inside a named `<select>` aside. Nothing tracked under `backend/data`,
+`public/` or `src/data` was written. `STRIPE_SECRET_KEY` and `RESEND_API_KEY` were empty throughout;
+`GITHUB_TOKEN` is injected by this container and was cleared for every command that could read it.
+
+**Two runs in the same files at once.** The hundred and twenty-first run pushed while this one was working,
+and it had picked the same brief bullet from the other end: the Calendar's block button, the trash on a price
+option and three more "Remove" buttons. Rebasing it conflicted in three hunks, all in files this run changed,
+and each was resolved rather than dropped.
+
+- The Calendar cell keeps that run's `where` variable, redefined to read `dayPickLabel` so the week grid and
+  the three booking calendars share one day reader rather than carrying a fourth hand-written
+  `toLocaleDateString`. Its label text is unchanged but for the month, now spelled out. That run's pin on the
+  old expression was moved with it (`opLabels.test.ts`).
+- The trash on a price option keeps that run's version outright and this run's was dropped: it puts the reason
+  a reader needs into the accessible name as well as the tooltip, which is better than a tooltip alone. This
+  run's test for it was rewritten to that wording.
+- The line editors keep this run's labels, because that run's "Remove line 3" is the same words in five lists
+  on one page: five of them read "Remove line 1". With the list in the name there is no collision. That run's
+  pin on the unindexed form was moved (`opLabels.test.ts`).
+
+Nothing either run did was lost, but this is the second night it has happened (see the ninety-third and
+ninety-fourth runs), and it is on the Needs Harshil list below.
+
+**Needs Harshil.**
+
+- **Two overnight runs are working the same files at the same time.** The hundred and twenty-first and this
+  one both started from the brief's accessibility bullet an hour apart and met in `OpCalendar.tsx`,
+  `OpServices.tsx` and `OpListing.tsx`. Everything was reconciled by hand this time, including two of that
+  run's own test pins, but a conflict in a third file could as easily have thrown one run's work away. Either
+  the schedule wants spacing or a run wants a way to see what is in flight.
+- **`npx tsc --noEmit -p .` compiles nothing.** The brief asks for it at the root, and it answers clean for a
+  project with no files in it: the root `tsconfig.json` is solution-style and only references the app and node
+  configs. It let a real syntax error through tonight, in `OpListing.tsx`, and only Vite's own transform caught
+  it; `npx tsc -b` is the command that checks the app. An earlier run wrote this down and nothing has changed.
+  Worth either pointing the brief at `tsc -b` or giving the root config the app's files.
+- **A disabled button is now explained by a `title`**, which is a tooltip: it reaches a mouse and a screen
+  reader and not a keyboard or a touch. That is what every other explanation in this dashboard uses, so the
+  fixes match the house style, but if you want these reachable without a pointer they want a line of text under
+  the control instead, which is new UI and `src/styles`.
+- Still open from earlier runs, unchanged: **there is no error boundary in this app**, so a throw anywhere in
+  render is a white page over prose crawled from 48,198 other people's websites. Seven runs have now asked.
+- Also still open: a dump of the SQLite catalog; the booking box opens on a row the page's own headline
+  contradicts; the phone's browse is not ranked at all while the desktop's is; the listing page a chain's card
+  opens heads the primary town; the phone confirmation offers no way to reach the shop; a guest cannot cancel a
+  booking at all; a price sort and a price filter compare two dollars on six metros; the cards say "$" for a
+  Canadian shop; 69 Toronto-address listings are filed under a neighbouring metro; there is no linter in this
+  repo; and this container still injects a `GITHUB_TOKEN`, which the brief says must be empty.
 
 ## Coverage
 
@@ -9476,6 +9598,16 @@ every effect in it, for a screen the guest cannot get out of, a deep link that l
 no history entry. `src/lib/kidRule.ts` over all 52,815 shipped detail files, against the promise the kid filter
 makes a parent.
 
+What a control in this product is actually called out loud, read off Chrome's own accessible-name computation
+in a headless Chromium rather than off the attribute beside it: every interactive node of all nine dashboard
+pages at 1440px and 400px, the guest home, three full listings on both widths and the claim screen, for a
+control with no name at all, a page full of controls that share one name, and a disabled control that says
+nothing about why. The booking calendars' day buttons and month arrows on all four grids, the service and
+tier picker on both guest surfaces, the five line editors and the gallery on the dashboard's Listing page,
+the week grid's empty cells and bookings, Accept and Decline, a service's live switch and its price rows, the
+two icon-only search labels, and every remaining disabled button on both sides. `ottoModel.ts`, read whole, and `deadCovers`' one shared Set against the
+dependency lists of all three consumers.
+
 **Not yet checked.** Whether the 18 listings whose crawl published only closed days should claim with
 all seven days shut at all, now that a closed week is published rather than swallowed (see this run's Needs
 Harshil). Whether a stated age floor should ever refuse the kid filter, on the 621 listings that
@@ -9862,4 +9994,15 @@ kind, and 32 guessed-kind cards reach the first six of 455 phone category pages 
 Whether the listing page a chain's card opens should head the town the guest was browsing rather than the
 primary one, now that the card does: carrying the browsed city into the page is new UI and a choice about which
 venue the page is then about. Whether a venue the crawl only found a street for should be named by that street
-rather than by the city being browsed, which is 8 of the 59 rows.
+rather than by the city being browsed, which is 8 of the 59 rows. Whether a disabled control
+should be explained by a `title` at all, which is what this dashboard has always used and which reaches a
+mouse and a screen reader but not a keyboard or a touch (see the hundred and twenty-first run's Needs Harshil).
+Whether the brief's own `tsc --noEmit -p .` should be `tsc -b`, or the root `tsconfig.json` given the app's
+files, since the first compiles nothing and let a real syntax error through tonight. `DATES` being computed
+once at module load, so a tab left open across midnight offers yesterday as "Today": measured and left,
+because the API refuses a past date and the fix reaches every surface that reads the strip. The `hashchange`
+listener registered inside the catalog fetch's own `.then`, which is never added if that fetch rejects and
+never removed. Whether the Ask Outset overlay should get its own history entry the way a sheet and a chat do,
+since a phone's back gesture leaves the site rather than closing it. The guest home, the Trips, Inbox and
+Account tabs and the desktop's dialogs through the same accessible-name read that swept the dashboard and the
+listing tonight: the home was clean at both widths and the rest were not opened.
