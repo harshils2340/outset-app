@@ -8976,6 +8976,105 @@ throughout.
   this repo; and this container still injects a `GITHUB_TOKEN`, which the brief says must be empty (everything
   tonight was run with it cleared).
 
+## 2 October 2026, hundred and twenty-sixth run (11:21 to 13:10 UTC)
+
+**Chosen, and why.** No commit had landed since the hundred and twenty-fifth run's entry, which recorded the
+rehearsal green on the tree carrying its work, so by the brief's own rule the **rehearsal was skipped at the
+start** and run at the end, twice, because tonight's work changes the booking box. Baseline matched that entry
+exactly: root `tsc --noEmit -p .` and `tsc -b` clean, backend `tsc` clean but for TS5097, backend 987 with 985
+pass and 2 skipped, app 1,169 pass (after `npm install` on both sides, which a fresh container still needs).
+
+Target: **the clock the booking box is drawn on.** Every area the brief names is on the Verified list, so the
+pick came off Not yet checked, where `DATES` being computed once at module load has sat as "measured and left"
+since the hundred and eighteenth run. It is the one item on that list that offers a guest a day they cannot
+have, and it had never been driven: it was read, reasoned about, and left on the argument that the API refuses
+a past date. Driving it found that argument is the whole bug, not a defence against it.
+
+Also swept, since the brief asks for it and Coverage says only the home had been read: the guest home, Trips,
+Inbox, Wishlists and Account tabs through an accessible-name read in a real Chromium at 400px, and the desktop
+home's Filters dialog at 1440px and 1024px. All clean. The only flags were the category rail's own horizontal
+scroll, which is what a rail is, and three Account rows that are disabled and say "not built yet" in the name,
+which is a disabled control explaining itself.
+
+**Found and fixed.** Two commits, both pushed.
+
+- **A tab left open overnight stops offering yesterday as a bookable day** (`dcecd69a`). The ten-day booking
+  window was one `const` in `AppProvider`, built when the module loaded, and every surface that offers a guest
+  a day read it: the phone sheet's `SlotCalendar`, the desktop listing's two month grids and its day-and-time
+  picker, the `fetchAvailability` call that asks a shop's own booking system, and the date a reserve press hands
+  `POST /bookings`. Measured in a real Chromium on `o-islandkayaking-com` with the page's clock shifted rather
+  than argued about: a tab opened at 23:50 on Friday 2 October still offered **Saturday 3, Sunday 4 and Monday
+  5 as bookable at 00:50 on Tuesday 6**, and struck 12 to 15 October through as "not available" though they sit
+  inside the shop's real ten days. The route refuses a date more than a day old, so a guest picking one reads
+  "date out of range" on the last press of the flow; with no API behind it the past date is simply stored.
+  `bookingDates()` in `lib/dates.ts` is the window now, rebuilt on the local day roll and cached between rolls
+  so the array identity the calendars memoise on does not churn every render (a fresh array per call refetches
+  the shop's calendar on every keystroke, which is why it was a `const`). A timer re-armed at each local
+  midnight redraws, and it is load-bearing rather than cosmetic: the phone sheet keeps its picked day in its own
+  state, so no amount of guest clicking makes it re-read the window. Verified at both widths with the shifted
+  clock: the window is the right ten days, the past days are off, the phone sheet's "Bookable through" moves
+  with it, and the redraw lands with nothing clicked.
+- **The phone sheet drops a picked start time the day no longer offers** (`a211f342`). Found on the way: the
+  desktop page decides this from the times it draws the picker from (`[openSlots, time]`), the phone sheet
+  watched `[dateIdx, live, openMap]`, which is the three things that usually move the list rather than the list.
+  Two ways past it, both ending with nothing shown as picked and Reserve live on the time underneath: today's
+  chips shrink as `bookableStart`'s hour of notice passes them, so a 3 PM picked at half one is still picked at
+  half two; and, now that the window rebuilds itself, the same index is a different date after midnight. Keyed
+  on the offered times, the way its twin is, with the cross-surface rule as a test.
+
+**Swept and clean, or measured and left.** Every module in `src/components`, `src/lib` and `src/state` for a
+date or a window frozen at load time, which is now a test rather than a grep: `DATES` was the only one, and the
+backend has none (its one module-level `Date.now()` is a CPU sampler's running mark). The stored search day
+(`prefs.when`) against the rebuilt window on all three surfaces that read it: each already falls back when the
+stored key is not in the window, so the fix only tightens them. `fetchAvailability`'s promise cache, which is
+keyed by the window's first date and so asks again on the roll rather than serving yesterday for ever.
+`catalogVersion`, which the midnight redraw bumps: every consumer is a recompute over the catalog, none is a
+fetch, and the heavy one on the home already runs at idle.
+
+**Verification.** App `npm test` 1,180 pass, 0 fail, up from 1,169 (eleven new across `bookingWindow.test.ts`
+and `pickedTimeDrops.test.ts`). Backend 987 tests, 985 pass, 2 skipped, unchanged. Every new test was run
+against the tree with its fix reverted: 4 of 8 fail in the first file and 1 of 3 in the second; the rest pin
+the window's length, the array identity and the desktop twin, which is the point of them. One existing
+assertion was updated rather than deleted: `ottoLiveWired` pinned the guest window by the literal
+`makeDates(BOOKING_WINDOW_DAYS)` in `AppProvider`, and now pins `bookingDates()` there and that literal in
+`lib/dates.ts`, so the rule it is really about (the operator's test chat and the guest ask for the same number
+of days) still holds. `tsc --noEmit -p .`, `tsc -b` and the backend's own `tsc` all clean but for TS5097. The
+**rehearsal ran 57 of 57** on a local Postgres 16 cluster on port 5433 with SSL on and the on-disk Playwright
+Chromium, twice: once on the tree carrying the first commit and once on the tree that was pushed. Nothing
+tracked under `backend/data`, `public/` or `src/data` was written. `STRIPE_SECRET_KEY`, `RESEND_API_KEY` and
+`GITHUB_TOKEN` were empty throughout.
+
+**Needs Harshil.**
+
+- **"Open right now near you" is computed once a visit and never again.** The same family as tonight's bug, and
+  the one piece of it I measured and did not fix, because the fix is a judgement call about your home page
+  rather than a defect with one right answer. `useNearNow` memoises the whole rail on `[near, catalogVersion]`
+  and a feed card memoises its "Open now" pill on `[u]`, so a guest who loaded the home at 19:00 and is still
+  browsing at 21:30 is being shown shops that shut at 20:00, under a rail whose entire promise is the clock.
+  The memos are not laziness: `itemOpenState` re-reads and re-parses a shop's own hour lines, and dropping them
+  costs **9.8 ms per render of 60 cards**, measured on real records, so the fix needs a ticker rather than a
+  deletion. One module-level interval through `useSyncExternalStore` is about twenty lines and no prop
+  plumbing. What I will not decide overnight is the churn: on a five or fifteen minute tick the rail reorders
+  and pills vanish under a guest's pointer. Tonight's midnight redraw refreshes it once a night, which is the
+  floor, not the answer. My reading is that the pill is worth ticking and the rail's membership is not, so a
+  shop that has shut loses its badge but keeps its place in the row until the page is reloaded.
+- **This container's local `main` was again behind.** `git branch main` pointed at the hundred and twelfth run's
+  commit while `HEAD` sat detached on the hundred and twenty-fifth, exactly as the last run reported;
+  `git fetch origin main` force-updated `origin/main` and `main` was re-pointed at it before committing.
+  Nothing was lost and nothing was force-pushed, but two runs in a row have now had to notice this, so
+  something about how this container is prepared leaves `main` stale and `HEAD` detached.
+- Still open from earlier runs, unchanged: **there is no error boundary in this app**, now eleven runs asked;
+  **the checkout splash still has no control of its own**; `docs/E2E-LOCAL.md` still says "nothing, for the
+  normal run" while the rehearsal needs a Postgres that speaks SSL (and this container needs it created as the
+  `postgres` user, since the session runs as root); a fresh container ships no `node_modules`; the 18 listings
+  whose crawl published only closed days claim with all seven shut; a dump of the SQLite catalog, without which
+  no run here can judge the concierge's shortlist; the phone's browse is not ranked while the desktop's is; the
+  phone confirmation offers no way to reach the shop; a guest cannot cancel a booking at all; the booking box
+  asks for ten digits of phone number where the route asks for seven; a price sort and a price filter compare
+  two dollars on six metros; the cards say "$" for a Canadian shop; there is no linter in this repo; and this
+  container still injects a `GITHUB_TOKEN`, which the brief says must be empty (everything tonight was run with
+  it cleared).
+
 ## Coverage
 
 The catalog is 48,198 listings as of the 23 September sync, 1,873 of them Viator partner rows. Counts below
@@ -9960,7 +10059,15 @@ characters `POST /bookings` keeps, to the button the operator presses to ring th
 booking emails print. Every `tel:` href in `src/components`, `src/lib` and `src/state` against the one reader
 in `lib/phone.ts`, now a test of its own, and all 36,952 shipped contact phones measured against the strip
 two surfaces were still dialling with. The caps on the guest's name, mobile and address, on all four surfaces
-that draw them and at the route that applies them.
+that draw them and at the route that applies them. The clock the booking window is drawn on, driven in a real Chromium at
+1440px and 400px with the page's own clock moved on rather than read: the ten days the two booking surfaces
+offer, the month grids, the day-and-time picker, the shop's calendar fetch and the date a reserve press sends,
+across the local day rolling over under a tab that is already open, one night and three. Every module in
+`src/components`, `src/lib` and `src/state` for a date or a window frozen at module load, now a test, and the
+backend read for the same. A picked start time against a day that stops offering it, on both booking surfaces
+and now one rule. The guest home, Trips, Inbox, Wishlists and Account tabs, and the desktop home's Filters
+dialog, through the accessible-name read that swept the dashboard and the listing: all clean at 400px, and the
+dialog clean at 1440px and 1024px.
 
 **Not yet checked.** Whether the 18 listings whose crawl published only closed days should claim with
 all seven days shut at all, now that a closed week is published rather than swallowed (see this run's Needs
@@ -10322,7 +10429,16 @@ and Otto's answers should name the Canadian dollar the way the four charge block
 listings and the 3,045 of them that publish a price (see that run's Needs Harshil). Whether the app's own
 `src/**/__tests__`, which nothing type-checks, hide anything: checked once tonight against a scratch config, and
 what falls out is fixture shapes rather than defects, with one test building a listing in a category the app has
-no such family for. Whether the phone confirmation should carry the shop's number and arrival note the way its desktop twin does, which is a missing row rather than a defect and is new UI (see this run's Needs Harshil). Whether the concierge's crawl queue should be scoped to the town people asked about, which its own comment says it is and its SQL is not, against the same comment's argument that a Waterloo question should reach Kitchener (see this run's Needs Harshil). What else the two confirmation screens disagree about, now that the place line is one reader on both: the arrival note, the price breakdown and the rating are all on the desktop and none on the phone. Whether this app should have an error boundary at all, which is
+no such family for. Whether the phone confirmation should carry the shop's number and arrival note the way its desktop twin does, which is a missing row rather than a defect and is new UI (see this run's Needs Harshil). Whether the concierge's crawl queue should be scoped to the town people asked about, which its own comment says it is and its SQL is not, against the same comment's argument that a Waterloo question should reach Kitchener (see this run's Needs Harshil). What else the two confirmation screens disagree about, now that the place line is one reader on both: the arrival note, the price breakdown and the rating are all on the desktop and none on the phone. Whether the phone sheet's month grid should follow a day the sheet picks for the guest, which its desktop twin
+`MonthPair` re-anchors for and `SlotCalendar` does not: the "land on a day that has start times" effect can move
+the selection into the next month while the grid still draws this one, so the grid shows no picked day beside a
+Start times column listing another month's times. Read, not reproduced: three attempts at a listing whose first
+open day falls past a month boundary all found the first day open, because `itemWeek` re-reads the shop's own
+hour lines rather than the compact week a candidate was picked by. Whether a rail and a card whose whole promise is the clock should tick,
+which is this run's Needs Harshil and the one measured thing left of tonight's family of bugs: `useNearNow`
+memoises "Open right now near you" on `[near, catalogVersion]` and a card memoises its "Open now" pill on
+`[u]`, `itemOpenState` costs 9.8 ms per render of 60 cards so neither memo can simply go, and a ticker reorders
+a rail under a guest's pointer. Whether this app should have an error boundary at all, which is
 the hundred and fourteenth run's Needs Harshil and the one item here that would change what a guest sees the
 next time any reader faults: there is none, so a throw anywhere in render is a white page rather than a listing missing a
 sentence, over prose crawled from 48,198 other people's websites. Whether `lib/zone.ts`'s own `parts()`
@@ -10355,11 +10471,12 @@ rather than by the city being browsed, which is 8 of the 59 rows. Whether a disa
 should be explained by a `title` at all, which is what this dashboard has always used and which reaches a
 mouse and a screen reader but not a keyboard or a touch (see the hundred and twenty-first run's Needs Harshil).
 Whether the brief's own `tsc --noEmit -p .` should be `tsc -b`, or the root `tsconfig.json` given the app's
-files, since the first compiles nothing and let a real syntax error through tonight. `DATES` being computed
-once at module load, so a tab left open across midnight offers yesterday as "Today": measured and left,
-because the API refuses a past date and the fix reaches every surface that reads the strip. The `hashchange`
-listener registered inside the catalog fetch's own `.then`, which is never added if that fetch rejects and
-never removed. Whether the Ask Outset overlay should get its own history entry the way a sheet and a chat do,
+files, since the first compiles nothing and let a real syntax error through tonight. The booking window being computed
+once at module load, so a tab left open across midnight offers days that have been and gone: driven and fixed
+by the hundred and twenty-sixth run, which found the API refusing the past date was the bug rather than the
+defence against it. The `hashchange`
+listener registered inside the catalog fetch's own `.then`: closed by the hundred and twenty-fourth run, which
+gave it its own effect and its own cleanup. Whether the Ask Outset overlay should get its own history entry the way a sheet and a chat do,
 since a phone's back gesture leaves the site rather than closing it. The guest home, the Trips, Inbox and
 Account tabs and the desktop's dialogs through the same accessible-name read that swept the dashboard and the
 listing tonight: the home was clean at both widths and the rest were not opened.
