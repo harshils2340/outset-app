@@ -9,6 +9,7 @@ import { bookableMenu } from "./menuRow";
 import { addressOf, streetOf, townOf } from "./address";
 import { shopTitle } from "./shopName";
 import { ownWords } from "./ownWords";
+import { keepRealPhotos, spamImageUrl } from "./spamPhoto";
 import { dialPhone, displayPhone } from "./phone";
 import { isPublicHttpUrl } from "./urlSafety";
 import { stripMarkdown, stripTags } from "./markdown";
@@ -107,14 +108,33 @@ export function domainOf(src: string): string {
  * A crawled record as every surface should read it, applied once where records arrive rather than in each of
  * the pages, sheets, rails, search and answers that read them.
  *
- * Two things the crawl brings back are not what they look like. A menu row can be the page's own heading
+ * Three things the crawl brings back are not what they look like. A menu row can be the page's own heading
  * rather than a service, and it is bookable and priced like any other row (`menuRow.ts`). A description can be
- * the theme's Latin filler or a PDF read as text, which says the shop is not real (`ownWords.ts`). Both are
- * fixed here so the card, the listing page, the booking box, the operator's own description box and Otto never
- * disagree about what this shop published.
+ * the theme's Latin filler or a PDF read as text, which says the shop is not real (`ownWords.ts`). And a photo
+ * can be a hacked page's advertisement rather than a picture of the business (`spamPhoto.ts`): 68 shipped
+ * listings carry one, 53 of them as the cover. All three are fixed here so the card, the listing page, the
+ * booking box, the operator's own description box and Otto never disagree about what this shop published.
  */
+function photosAsPublished(item: Unclaimed): Unclaimed {
+  const cover = spamImageUrl(item.cover) ? undefined : item.cover;
+  const photos = keepRealPhotos(item.photos);
+  const video = spamImageUrl(item.video) ? undefined : item.video;
+  const embed = spamImageUrl(item.videoEmbed) ? undefined : item.videoEmbed;
+  const services = item.services?.map((s) => (spamImageUrl(s.photo) ? { ...s, photo: undefined } : s));
+  const same =
+    cover === item.cover &&
+    photos.length === (item.photos || []).length &&
+    video === item.video &&
+    embed === item.videoEmbed &&
+    (!services || services.every((s, i) => s === item.services![i]));
+  // A listing left with no cover is one the photo grids already know how to leave out (`deadCovers.ts`): it
+  // keeps its own page, its gallery, and its place in a search by name. What it loses is the right to stand in
+  // a photo grid behind a casino banner.
+  return same ? item : { ...item, cover, photos, video, videoEmbed: embed, ...(services ? { services } : {}) };
+}
+
 function asPublished(raw: Unclaimed): Unclaimed {
-  const item = bookableMenu(raw);
+  const item = photosAsPublished(bookableMenu(raw));
   const blurb = ownWords(item.blurb);
   const title = shopTitle(item.title, item.src);
   const descs = (item.services || []).map((s) => ownWords(s.desc));
