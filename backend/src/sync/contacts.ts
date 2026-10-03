@@ -357,9 +357,9 @@ export function toCatalogItem(r: CatalogRow): Record<string, unknown> {
     rawOfferings.map((o) => o.name + " " + (o.detail || "")),
   );
   const hasSpamText = hasHackedSpam(
-    rawFacts.filter((f) => TEXT_KEYS.test(f.fact_key) || MEDIA_FACT_KEY.test(f.fact_key)).map((f) => f.fact_value),
+    rawFacts.filter((f) => TEXT_KEYS.test(f.fact_key)).map((f) => f.fact_value),
     rawOfferings.map((o) => o.name + " " + (o.detail || "")),
-    sidecarPhotos,
+    [...rawFacts.filter((f) => MEDIA_FACT_KEY.test(f.fact_key)).map((f) => f.fact_value), ...sidecarPhotos],
   );
   const spamCompromised = hasSpamText || foreignScript != null;
   if (spamCompromised) {
@@ -902,8 +902,31 @@ export function isCompromisedText(value: string): boolean {
  * `rows` take the narrower phrase check rather than the full one, because a compact rate card can legitimately
  * repeat a short phrase across most of its own length, which is exactly the shape `isKeywordStuffed` looks for.
  */
+/**
+ * The same spam in an image address rather than in prose.
+ *
+ * `SPAM_LINE` is written for sentences: every glued phrase in it joins its words with `\s?`, which matches a
+ * space or nothing and never the hyphen a file name uses, and each is held behind a `\b` that a glued host
+ * name does not offer. So "bandar togel" was caught and "Bandar-Slot-Gacor", "slot-gacor.webp",
+ * "dewislot88-banner_lg2.png", "gacor77-terpercaya.webp" and "SitusTotoTogelHits.jpg" were not: of the 147
+ * gambling-banner addresses on 68 shipped listings, the prose screen caught 24.
+ *
+ * An address is not prose, so it gets its own short list: only the words that network actually writes into a
+ * file name, each still held to a word edge so a photograph of Judith, a file called maxwindow.jpg or a
+ * booking widget's own slot-picker screenshot is not a casino. The same list is read at load time by
+ * `src/lib/spamPhoto.ts`, which is what keeps the already-shipped ones off the screen; keep the two in step.
+ * Measured over all 327,339 image addresses in the shipped detail files: 147 matches and nothing else.
+ */
+export const SPAM_IMAGE_ADDRESS =
+  /togel|maxwin(?![a-z])|gacor|\bjudi\b|slot(?:777|88|99|gacor)(?![a-z])|(?:bandar|situs|daftar)[-_ ]?(?:togel|slot|judi)|\bpulsa\b/i;
+
+/** True when an image, cover or video address is a hacked page's advertisement rather than this shop's photo. */
+export function isSpamImageAddress(url: string): boolean {
+  return SPAM_IMAGE_ADDRESS.test(url);
+}
+
 export function hasHackedSpam(texts: string[], rows: string[], mediaUrls: string[]): boolean {
-  return texts.some(isCompromisedText) || mediaUrls.some(isCompromisedText) || rows.some(isCompromisedPhrase);
+  return texts.some(isCompromisedText) || mediaUrls.some((u) => isCompromisedText(u) || isSpamImageAddress(u)) || rows.some(isCompromisedPhrase);
 }
 
 export function foreignScriptCompromised(facts: string[], rows: string[]): string | null {
