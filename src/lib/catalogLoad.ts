@@ -95,7 +95,8 @@ export function loadListing(id: string | null): Promise<boolean> {
       const full = (await res.json()) as Unclaimed;
       if (!looksLikeItem(full)) return false;
       // Known already: patch the record in place. Never seen: add it, so the page can render from this alone.
-      if (cur) hydrateItem(full, cur.id);
+      // A file naming a different business is refused there, and this listing keeps the facts its card has.
+      if (cur) { if (!hydrateItem(full, cur.id)) return false; }
       else if (!mergeCatalog([full], {})) return false;
       const mine = cur?.id || full.id;
       // A claimed operator's own edits, saved through the API, sit on top of the crawled record.

@@ -57,9 +57,11 @@ test("a seed's own options are never paired with the crawl's service variants", 
 });
 
 test("a seed with no options of its own takes both from the crawl, still in step", () => {
-  const bare = { id: "u-bare-test", title: "Waterfront Rentals", cat: "water", art: "jetski", area: "Clearwater, FL", src: "bare.example", lite: true, options: [], photos: [] } as unknown as Unclaimed;
+    // One domain across the pair: `mergeCatalog` finds a seed's crawled twin by the seed's own domain, so a
+  // twin on another domain is not a state the product can reach, and `hydrateItem` now refuses one.
+  const bare = { id: "u-bare-test", title: "Waterfront Rentals", cat: "water", art: "jetski", area: "Clearwater, FL", src: "waterfront.example", lite: true, options: [], photos: [] } as unknown as Unclaimed;
   mergeCatalog([bare], {});
-  hydrateItem(crawled("o-bare-example"), "u-bare-test");
+  hydrateItem(crawled("o-waterfront-example"), "u-bare-test");
   const item = experienceById("u-bare-test")!;
   assert.equal(item.options.length, 8);
   assert.ok((item.services || []).length > 0, "the crawl's services should be kept when its options are");
@@ -69,4 +71,60 @@ test("a seed with no options of its own takes both from the crawl, still in step
       assert.equal(item.options[v.optionIdx].price, v.price);
     }
   }
+});
+
+/**
+ * A detail file that belongs to another business.
+ *
+ * The catalog id is the operator's own domain slugged, and the slug folds punctuation, so "aqua-tots.com" and
+ * "aqua_tots.com" both asked for o-aqua-tots-com in the 23 September catalog. Two different Aqua-Tots, one in
+ * Westerville, Ohio and one in Dallas, Texas, shipped under that one id: catalog.json carried both rows, the
+ * merge above keeps the first, and public/o/o-aqua-tots-com.json was written by the second. Opening the
+ * Westerville card headed its page "Dallas, TX" with a Dallas phone number, none of the shop's own facts, and
+ * stripped the card behind it of the photo it had been drawn with.
+ */
+const westerville = {
+  id: "o-aqua-tots-com",
+  title: "Aqua-Tots Swim Schools",
+  cat: "water",
+  art: "swim",
+  area: "Westerville, OH",
+  src: "aqua-tots.com",
+  cover: "https://aquatots.example/pool.jpg",
+  tags: ["Swim Team", "Fast Track Swim Program"],
+  lite: true,
+  options: [],
+  photos: [],
+} as unknown as Unclaimed;
+
+const dallas = {
+  id: "o-aqua-tots-com",
+  title: "Aqua-Tots Swim Schools",
+  cat: "water",
+  art: "swim",
+  area: "Dallas, TX",
+  src: "aqua_tots.com",
+  lite: true,
+  options: [],
+  photos: [],
+} as unknown as Unclaimed;
+
+test("a detail file naming another shop's domain is refused, and the listing keeps its own facts", () => {
+  mergeCatalog([westerville], {});
+  assert.equal(hydrateItem(dallas), false);
+  const item = experienceById("o-aqua-tots-com")!;
+  assert.equal(item.area, "Westerville, OH");
+  assert.equal(item.src, "aqua-tots.com");
+  assert.equal(item.cover, "https://aquatots.example/pool.jpg");
+  // Still lite, so it is the honest gap under the card's own facts rather than another town.
+  assert.equal(item.lite, true);
+});
+
+test("the shop's own detail file still lands, www and scheme aside", () => {
+  mergeCatalog([westerville], {});
+  const mine = { ...westerville, src: "https://www.Aqua-Tots.com", area: "Westerville, OH", options: [opt("Parent and tot", "30 minutes", 25)] } as unknown as Unclaimed;
+  assert.equal(hydrateItem(mine), true);
+  const item = experienceById("o-aqua-tots-com")!;
+  assert.equal(item.lite, false);
+  assert.equal(item.options.length, 1);
 });

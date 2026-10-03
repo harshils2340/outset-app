@@ -267,15 +267,33 @@ export function partnerBookLine(item: Unclaimed): string | null {
   return item.affiliate ? "Book on " + item.affiliate.label : null;
 }
 
-/** Swap a lite record for its full detail record. Overrides and publish state stay as they were. */
-export function hydrateItem(raw: Unclaimed, targetId?: string): void {
+/**
+ * Swap a lite record for its full detail record. Overrides and publish state stay as they were. False when
+ * nothing changed: no such listing, or a file that is not this listing's.
+ */
+export function hydrateItem(raw: Unclaimed, targetId?: string): boolean {
   // The detail file is where a listing's menu and its description really live, so this is the read that decides
   // what the booking box offers and what the page says. Same rule as `mergeCatalog` above.
   const full = asPublished(raw);
   const id = resolveCatalogId(targetId || full.id);
   const idx = base.findIndex((u) => u.id === id);
-  if (idx === -1) return;
+  if (idx === -1) return false;
   const cur = base[idx];
+  /**
+   * The file is this listing's only when it names the same business, because what it replaces is everything:
+   * the title, the town, the pin, the phone, the menu and the hours.
+   *
+   * One id can name two shops. The id is the operator's own domain slugged, and the slug folds punctuation, so
+   * "aqua-tots.com" and "aqua_tots.com" both asked for o-aqua-tots-com in the 23 September catalog: Aqua-Tots
+   * in Westerville, Ohio, which is the row that browse draws, and Aqua-Tots in Dallas, Texas, which is the row
+   * that wrote the detail file. Opening the Westerville card headed its page "Dallas, TX", with a Dallas phone
+   * number and none of the shop's own facts, and left the card behind it stripped of its photo. The sync gives
+   * a second shop its own id now (backend/src/lib/catalogId.ts); this is the app refusing to put one shop's
+   * page on another, for a catalog already published and for whatever else ever lands under a taken id.
+   */
+  const ours = domainOf(cur.src || "");
+  const theirs = domainOf(full.src || "");
+  if (ours && theirs && ours !== theirs) return false;
   const handVerified = cur.id !== full.id;
   base = base.slice();
   if (!handVerified) {
@@ -307,6 +325,7 @@ export function hydrateItem(raw: Unclaimed, targetId?: string): void {
     base[idx] = merged;
   }
   rebuild();
+  return true;
 }
 
 export function initials(title: string): string {
