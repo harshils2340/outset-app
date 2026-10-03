@@ -9663,6 +9663,106 @@ throughout.
   **Local `main` was detached again**, eighth run in a row, at the hundred and thirty-first run's commit.
   Re-pointed with `git checkout -B main` before committing.
 
+## 3 October 2026, hundred and thirty-third run (11:14 to 14:05 UTC)
+
+**Chosen, and why.** Nothing had landed since the hundred and thirty-second run's own entry (`ad400d18`), which
+records the rehearsal green at 57 of 57, so by the brief's rule the **rehearsal was skipped at the start** and
+run twice at the end, once the night's commits had touched `backend/src` and `src/`. Baseline after `npm
+install` on both sides: root `tsc --noEmit -p .` and `tsc -b` clean, backend `tsc` clean but for TS5097,
+backend 1,005 pass with 2 skipped, app 1,230 pass.
+
+Target: **the quarantine screen that keeps a hacked operator website's spam out of the catalog**, which no
+entry here has ever opened. "compromised", "hacked" and `SPAM_LINE` appear nowhere in this log; the only record
+of the rule is a security review from 16 September and the comments in `backend/src/sync/contacts.ts`. Rather
+than read it, every rule it holds was run over what actually ships: all 52,815 detail files, all 52,816 catalog
+rows, all 327,339 image addresses and every string in every field.
+
+**Found and fixed.** Nine commits, pushed. The spam is live on **108 listings**, all of them real businesses.
+
+- **Sixty-eight listings lead with a gambling banner, 53 of them as the cover** (`1e039dcd` app, `8e55e27f` and
+  `dbedee4e` sync). Salida Golf Club, Timberview Golf Club, Mojave Resort Golf Club, Market House Museum in
+  Paducah, the Birth Place of the Republican Party in Ripon, the Bulleit Whiskey Experience, a zoo in
+  Saint-David-de-Falardeau, a yoga studio in Colorado Springs and a theatre in Orlando each open, on their
+  browse card and at the top of their own page, behind "Bandar-Slot-Gacor", "satset138-maxwin",
+  "dewislot88-banner" or "SitusTotoTogelHits". Two holes: the cloud crawl's photo harvest arrives through
+  `photoSidecar.ts` rather than the facts table, so the screen never read it and a quarantined operator
+  published it anyway; and `SPAM_LINE` is written for prose, where every glued phrase joins its words with
+  `\s?` that never matches a hyphen, so it caught 24 of the 147 addresses and no more. The harvest now goes
+  through the screen, an address gets its own short list beside the prose one, and the app reads the same list
+  at load in `asPublished`, which is what takes the 53 covers off the screen before a sync.
+- **Forty listings describe themselves as an online casino** (`446edda2` app, `66bf9738` sync). The paragraph a
+  guest reads is the hack's own marketing on Canoe Outfitters of Florida, the Ford Amphitheater at Coney
+  Island, Greenwich CrossFit, the Gene Autry Oklahoma Museum, Green Acres Golf Course, Hidden Oaks RV, Spring
+  City Museum, the Vachel Lindsay Home and 32 more. `SPAM_LINE` holds phrases behind a word edge, which is the
+  wrong shape for a page the hack wrote itself ("PEDETOGEL" has no edge in front of "togel", "bandar toto slot"
+  is not "bandar slot"), and `FOREIGN_SCRIPT_RUN` never fires because Indonesian is written in our alphabet.
+  `ownWords` reads it now, which is already the question being asked, and the sync quarantines it. Two signals,
+  not one: three distinct words that are only Indonesian, or two beside a betting word, because "Dan and Cara"
+  is an English sentence and "slot", "bonus" and "deposit" are English nouns. 40 matches over every shipped
+  string, 57,628 real descriptions kept.
+- **A Wyoming museum's whole menu is a hacked page's Arabic** (`0b953529`). Wright Centennial Museum publishes
+  one service, "Pontoon (البريطاني)", described in Arabic prose about a card game's house edge, with our own
+  glossary explaining Pontoon as a boat. A script run only counted as the hack's when isolated to one field,
+  on the grounds that a bilingual operator carries it across several; so does a hack that writes the whole
+  section. A menu whose every row carries one counts too: the three real Hawaii operators that exemption was
+  written for state their own language as well, at 4 of 20, 18 of 44 and 1 of 4 rows.
+- **The cloud metadata address was reachable through `safeFetch` after all** (`921766c7`). It read an IPv4
+  inside an IPv6 only in the dotted spelling, which is what `node:dns` hands back and what no URL ever
+  carries: `new URL()` rewrites the tail into hextets, so `http://[::ffff:169.254.169.254]/latest/meta-data/`
+  arrived as `::ffff:a9fe:a9fe`, matched nothing, and was sent, on the first hop and every redirect. The same
+  for loopback. The app's own `isPrivateHost` had the identical gap (`1400ca8f`), where a crawled website of
+  `http://[::ffff:127.0.0.1]:8080/` was a link a guest could click into their own machine.
+- **An emptied conversation took the Messages tab down with it** (`c46da20a`). `loadChats` drops a message an
+  older build wrote differently and kept the id behind it; the Inbox reads the last message to draw its preview
+  line, so the tab threw on render, which with no error boundary is a white screen on every visit until the key
+  is cleared, and the tab bar's badge counted the thread it could not open.
+
+**Swept and clean, or measured and left.** Every text field, menu row, tag, title, policy and FAQ line of all
+52,815 detail files, and every field of all 52,816 catalog rows, through the three prose rules: after tonight
+nothing the app still draws is spam but one `extraNote` on o-islandchillyachtcharters-com, which is
+`isKeywordStuffed` reading a field the sync assembles from several facts it screened one at a time. Every
+contact block (address, phone, hours) on all 52,815: clean. The hack's `/images/categories/` fingerprint across
+every shipped record: the museum alone. `ipMetro.ts` and the `/where` route read through, including the table
+builder's own merge and its encode and decode: clean. Shipped `explain` against `explainTerms` over 61,614
+services: 2 differ, both stale.
+
+**Verification.** Backend `npm test` 1,022 with 1,020 pass and 2 skipped, up from 1,007 (15 new); app `npm
+test` 1,238 pass, up from 1,230 (8 new). Every new test was run against the tree with its own fix reverted and
+fails there. `tsc --noEmit -p .`, `tsc -b` and the backend's own `tsc` all clean but for TS5097. The
+**rehearsal ran 57 of 57** on a local Postgres 16 cluster on port 5433 with SSL on, built as the `postgres`
+user, and the on-disk Playwright Chromium. `STRIPE_SECRET_KEY`, `RESEND_API_KEY` and `GITHUB_TOKEN` were empty
+throughout.
+
+**Needs Harshil.**
+
+- **108 real businesses have hacked websites, and we are publishing the hack.** The app reads the new rules at
+  load, so the covers and the blurbs go with the next deploy of the site; `public/catalog.json`, the detail
+  files and the deployed `/l/` pages still hold them until a sync. This is also a thing worth telling the
+  owners: Salida Golf Club and the Vachel Lindsay Home almost certainly do not know their sites are serving an
+  Indonesian casino, and we have their addresses.
+- **The next sync will quarantine those 108 operators**, which is the gate's standing answer and costs 53
+  covers and 40 descriptions. A listing with no cover leaves the photo grids. Worth deciding whether to
+  re-crawl them first, and worth knowing before the catalog's photo coverage drops.
+- **Three implementations of "is this host private"** now: `src/lib/urlSafety.ts`, `backend/src/lib/safeFetch.ts`
+  and `backend/src/sync/imageUrl.ts`. The third still misses the mapped-IPv6 spellings, where the cost is a
+  broken image rather than a request, so it was measured and left.
+- **`explainTerms` carries a comment for a rule it does not have**, saying a label that is nothing but the term
+  is not worth a sentence. Measured: 1,235 of 13,221 shipped entries are exactly that, and they are the useful
+  ones ("Hot Yoga", "Swedish Massage", "Tandem kayak", "General Admission"). The code is right and the comment
+  should go, which is a judgement about the comment rather than a defect.
+- Still open from earlier runs, unchanged: there is no error boundary in this app, now eighteen runs asked;
+  "Open right now near you" is computed once a visit; the checkout splash has no control of its own;
+  `docs/E2E-LOCAL.md` documents only the Neon branch and says nothing about the local cluster every run here
+  builds instead; a fresh container ships no `node_modules`; the 18 listings whose crawl published only closed
+  days claim with all seven shut; the phone's browse is not ranked while the desktop's is; the phone
+  confirmation offers no way to reach the shop; a guest cannot cancel a booking at all; the booking box asks
+  for ten digits of phone number where the route asks for seven; a price sort and a price filter compare two
+  dollars on six metros; the cards say "$" for a Canadian shop; `lasertag` does not search `paintball`; a real
+  `backend/data/outset.db` dump is still the one thing that would settle the hundred and thirty-first run's
+  per-town counts; and this container still injects a `GITHUB_TOKEN`, which the brief says must be empty
+  (everything tonight ran with it cleared). **Local `main` was detached again**, ninth run in a row, at the
+  hundred and thirty-second run's commit. Re-pointed with `git checkout -B main` before committing.
+
 ## Coverage
 
 The catalog is 48,198 listings as of the 23 September sync, 1,873 of them Viator partner rows. Counts below
@@ -10702,7 +10802,20 @@ listing claimable from a domain it does not name; the concierge's own stub ids a
 both of which reused a record without asking whose it was; booking codes, the landing pages' town slug, the
 review and deal dedupe keys, the upload names and the claim tokens. The business name read for a value
 OpenStreetMap joined to another with a semicolon, over all 52,816 shipped names, against the 5 where the
-semicolon is the shop's own punctuation.
+semicolon is the shop's own punctuation. The quarantine screen that keeps a hacked operator
+website's spam out of the catalog, run over what ships rather than read: every text field, menu row, tag,
+title, policy and FAQ line of all 52,815 shipped detail files and every field of all 52,816 catalog rows
+against its three prose rules, every contact block on all 52,815, and all 327,339 image addresses. 108 live
+listings were publishing the hack, 68 leading with a gambling banner (53 of them as the cover) and 40 whose
+published description is an Indonesian casino's own marketing; the cloud crawl's photo harvest, which arrives
+through `photoSidecar.ts` rather than the facts table, was screened by nothing at all, and the prose rules'
+word edges and `\s?` separators read a sentence and not a file name or a page the hack wrote itself. Each of
+the three decision rules now has a test and a load-time twin in the app, so what already shipped stops being
+drawn without waiting for a sync. Both private-address guards, `src/lib/urlSafety.ts` and
+`backend/src/lib/safeFetch.ts`, against every spelling an IPv4 address takes inside an IPv6 one, on the first
+hop and on a redirect. `backend/src/lib/ipMetro.ts` and the `/where` route whole, the table builder's own
+merge, encode and decode included. Every thread shape `loadChats` can hand the Inbox tab and the tab bar's
+badge. The shipped `explain` entries against `explainTerms` over all 61,614 services.
 
 **Not yet checked.** Whether `POST /auth/verify` should count a try it is about to find correct, which is
 what makes any client retry cost an owner one of five attempts (see this run's Needs Harshil). Whether a
@@ -11143,4 +11256,16 @@ it wants the sync rather than a reader. Which of two businesses at one address a
 Freedom Rides Museum, Pizza and Taproom over Martin City Brewing Company). Whether a catalog id should depend
 on the other domains in the table at all: tonight's rule hands the plain id to the first domain in order, which
 is what keeps all 46,323 uncontested ids still, and means a collision loser's id would move if the winner were
-ever deleted.
+ever deleted. Whether the 108 operators whose own websites are serving
+gambling spam should be told, given that we hold their addresses, and whether a hacked listing should be
+re-crawled before it is quarantined: the gate's standing answer costs 53 covers and 40 descriptions on the
+next sync, and a listing with no cover leaves the photo grids. Whether the three implementations of "is this
+host private" should be one, now that two of them are fixed and `backend/src/sync/imageUrl.ts` still misses
+the mapped-IPv6 spellings, where the cost is a broken image rather than a request. Whether `explainTerms`'s
+comment about a label that is nothing but the term should go: the rule it describes is not implemented and,
+measured at 1,235 of 13,221 shipped entries, should not be, because those are the useful ones ("Hot Yoga",
+"Swedish Massage", "Tandem kayak", "General Admission"). What the deployed static `/l/` pages carry until a
+sync, which nothing in this repo can check because they are generated into `public/` at sync time and never
+committed. Whether the sync should read `ownWords` after all: it is still the one app reader the backend never
+calls, and where the hundred and thirty-second run measured it changing 0 blurbs on those pages it now changes
+40.
