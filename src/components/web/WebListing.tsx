@@ -628,9 +628,10 @@ function DayTimePicker({ dates, dateIdx, onPickDate, chipsFor, time, onPickTime,
   const [showAll, setShowAll] = useState(false);
   const gridRef = useRef<HTMLTableSectionElement | null>(null);
 
-  // Follow the selection into its month, and start a new day's times collapsed.
+  // Follow the selection into its month, and start a new day's times collapsed. One grid wide, so the rule is
+  // `anchorMonth`'s with the default span; the pair above and the phone sheet's grid read the same one.
   useEffect(() => {
-    setMonth((m) => (m.getMonth() === selected.getMonth() && m.getFullYear() === selected.getFullYear() ? m : new Date(selected.getFullYear(), selected.getMonth(), 1)));
+    setMonth((m) => anchorMonth(m, selected));
     setShowAll(false);
   }, [selectedKey]);
 

@@ -58,3 +58,18 @@ test("the desktop page's pair follows it the same way, two months wide", () => {
   assert.match(page, /setMonth\(\(m\) => anchorMonth\(m, selected, 2\)\)/);
   assert.match(page, /\}, \[selectedKey\]\)/);
 });
+
+test("and so does the desktop page's day-and-time picker, the third grid", () => {
+  const page = read("../../components/web/WebListing.tsx");
+  assert.match(page, /setMonth\(\(m\) => anchorMonth\(m, selected\)\);\n\s*setShowAll\(false\);/);
+});
+
+test("no grid keeps a copy of the rule", () => {
+  for (const f of ["../../components/web/WebListing.tsx", "../../components/booking/SlotCalendar.tsx"]) {
+    const src = read(f);
+    for (const m of src.matchAll(/setMonth\(\(m\) =>([\s\S]{0,240}?)\);\n/g)) {
+      // `shift` is the arrows, which move the month by a step rather than follow the selection.
+      assert.ok(/anchorMonth\(|m\.getMonth\(\) \+ by/.test(m[1]), f + " re-implements the month rule: " + m[1].trim());
+    }
+  }
+});
