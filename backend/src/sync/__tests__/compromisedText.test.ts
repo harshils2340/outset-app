@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { FOREIGN_SCRIPT_RUN, isCompromisedText, SPAM_LINE } from "../contacts.ts";
+import { FOREIGN_SCRIPT_RUN, isCompromisedText, offLanguageMarketing, SPAM_LINE } from "../contacts.ts";
 
 /**
  * The 16 September 2026 bug bash found gambling spam hacked onto 97 real operator sites and published as their
@@ -134,4 +134,36 @@ test("a run of different casino brand names packed together is still recognised"
 test("SPAM_LINE alone still catches the original gambling phrases (unchanged behaviour)", () => {
   assert.equal(SPAM_LINE.test("MAXSLOT88 adalah situs SLOT777 dan platform slot gacor"), true);
   assert.equal(SPAM_LINE.test("Book your slot online, and you'll get a confirmation email."), false);
+});
+
+/**
+ * The hack writing its own page rather than injecting a phrase into the shop's. 40 shipped listings publish
+ * one of these as the description a guest reads, and the phrase list above caught none of them: "PEDETOGEL"
+ * offers no word edge in front of "togel", "bandar toto slot" is not "bandar slot", and Indonesian is written
+ * in the same alphabet as English so the script check never fires either.
+ */
+test("a paragraph of Indonesian casino marketing is recognised", () => {
+  for (const line of [
+    "PEDETOGEL hadir sebagai platform hiburan digital modern yang menggabungkan akses cepat dan sistem stabil.",
+    "WAKTOGEL merupakan bandar toto slot online yang dipercaya banyak pemain hingga saat ini.",
+    "Di situs gacor ODIN77, kami memberikan cashback besar setiap minggu untuk semua member setia kami.",
+    "SATSET138 agen penyedia hiburan digital terpercaya.",
+    "Main di DANGDUT4D, platform game slot favorit terlengkap dan resmi 2026.",
+    "Mega888 ialah kasino dalam talian yang terkenal di Malaysia dengan permainan slot berkualiti tinggi.",
+  ]) {
+    assert.equal(isCompromisedText(line), true, line + " should be recognised as hacked-page marketing");
+  }
+});
+
+test("an operator's own English words are not, including the ones the spam shares", () => {
+  for (const line of [
+    "Dan and Cara have run the dock since 2011, and they will have you on the water inside ten minutes.",
+    "Book a slot in the morning for the calmest water. A deposit holds your boat, the balance is due on the day.",
+    "Ask about our loyalty bonus: every tenth ride is on us, and members get first pick of the sunset slot.",
+    "A casino is a five minute walk from the marina, if the weather turns and you would rather stay dry.",
+    "Judith leads the Tuesday class. Bring a towel, a bottle and nothing else.",
+  ]) {
+    assert.equal(offLanguageMarketing(line), false, line + " is the shop's own writing");
+    assert.equal(isCompromisedText(line), false, line + " is the shop's own writing");
+  }
 });

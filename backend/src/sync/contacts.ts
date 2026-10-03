@@ -855,8 +855,38 @@ function hasRepeatedSuspectWord(text: string): boolean {
  * `isKeywordStuffed` looks for, so offerings (see below) are screened with this narrower check instead of the
  * full one.
  */
+/**
+ * A paragraph of Indonesian or Malay marketing, which is the same hack writing its own page rather than
+ * injecting a phrase into the shop's. `SPAM_LINE` is a list of phrases and holds each behind a `\b`, so it
+ * caught none of the 40 shipped listings whose published description is this: "PEDETOGEL" has no word edge in
+ * front of "togel", "bandar toto slot" is not the "bandar slot" it holds, and "situs gacor" is not "situs
+ * slot". `FOREIGN_SCRIPT_RUN` never fires either, because Indonesian is written in the same alphabet.
+ *
+ * This catalog is US and Canada operators (AGENTS.md), whose own facts come in English, French or Spanish, so
+ * a run of Indonesian is already not theirs. Two signals rather than one, because single words are shared:
+ * "Dan and Cara" is an English sentence and "slot", "bonus" and "deposit" are English nouns a real booking
+ * page writes. So it takes three distinct words that are only Indonesian, or two of them beside a betting
+ * word, and neither list holds a word that is also English or a common English name. Measured over every
+ * string in all 52,815 shipped detail files: 40 matches, all of them this spam.
+ *
+ * `src/lib/ownWords.ts` carries the same two lists, read at load time, which is what drops the 40 blurbs
+ * already shipped; keep the two in step.
+ */
+const OFF_LANGUAGE_WORD =
+  /\b(?:yang|dengan|adalah|ialah|untuk|kami|kamu|buat|tanpa|lebih|banyak|setiap|semua|sebagai|hadir|pemain|bermain|permainan|mudah|cepat|juga|karena|masih|mendapatkan|memberikan|dibuat|dipercaya|menghadirkan|menawarkan|merupakan|menyediakan|pengalaman|berbagai|dalam|terbaik|terpercaya|terlengkap|dapat|melalui|mengenai|akses|sistem|hiburan|resmi|pilihan|beragam|ingin|menikmati|serta|peluang|bergabung|bergabunglah|terbaru|halaman|nyaman|dukungan|tidak|nikmati|lokasi|temukan|menjadi|kini|agen|login|tautan|stabil|seru|aktivitas)\b/gi;
+
+/** A word the spam's own subject turns on, which lets two off-language words be enough instead of three. */
+const BETTING_WORD = /togel|gacor|maxwin|\btaruhan\b|\bjudi\b|\bslot\b|\btoto\b|\bbandar\b|\bsitus\b|\bkasino\b|\bcasino\b|\bjackpot\b|\bbonus\b|\brtp\b|\bpulsa\b|\bdeposit\b|\bcashback\b|\d4d\b/i;
+
+export function offLanguageMarketing(value: string): boolean {
+  const found = value.match(OFF_LANGUAGE_WORD);
+  if (!found) return false;
+  const n = new Set(found.map((w) => w.toLowerCase())).size;
+  return n >= 3 || (n >= 2 && BETTING_WORD.test(value));
+}
+
 export function isCompromisedPhrase(value: string): boolean {
-  return SPAM_LINE.test(value) || HACKED_SCRIPT_SPAM.test(value) || hasRepeatedSuspectWord(value);
+  return SPAM_LINE.test(value) || HACKED_SCRIPT_SPAM.test(value) || hasRepeatedSuspectWord(value) || offLanguageMarketing(value);
 }
 /**
  * Everything this sync treats as a sign one fact came off a hacked page: everything `isCompromisedPhrase`
