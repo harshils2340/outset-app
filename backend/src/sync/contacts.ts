@@ -343,26 +343,18 @@ export function toCatalogItem(r: CatalogRow): Record<string, unknown> {
   // the same injected text a blurb does. The operator's row (and so its claim link) is untouched; only what this
   // sync would have published from the crawl is withheld.
   const MEDIA_FACT_KEY = /^(photo|cover|video|video_embed|service_photo)$/;
-  // A run of a script a fact has no business carrying (FOREIGN_SCRIPT_RUN) only counts toward the compromise
-  // decision when it is isolated to one place. A hacked page injects spam into one field while the rest of the
-  // operator's own facts stay in the site's real language; a genuinely bilingual listing (a Hawaii tour desk
-  // that states every option's name in Japanese too, a dojo whose instructor bio repeats in Japanese) carries
-  // the same script across more than one of its own facts or offerings, which is a deliberate feature of the
-  // whole listing, not an anomaly. Found by the 16 September 2026 catalog scan: three real Hawaii operators
-  // whose bilingual listings this exact rule was written to stop from being wrongly quarantined.
-  const foreignScriptHits = [
-    ...rawFacts.filter((f) => TEXT_KEYS.test(f.fact_key) && FOREIGN_SCRIPT_RUN.test(f.fact_value)),
-    ...rawOfferings.filter((o) => FOREIGN_SCRIPT_RUN.test(o.name + " " + (o.detail || ""))),
-  ];
-  const isolatedForeignScript = foreignScriptHits.length === 1;
+  const foreignScript = foreignScriptCompromised(
+    rawFacts.filter((f) => TEXT_KEYS.test(f.fact_key)).map((f) => f.fact_value),
+    rawOfferings.map((o) => o.name + " " + (o.detail || "")),
+  );
   const hasSpamText =
     rawFacts.some((f) => (TEXT_KEYS.test(f.fact_key) || MEDIA_FACT_KEY.test(f.fact_key)) && isCompromisedText(f.fact_value)) ||
     // The narrower phrase check, not the full one: a compact rate card can legitimately repeat a short phrase
     // across most of its own length, which is exactly the shape isKeywordStuffed looks for.
     rawOfferings.some((o) => isCompromisedPhrase(o.name + " " + (o.detail || "")));
-  const spamCompromised = hasSpamText || isolatedForeignScript;
+  const spamCompromised = hasSpamText || foreignScript != null;
   if (spamCompromised) {
-    const reason = hasSpamText ? "hacked-page spam in a crawled fact or offering" : "an isolated run of a script the rest of the listing never uses";
+    const reason = hasSpamText ? "hacked-page spam in a crawled fact or offering" : foreignScript!;
     console.warn(`[sync] quarantined ${r.domain} (${catalogId(r.domain)}): ${reason}`);
     cleanupLog?.quarantined.push({ id: r.domain, reason });
   }
@@ -868,6 +860,37 @@ export function isCompromisedPhrase(value: string): boolean {
  */
 export function isCompromisedText(value: string): boolean {
   return isCompromisedPhrase(value) || isKeywordStuffed(value);
+}
+/**
+ * Why a run of a script the rest of the listing never uses (FOREIGN_SCRIPT_RUN) is the hack's rather than the
+ * operator's own second language, or null when it is theirs. `facts` are the crawled text facts and `rows` the
+ * crawled menu, each as one string.
+ *
+ * Two shapes say hack. The first is a run isolated to one place: a hacked page injects spam into one field
+ * while the rest of the operator's own facts stay in the site's real language, where a genuinely bilingual
+ * listing (a Hawaii tour desk that states every option's name in Japanese too, a dojo whose instructor bio
+ * repeats in Japanese) carries the same script across more than one of its own facts or offerings. The 16
+ * September 2026 catalog scan found three real Hawaii operators that rule was written to keep.
+ *
+ * The second is the whole menu. Those three bilingual operators state their own language as well: the foreign
+ * rows are 4 of their 20, 18 of 44 and 1 of 4. A business whose every menu row is in a script its own name,
+ * town and domain are not has had a section written for it, not translated. Wright Centennial Museum in
+ * Wright, Wyoming published one service, "Pontoon (البريطاني)", described in Arabic prose about the house
+ * edge on a card game, under a cover photo taken from the injected page's own category images; two foreign
+ * rows and no English ones meant the isolation rule alone read it as a bilingual listing and published the
+ * lot. It is the only listing of all 52,815 shipped where every menu row carries such a run.
+ *
+ * Quarantine withholds only what the crawl read. The operator's row, its title, its town and its claim link
+ * all come from the operators table and stay, so a shop wrongly caught here is still there to browse and to
+ * claim, and one real crawl after the hack is cleaned publishes its facts again.
+ */
+export function foreignScriptCompromised(facts: string[], rows: string[]): string | null {
+  const foreignRows = rows.filter((v) => FOREIGN_SCRIPT_RUN.test(v));
+  if (rows.length > 0 && foreignRows.length === rows.length) {
+    return "every row of the crawled menu is in a script the rest of the listing never uses";
+  }
+  const hits = facts.filter((v) => FOREIGN_SCRIPT_RUN.test(v)).length + foreignRows.length;
+  return hits === 1 ? "an isolated run of a script the rest of the listing never uses" : null;
 }
 const STALE_LINE = /\b20(1\d|2[0-5])\b|\bcovid|\bcoronavirus|\bpandemic/i;
 /** Menu headings a taproom or restaurant page lists with a starting price. */
