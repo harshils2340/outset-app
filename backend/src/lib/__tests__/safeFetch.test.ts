@@ -21,6 +21,39 @@ test("ordinary public addresses are allowed", () => {
   }
 });
 
+/**
+ * An IPv4 address written inside an IPv6 one. `new URL()` rewrites a dotted tail into hextets, so the spelling
+ * that reaches this guard from a URL is never the dotted one the mapped-address branch used to look for: the
+ * metadata address and loopback both walked through it.
+ */
+test("an IPv4 address written inside an IPv6 one is blocked in either spelling", () => {
+  for (const addr of [
+    "::ffff:127.0.0.1",
+    "::ffff:7f00:1",
+    "::ffff:169.254.169.254",
+    "::ffff:a9fe:a9fe",
+    "::ffff:10.0.0.1",
+    "::ffff:a00:1",
+    "::ffff:c0a8:1",
+    "::7f00:1",
+    "::a9fe:a9fe",
+  ]) {
+    assert.equal(isBlockedAddress(addr), true, addr + " should be blocked");
+  }
+});
+
+test("a public IPv4 inside an IPv6 one, and an ordinary IPv6 address, are still allowed", () => {
+  for (const addr of ["::ffff:93.184.216.34", "::ffff:5db8:d822", "2001:4860:4860::8888", "2a00:1450:4001:80b::200e", "64:ff9b::1:2", "fec0::1"]) {
+    assert.equal(isBlockedAddress(addr), false, addr + " should be allowed");
+  }
+});
+
+test("a mapped loopback or metadata address literal in the URL is refused", async () => {
+  for (const url of ["http://[::ffff:127.0.0.1]:6379/", "http://[::ffff:169.254.169.254]/latest/meta-data/", "http://[::127.0.0.1]/"]) {
+    await assert.rejects(() => assertPublicUrl(new URL(url)), UnsafeUrlError, url + " should be refused");
+  }
+});
+
 test("only http and https schemes are allowed", async () => {
   await assert.rejects(() => assertPublicUrl(new URL("file:///etc/passwd")), UnsafeUrlError);
   await assert.rejects(() => assertPublicUrl(new URL("ftp://example.com/x")), UnsafeUrlError);

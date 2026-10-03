@@ -42,14 +42,55 @@ function isBlockedV4(addr: string): boolean {
   return V4_BLOCKED.some(([base, bits]) => inV4Range(addr, base, bits));
 }
 
+/** The eight hextets of an IPv6 address, or null when the text is not one. Reads `::` and a dotted v4 tail. */
+function hextetsOf(addr: string): number[] | null {
+  let s = addr;
+  const tail = /(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})$/.exec(s);
+  if (tail) {
+    const o = tail[1].split(".").map(Number);
+    if (o.some((n) => n > 255)) return null;
+    s = s.slice(0, -tail[1].length) + ((o[0] << 8) | o[1]).toString(16) + ":" + ((o[2] << 8) | o[3]).toString(16);
+  }
+  const halves = s.split("::");
+  if (halves.length > 2) return null;
+  const head = halves[0] ? halves[0].split(":") : [];
+  const rest = halves.length === 2 && halves[1] ? halves[1].split(":") : [];
+  const fill = halves.length === 2 ? 8 - head.length - rest.length : 0;
+  if (fill < 0 || (halves.length === 1 && head.length !== 8)) return null;
+  const parts = [...head, ...Array<string>(fill).fill("0"), ...rest];
+  if (parts.length !== 8 || parts.some((x) => !/^[0-9a-f]{1,4}$/.test(x))) return null;
+  return parts.map((x) => parseInt(x, 16));
+}
+
+/**
+ * The IPv4 address written inside an IPv6 one, dotted, or null when there is none: the IPv4-mapped range
+ * `::ffff:0:0/96` and the deprecated IPv4-compatible range `::/96`. An IPv4 address is still that address
+ * whichever of the two it is spelled in, and the kernel routes both to the same place.
+ */
+function embeddedV4(hextets: number[]): string | null {
+  const zero = hextets.slice(0, 5).every((h) => h === 0);
+  if (!zero) return null;
+  if (hextets[5] !== 0 && hextets[5] !== 0xffff) return null;
+  const [a, b] = [hextets[6], hextets[7]];
+  return [a >> 8, a & 0xff, b >> 8, b & 0xff].join(".");
+}
+
 function isBlockedV6(raw: string): boolean {
   const addr = raw.toLowerCase();
   if (addr === "::1" || addr === "::") return true;
-  const mapped = addr.match(/^::ffff:(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})$/);
-  if (mapped) return isBlockedV4(mapped[1]);
-  const firstHextet = parseInt(addr.split(":")[0] || "0", 16) || 0;
-  if (firstHextet >= 0xfc00 && firstHextet <= 0xfdff) return true; // fc00::/7 unique local
-  if (firstHextet >= 0xfe80 && firstHextet <= 0xfebf) return true; // fe80::/10 link-local
+  // An IPv4 address written inside an IPv6 one is still that IPv4 address. Only the dotted spelling used to be
+  // read here ("::ffff:169.254.169.254"), which is the one `node:dns` hands back and the one no URL ever
+  // carries: `new URL()` rewrites the tail into hextets, so `http://[::ffff:169.254.169.254]/` arrives as
+  // `::ffff:a9fe:a9fe`, matched nothing, and the cloud metadata address was reachable after all. The same went
+  // for `::ffff:7f00:1` (loopback) and the IPv4-compatible `::7f00:1`, so a hacked operator page publishing one
+  // of those, or redirecting to one, got a request sent to this server's own network. Both spellings now read
+  // as the address they are.
+  const hextets = hextetsOf(addr);
+  if (!hextets) return true; // not an address this guard can read, refuse
+  const v4 = embeddedV4(hextets);
+  if (v4) return isBlockedV4(v4);
+  if (hextets[0] >= 0xfc00 && hextets[0] <= 0xfdff) return true; // fc00::/7 unique local
+  if (hextets[0] >= 0xfe80 && hextets[0] <= 0xfebf) return true; // fe80::/10 link-local
   return false;
 }
 
