@@ -268,6 +268,24 @@ export function partnerBookLine(item: Unclaimed): string | null {
 }
 
 /**
+ * Whether a record read for one business really is that business's.
+ *
+ * Everything the app fetches out of `public/o` is named by catalog id alone, and that id is the operator's own
+ * domain slugged. The slug folds every run of punctuation, so one id can name two shops: "aqua-tots.com" and
+ * "aqua_tots.com" both asked for o-aqua-tots-com in the 23 September catalog, Aqua-Tots in Westerville, Ohio
+ * and Aqua-Tots in Dallas, Texas. The sync gives a second shop its own id now
+ * (backend/src/lib/catalogId.ts); every read of a detail file still asks this, for the catalog already
+ * published and for whatever else ever lands under a taken id.
+ *
+ * A record with no domain at all is not a disagreement: a Maps hit and a demo row both have none.
+ */
+export function sameBusiness(a: { src?: string | null }, b: { src?: string | null }): boolean {
+  const one = domainOf(a.src || "");
+  const two = domainOf(b.src || "");
+  return !one || !two || one === two;
+}
+
+/**
  * Swap a lite record for its full detail record. Overrides and publish state stay as they were. False when
  * nothing changed: no such listing, or a file that is not this listing's.
  */
@@ -281,19 +299,11 @@ export function hydrateItem(raw: Unclaimed, targetId?: string): boolean {
   const cur = base[idx];
   /**
    * The file is this listing's only when it names the same business, because what it replaces is everything:
-   * the title, the town, the pin, the phone, the menu and the hours.
-   *
-   * One id can name two shops. The id is the operator's own domain slugged, and the slug folds punctuation, so
-   * "aqua-tots.com" and "aqua_tots.com" both asked for o-aqua-tots-com in the 23 September catalog: Aqua-Tots
-   * in Westerville, Ohio, which is the row that browse draws, and Aqua-Tots in Dallas, Texas, which is the row
-   * that wrote the detail file. Opening the Westerville card headed its page "Dallas, TX", with a Dallas phone
-   * number and none of the shop's own facts, and left the card behind it stripped of its photo. The sync gives
-   * a second shop its own id now (backend/src/lib/catalogId.ts); this is the app refusing to put one shop's
-   * page on another, for a catalog already published and for whatever else ever lands under a taken id.
+   * the title, the town, the pin, the phone, the menu and the hours. Opening the Westerville Aqua-Tots card
+   * headed its page "Dallas, TX", with a Dallas phone number and none of the shop's own facts, and left the
+   * card behind it stripped of its photo.
    */
-  const ours = domainOf(cur.src || "");
-  const theirs = domainOf(full.src || "");
-  if (ours && theirs && ours !== theirs) return false;
+  if (!sameBusiness(cur, full)) return false;
   const handVerified = cur.id !== full.id;
   base = base.slice();
   if (!handVerified) {

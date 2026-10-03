@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Unclaimed } from "../../data/types";
-import { experienceById } from "../../lib/catalog";
+import { domainOf, experienceById, sameBusiness } from "../../lib/catalog";
 import { LISTING_TIMEOUT_MS, loadListing } from "../../lib/catalogLoad";
 import { JUMP_PAGE, allBookings, applyStoredProfiles, demoProfile, hydrateProfile, isDemoProfile, loadProfile, loadSession, profileKey, saveProfile, saveSession, setBookingStatus, type JumpField, type OpBooking, type OpStatus, type OperatorProfile } from "../../lib/operator";
 import { useApp } from "../../state/AppProvider";
@@ -188,7 +188,7 @@ export function OperatorView({ compact = false }: { compact?: boolean }) {
   // A hand-verified seed has no detail file of its own; its crawled twin (same domain, "o-" id) has the photos and menu.
   useEffect(() => {
     if (!p || !u) return;
-    const domain = u.src.replace(/^https?:\/\//i, "").replace(/^www\./i, "").split("/")[0].toLowerCase();
+    const domain = domainOf(u.src);
     const twinId = "o-" + domain.replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 48);
     let alive = true;
     if (u.lite) {
@@ -204,6 +204,11 @@ export function OperatorView({ compact = false }: { compact?: boolean }) {
         .then((r) => (r.ok ? r.json() : null))
         .then((full: Unclaimed | null) => {
           if (!alive || !full || !Array.isArray(full.options)) return;
+          // The twin id is a guess from the domain, and the slug behind it folds punctuation, so it can land
+          // on another shop's file: two Aqua-Tots locations shared o-aqua-tots-com in the 23 September catalog.
+          // Seeding this operator's own photos and description from another shop is worse than leaving the
+          // gaps the crawl left, so the file has to name this shop.
+          if (!sameBusiness(u, full)) return;
           set((cur) => hydrateProfile(cur, full));
         })
         .catch(() => undefined);
