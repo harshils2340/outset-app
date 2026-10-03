@@ -9247,6 +9247,106 @@ under `backend/data`, `public/` or `src/data` was written. `STRIPE_SECRET_KEY`, 
   shop; and this container still injects a `GITHUB_TOKEN`, which the brief says must be empty (everything
   tonight was run with it cleared). The linter question is answered above rather than still open.
 
+## 3 October 2026, hundred and twenty-ninth run (07:16 to 07:55 UTC)
+
+**Chosen, and why.** Nothing had landed since the hundred and twenty-eighth run's entry but that entry
+itself (`c8372aad`), and it records the rehearsal green at 57 of 57, so by the brief's own rule the
+**rehearsal was skipped at the start** and the time went on hunting; it was run twice at the end, once the
+commits had touched `src/`. Baseline matched that entry after `npm install` on both sides: root
+`tsc --noEmit -p .` and `tsc -b` clean, backend `tsc` clean but for TS5097, backend 987 with 985 pass and 2
+skipped, app 1,202 pass.
+
+Target: **a promise the product waits on that can never settle.** Every area the brief lists is on Verified,
+and the dimension Coverage did not hold was this one. It is not an error state, which is what the API
+unreachable and the API slow sweeps covered: it is the third outcome, where nothing answers and nothing
+fails either, so no `catch` runs, no error state is reached and no retry is possible. `loadRemoteCatalog`
+has carried a deadline and a comment saying exactly this since it was written, which is what made it worth
+asking how many of its neighbours do.
+
+**Found and fixed.** Four commits, pushed.
+
+- **A stalled read of one listing's own file hung the screen waiting on it** (`c17d8d25`). The fetch beside
+  the catalog's, the one that reads a single listing's detail file, had no deadline. That is the read a
+  shared `#o=` link waits on: the listing screen is painted before anything is fetched, and the "that listing
+  is no longer on Outset" rescue in `AppProvider` only runs once this fetch has settled. Held open, the
+  splash stopped at `catalogComplete`, **the sheet was never closed, nothing was said, and the dead link
+  stayed in the bar** for every refresh after it, which is the exact state that rescue exists to end.
+  `inflight` kept the pending promise under that id, so pasting the same link again handed back the same
+  stall for the rest of the visit. 15 seconds for a 3 kB file against the catalog's 45; the dashboard's seed
+  twin read got it too, and the rule is now a sweep over every `fetch` in `src`.
+- **An impatient owner stopped spending their own sign-in attempts on a correct code** (`8a2576a0`). "Open my
+  dashboard" was the only control on the claim screen with no busy state: no `disabled`, no label change, no
+  guard in the handler, while the API gets 12 seconds and its host sleeps when idle. `POST /auth/verify`
+  counts the try **before** it compares the code and deletes the code on the sixth, so **six presses of a
+  code that was right answered "Too many attempts. Request a new code."**; the matching press deletes the
+  code too, so the second press alone painted "that code has expired" over a sign-in that was working. The
+  Enter key on the field fires the same handler, which now refuses a second press.
+- **A concierge stream that goes quiet falls back to the plain route** (`24ca4ed8`). The module says every way
+  the stream can fail ends at the plain route, and one way did not: neither the fetch nor `reader.read()` had
+  a deadline, so a socket that opened and stopped sending left the read pending, the working card spinning
+  and Stop as the guest's only way out. One controller both Stop and a 45 second idle deadline can reach; the
+  deadline restarts on every chunk, so a slow shop is never cut off, and firing costs one plan run on the
+  route a browser with no streams uses for every question.
+- **A Stripe.js request that never answers stops holding the card form open** (`d4c6c2cf`). A script tag still
+  fetching fires neither `onload` nor `onerror`, the third outcome this module had not got to; `pending` held
+  it, so the card dialog sat on "Loading the card form" for as long as the guest left it open, and because
+  `warmCheckout` starts the request as the booking box completes, the press of "Book and pay" joined the same
+  stall instead of asking again.
+
+**Swept and clean, or measured and left.**
+
+- **Every direct `localStorage` read and write in the app**, all 48 of them across 17 files, for a quota or
+  private-mode throw: every one is inside a `try`, including the two that parse before they read and
+  `conciergeHistory`'s write, which halves the history and tries once more. Clean, and off Not yet checked.
+- **Every `<button>` in `src` whose `onClick` starts an async handler**, for one with nothing stopping a
+  second press: after the claim screen's, the only two left are the listing's `share()`, where a second press
+  reopens the share sheet and costs nothing. The dashboard's Accept and Decline were already guarded by the
+  `deciding` ref.
+- **Every `fetch` in `backend/src`**, same rule: the three that read no deadline are the Chrome DevTools
+  endpoints in `scrape/render.ts`, which are localhost and crawl-only, plus Cohere's own `fetchImpl` wrapper,
+  whose real call carries 12 seconds.
+- **Every hand-built promise in both trees**: `currentLocation`, Rezdy's `h2`, the concierge's own step drain
+  and the photo upload's image decode all settle on every path. The upload's decode is left as it is: it is a
+  local `createObjectURL`, not a network read, and a file the browser cannot read fires `onerror`.
+
+**Verification.** App `npm test` 1,216 pass, 0 fail, up from 1,202 (14 new across `fetchDeadline`,
+`signInBusy`, `conciergeStall` and `stripeJs`); each new test was run against the tree with its own fix
+reverted and fails there. Backend 987 tests, 985 pass, 2 skipped, unchanged. `tsc --noEmit -p .`, `tsc -b`
+and the backend's own `tsc` all clean but for TS5097. The **rehearsal ran 57 of 57 twice**, once after the
+first two commits and once on the tree that was pushed, on a local Postgres 16 cluster on port 5433 with SSL
+on and the on-disk Playwright Chromium. Nothing tracked under `backend/data`, `public/` or `src/data` was
+written. `STRIPE_SECRET_KEY`, `RESEND_API_KEY` and `GITHUB_TOKEN` were empty throughout.
+
+**Needs Harshil.**
+
+- **The sign-in code's attempt counter is spent by the browser, not by the owner.** The fix stops this app
+  from double-pressing, but `rec.tries += 1` still runs ahead of the compare, so any client retry, a mobile
+  browser resending a POST on a flaky connection among them, spends one of five attempts on a correct code.
+  Counting only a code that did not match, and rate-limiting by address and connection as the route already
+  does, would read the same to an attacker and never punish an owner who typed it right. Left alone because
+  it is a security rule, not a defect.
+- **The concierge's idle deadline is set from the server's shape, not from a measurement.** 45 seconds of
+  complete silence is a wedge because the stream route polls its own step queue every 60 ms, but this
+  container's `backend/data/outset.db` is an empty schema, so no real plan can be run here to measure the
+  longest quiet gap a live vendor read actually leaves. If a real `/go` run ever shows a legitimate gap near
+  that, the number wants raising rather than the fix removing.
+- **The two deadlines a guest now waits out are both silent while they run.** A stalled listing link says
+  nothing for 15 seconds and then says the listing is gone, which is honest about the outcome and wrong about
+  the reason; the card dialog's skeleton says nothing for 20. Copy that tells a guest which it is ("still
+  loading" against "we could not reach it") is new UI rather than a defect.
+- Still open from earlier runs, unchanged: **there is no error boundary in this app**, now fourteen runs
+  asked; "Open right now near you" is computed once a visit; the checkout splash has no control of its own;
+  `docs/E2E-LOCAL.md` still documents only the Neon branch and says nothing about the local cluster every run
+  here builds instead; a fresh container ships no `node_modules`; the 18 listings whose crawl published only
+  closed days claim with all seven shut; a dump of the SQLite catalog, without which no run here can judge
+  the concierge's shortlist; the phone's browse is not ranked while the desktop's is; the phone confirmation
+  offers no way to reach the shop; a guest cannot cancel a booking at all; the booking box asks for ten digits
+  of phone number where the route asks for seven; a price sort and a price filter compare two dollars on six
+  metros; the cards say "$" for a Canadian shop; and this container still injects a `GITHUB_TOKEN`, which the
+  brief says must be empty (everything tonight was run with it cleared). **Local `main` was behind again**,
+  fifth run in a row: it pointed at the hundred and twelfth run's commit with `HEAD` detached. Re-pointed
+  with `git checkout -B main origin/main` before committing.
+
 ## Coverage
 
 The catalog is 48,198 listings as of the 23 September sync, 1,873 of them Viator partner rows. Counts below
@@ -10254,9 +10354,21 @@ dashboard's business switcher each already handled it. `rules-of-hooks` and `exh
 `src` from a scratch eslint install: the 13 errors are the two documented module-constant early returns, and
 every one of the 20 `exhaustive-deps` warnings that names a missing value is a deliberate key standing in for
 it. 60 real listings across six shapes, driven at 1440px and 400px, for a throw in render, a console error,
-a page that does not name its business and sideways scroll.
+a page that does not name its business and sideways scroll. Every promise the product waits on that could
+never settle, which is the third outcome behind the API-unreachable and API-slow sweeps rather than an error
+state: every `fetch` in `src` and in `backend/src` against the deadline it carries, now a sweep of its own,
+with the listing detail file, the dashboard's seed twin read, the concierge stream's body read and the
+Stripe.js script tag all given one; every hand-built promise in both trees walked for a path that resolves
+nothing; every `<button>` whose `onClick` starts an async handler against something stopping a second press,
+which is how the sign-in code's own button was found spending an owner's attempts on a correct code; and
+every direct `localStorage` read and write in the app, all 48, for a quota or private-mode throw.
 
-**Not yet checked.** Whether the 18 listings whose crawl published only closed days should claim with
+**Not yet checked.** Whether `POST /auth/verify` should count a try it is about to find correct, which is
+what makes any client retry cost an owner one of five attempts (see this run's Needs Harshil). Whether a
+guest waiting out one of the two new deadlines should be told which wait they are in, 15 seconds on a
+stalled listing link and 20 on the card form, both of which say nothing until they end (see this run's Needs
+Harshil). Whether the concierge's 45 second idle deadline is right, which only a real `/go` run against a
+filled catalog could say. Whether the 18 listings whose crawl published only closed days should claim with
 all seven days shut at all, now that a closed week is published rather than swallowed (see this run's Needs
 Harshil). Whether a stated age floor should ever refuse the kid filter, on the 621 listings that
 state one of 10 or more in the fields `kidRule.ts` reads and are offered to a parent filtering for younger kids
