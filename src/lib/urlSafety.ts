@@ -21,6 +21,23 @@ function isPrivateIPv4(host: string): boolean {
   return false;
 }
 
+/**
+ * The IPv4 address written inside an IPv6 one, dotted, or null: the mapped range `::ffff:0:0/96` and the
+ * deprecated compatible range `::/96`. An IPv4 address is still that address whichever it is spelled in, and
+ * the browser connects to the same place. `new URL()` rewrites a dotted tail into hextets and compresses the
+ * leading zero run, so `[::ffff:127.0.0.1]` arrives here as `::ffff:7f00:1`; the dotted form is read too, for
+ * a caller that hands over a hostname of its own.
+ */
+function embeddedIPv4(inner: string): string | null {
+  const dotted = /^::(?:ffff:)?(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})$/.exec(inner);
+  if (dotted) return dotted[1];
+  const hex = /^::(?:ffff:)?([0-9a-f]{1,4}):([0-9a-f]{1,4})$/.exec(inner);
+  if (!hex) return null;
+  const a = parseInt(hex[1], 16);
+  const b = parseInt(hex[2], 16);
+  return [a >> 8, a & 0xff, b >> 8, b & 0xff].join(".");
+}
+
 function isPrivateHost(hostname: string): boolean {
   const h = hostname.toLowerCase();
   if (LOOPBACK_HOSTS.has(h)) return true;
@@ -29,6 +46,11 @@ function isPrivateHost(hostname: string): boolean {
   if (h.startsWith("[")) {
     const inner = h.slice(1, -1);
     if (inner === "::1" || inner === "::") return true;
+    // Loopback and the private ranges written as an IPv6 address, which is the spelling a URL actually
+    // carries: fe80::/10 and fc00::/7 were refused and `[::ffff:7f00:1]` was not, so a crawled "website"
+    // of http://[::ffff:127.0.0.1]:8080/ was a link a guest could click into their own machine.
+    const v4 = embeddedIPv4(inner);
+    if (v4) return isPrivateIPv4(v4);
     if (/^fe[89ab][0-9a-f]:/i.test(inner)) return true; // link-local fe80::/10
     if (/^f[cd][0-9a-f]{2}:/i.test(inner)) return true; // unique local fc00::/7
   }
@@ -37,8 +59,10 @@ function isPrivateHost(hostname: string): boolean {
 
 /**
  * True only for an absolute http/https URL to a public host. No base is ever supplied, so a protocol-relative
- * or scheme-relative string ("//evil.com", "https:evil.com") fails to parse as absolute and is rejected rather
- * than silently resolved against the page's own origin.
+ * string ("//evil.com") fails to parse at all and is rejected rather than silently resolved against the page's
+ * own origin. A scheme-relative "https:evil.com" does parse, because the URL parser forgives the missing
+ * slashes on a special scheme, and it parses to `https://evil.com/`: an absolute URL to another host, which is
+ * the same answer as writing it out, and never this page's origin.
  */
 export function isPublicHttpUrl(raw: string | null | undefined): boolean {
   if (!raw) return false;

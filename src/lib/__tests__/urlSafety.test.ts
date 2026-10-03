@@ -37,6 +37,27 @@ test("localhost and private ranges are refused even over https", () => {
   assert.ok(!isPublicHttpUrl("http://[::1]/x"));
 });
 
+/**
+ * `new URL()` rewrites a dotted IPv4 tail inside an IPv6 address into hextets, so the spelling that reaches
+ * the guard is never the readable one: the fe80::/10 and fc00::/7 checks beside it caught their ranges and
+ * loopback written this way was handed to the DOM as a public host.
+ */
+test("loopback and the private ranges written as an IPv6 address are refused too", () => {
+  for (const url of [
+    "http://[::ffff:127.0.0.1]:8080/x",
+    "http://[::ffff:7f00:1]/x",
+    "http://[::ffff:10.0.0.5]/x",
+    "http://[::ffff:169.254.169.254]/latest/meta-data",
+    "http://[::ffff:192.168.1.1]/x",
+    "http://[::127.0.0.1]/x",
+  ]) {
+    assert.ok(!isPublicHttpUrl(url), url + " should be refused");
+  }
+  // A public address written the same way is still public, and so is an ordinary IPv6 host.
+  assert.ok(isPublicHttpUrl("https://[::ffff:93.184.216.34]/x"));
+  assert.ok(isPublicHttpUrl("https://[2001:4860:4860::8888]/x"));
+});
+
 test("a real public https URL passes untouched", () => {
   assert.equal(safeHttpUrl("https://operator-site.example/tickets"), "https://operator-site.example/tickets");
   assert.equal(safeHttpUrl("javascript:alert(1)"), undefined);
