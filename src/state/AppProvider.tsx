@@ -1018,10 +1018,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   }, [listingOpen]);
 
-  // On a phone, back is a gesture people use constantly. With a listing open it used to leave the site
-  // altogether, which reads as the app locking up. An open sheet or chat gets its own history entry, so
-  // back closes that first and only the next one leaves.
-  const overlay = state.sheet !== null || state.screen === "chat";
+  /**
+   * On a phone, back is a gesture people use constantly. With a listing open it used to leave the site
+   * altogether, which reads as the app locking up. An open sheet or chat gets its own history entry, so
+   * back closes that first and only the next one leaves.
+   *
+   * Ask Outset is one of these: it is the whole screen, it has its own Back and Close controls, and it holds
+   * a typed question and a thread. Driven at 400px, one back gesture with it open left the site and took the
+   * conversation with it. It is never over a sheet (`openAsk` clears one, and the agent closes itself before
+   * opening a listing), so the three cannot stack.
+   */
+  const overlay = state.sheet !== null || state.screen === "chat" || state.asking !== null;
   const overlayRef = useRef(overlay);
   overlayRef.current = overlay;
   const pushedOverlay = useRef(false);
@@ -1058,7 +1065,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
         // address bar. Back lands on no hash or on this same listing; another listing is a link.
         if (hashOpensAnotherListing(window.location.hash, stateRef.current.reqTargetId, (id) => !!experienceById(id))) return;
         pushedOverlay.current = false;
-        if (state.screen === "chat") dispatch({ type: "back" });
+        // Read off the ref, not the closure: this effect is re-subscribed on the screen alone.
+        if (stateRef.current.asking !== null) dispatch({ type: "closeAsk" });
+        else if (state.screen === "chat") dispatch({ type: "back" });
         else dispatch({ type: "closeSheet" });
         return;
       }
