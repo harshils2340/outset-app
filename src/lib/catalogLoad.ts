@@ -16,6 +16,14 @@ function looksLikeItem(x: unknown): x is Unclaimed {
  */
 const CATALOG_TIMEOUT_MS = 45000;
 
+/**
+ * One listing's own detail file is about 3 kB, so it does not need the whole catalog's patience, and it needs
+ * a deadline more than the catalog does: a shared link opens the listing screen before anything is fetched,
+ * and the "that listing is no longer on Outset" rescue below only runs once this fetch has settled. A stall
+ * left the guest on a listing screen with no listing, nothing said, and the dead link still in the bar.
+ */
+export const LISTING_TIMEOUT_MS = 15000;
+
 async function fetchCatalog(name: string): Promise<CatalogFile | null> {
   try {
     const res = await fetch(import.meta.env.BASE_URL + name, { cache: "no-cache", signal: AbortSignal.timeout(CATALOG_TIMEOUT_MS) });
@@ -81,7 +89,7 @@ export function loadListing(id: string | null): Promise<boolean> {
   if (cur && !cur.lite) return Promise.resolve(false);
   if (inflight.has(id)) return inflight.get(id)!;
   const path = cur?.detail || id;
-  const p = fetch(import.meta.env.BASE_URL + "o/" + encodeURIComponent(path) + ".json", { cache: "no-cache" })
+  const p = fetch(import.meta.env.BASE_URL + "o/" + encodeURIComponent(path) + ".json", { cache: "no-cache", signal: AbortSignal.timeout(LISTING_TIMEOUT_MS) })
     .then(async (res) => {
       if (!res.ok) return false;
       const full = (await res.json()) as Unclaimed;

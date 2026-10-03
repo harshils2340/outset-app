@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Unclaimed } from "../../data/types";
 import { experienceById } from "../../lib/catalog";
-import { loadListing } from "../../lib/catalogLoad";
+import { LISTING_TIMEOUT_MS, loadListing } from "../../lib/catalogLoad";
 import { JUMP_PAGE, allBookings, applyStoredProfiles, demoProfile, hydrateProfile, isDemoProfile, loadProfile, loadSession, profileKey, saveProfile, saveSession, setBookingStatus, type JumpField, type OpBooking, type OpStatus, type OperatorProfile } from "../../lib/operator";
 import { useApp } from "../../state/AppProvider";
 import { decideBooking, fetchBookings, hasApi, onOperatorAuthLost, signOutApi, takeClaimNotice, type RemoteBooking } from "../../lib/api";
@@ -200,7 +200,7 @@ export function OperatorView({ compact = false }: { compact?: boolean }) {
       });
     } else if (!p.photos.length || !p.blurb) {
       // The twin is deliberately kept out of the catalog (the seed wins on the guest side), so read its file directly.
-      fetch(import.meta.env.BASE_URL + "o/" + twinId + ".json", { cache: "no-cache" })
+      fetch(import.meta.env.BASE_URL + "o/" + twinId + ".json", { cache: "no-cache", signal: AbortSignal.timeout(LISTING_TIMEOUT_MS) })
         .then((r) => (r.ok ? r.json() : null))
         .then((full: Unclaimed | null) => {
           if (!alive || !full || !Array.isArray(full.options)) return;
