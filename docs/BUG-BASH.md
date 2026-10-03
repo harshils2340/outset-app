@@ -9460,6 +9460,119 @@ under `backend/data`, `public/` or `src/data` was written. `STRIPE_SECRET_KEY`, 
   sixth run in a row: `HEAD` was detached at the hundred and twenty-ninth run's commit. Re-pointed with
   `git checkout -B main origin/main` before committing.
 
+## 3 October 2026, hundred and thirty-first run (09:10 to 10:40 UTC)
+
+**Chosen, and why.** Nothing had landed since the hundred and thirtieth run's entry but that entry itself
+(`20842845`), which records the rehearsal green at 57 of 57, so by the brief's rule the **rehearsal was skipped
+at the start** and run afterwards, once these commits had touched `backend/src`. Baseline after `npm install` on
+both sides: root `tsc --noEmit -p .` and `tsc -b` clean, backend `tsc` clean but for TS5097, backend 993 with
+991 pass and 2 skipped, app 1,216 pass.
+
+Target: **the concierge's shortlist, pressed against real catalog rows for the first time.** Twelve runs have
+listed it as unchecked because `backend/data/outset.db` here is the empty schema `migrate()` writes at startup,
+so every town in the catalog read as nowhere. That is a data problem, not a code one, so this run built the
+database: `public/catalog.json` plus `public/o` into a scratch SQLite file under `/tmp` (46,324 operators,
+76,273 offerings, 2,773 towns with three or more businesses), pointed `OUTSET_DB` at it, and ran `readIntent`,
+`placeAmbiguity`, `genresNear`, `candidates`, `namedLike` and `plan` over twenty real sentences. Nothing under
+`backend/data` was written. **The caveat on every number below:** `operators.city` here was reconstructed from
+each listing's own area line, so counts per town are this catalog's, not production's.
+
+**Found and fixed.** Three commits, pushed.
+
+- **The product's own name for a category did not resolve to that category** (`bb2ccd6f`). Every id in
+  `taxonomy/catalog.ts` is one word and `inferCategory` anchors each on a word boundary, so nine of the
+  sixty-four labels missed. **"Mini golf in Tampa" read as `golf`**, so a guest was answered with Liberty
+  National Golf Club and Dyker Beach while all 233 mini golf listings sat unreachable; "disc golf" went the
+  same way past 145 courses. "Laser tag", "water park", "theme park", "ice skating", "martial arts" and
+  "glider flight" fell through to the jet ski fallback, which `readIntent` discards as a false positive, so a
+  sentence that named the activity exactly read as naming none and the concierge asked the guest what sort of
+  thing they wanted, with 488 ice rinks, 329 theme parks, 277 water parks and 1,123 martial arts studios in
+  the catalog. The spelled form is read inside the same `byId` pass, so the longest id still wins and a
+  "Waterpark and Mini Golf" is still a water park. Over all 52,816 shipped names 650 now read differently,
+  **647 of them onto the kind the catalog already ships them as**.
+- **A town's centre was the average of its pins, so three wrong pins moved Tampa into the Gulf of Mexico**
+  (`e1a5e2fd`). The concierge turns a place name into a coordinate and measures everything after that in
+  kilometres from it. Three of Tampa's 127 rows are pinned about 3,800 km away (K1 Speed Tampa Bay, Perspire
+  Sauna Studio, Paint Nite Events: chains pinned at a head office), which put the mean 166 km offshore, and the
+  40 km circle drawn on it held **none** of Tampa's own businesses. "Jet ski rental in tampa tomorrow" came
+  back with **nothing at all**, on the densest hand-verified metro in the product, and with no genres to narrow
+  by either. Vancouver, Washington was 107 km out and lost 31 of its 45 shops; Toronto was 21 km out and
+  answered a search for it with banquet halls in Brampton. The centre is the median now, which a handful of
+  outliers cannot move: Tampa sits at 27.96, -82.46 with 115 of its 127 inside the circle, and the same
+  sentence now returns five Tampa Bay jet ski rentals. The counts behind a town are still every row filed
+  under it.
+- **A swimming pool was offered as a billiards hall** (`2e13404e`). When a category shortlist comes back with
+  fewer than three shops, `namedLike` asks the shops' own names too, against the category's label and search
+  phrase **and the first word of each**, as a bare substring. Seven of those stubs are ordinary English words:
+  over the shipped catalog they pulled in 1,226 businesses of another kind for 186 of their own. "Water" found
+  744 names of which 714 were jet ski hire, Clearwater charters and watersports shops, offered as water parks;
+  "pool" found 183 of which 179 were swimming pools and a whirlpool jet boat tour; "disc" found Discovery
+  Cruises, Discretion Brewing and Undisclosed Excursions; "indoor" found climbing gyms and gun ranges, offered
+  as karting; "party" found party boats. The stubs that do name the activity stay, measured: "martial" is right
+  315 times of 318, "pilates" 190 of 209, and "laser" is the only way the eleven laser tag arenas filed under
+  paintball are found at all.
+
+**Swept and clean, or measured and left.**
+
+- **Markup and mis-decoded characters in the words a guest reads**, over all 52,815 shipped detail files and
+  every prose field on them. 60 partner rows carry `<br>` in their cancellation text, 12 fields carry `&amp;`,
+  7 carry a markdown link (one of them a mailto cut off mid-escape at "Hi%20GIBR%"), one carries U+FFFD and one
+  a U+0003. **Every one is cleaned at print time**: `plainWords` runs `undoMojibake`, `fixLostBytes`,
+  `decodeEntities`, `stripTags` and `stripMarkdown`, and every surface that prints one of those fields reads it
+  through `tidyLine`, `tidyName` or `cleanDesc`. Checked on the desktop listing's own render path, where all
+  three know-columns, the FAQ and the policy lines go through `tidyLine`. 135 blurbs carry a zero-width
+  character, which nothing strips and nothing shows.
+- **The longest unbreakable token in every guest-facing field**, over the same files: 100 characters, and it is
+  the markdown mailto above, which the reader removes. Run through `plainWords` the longest left in the whole
+  catalog is `southherobicentennialmuseum@gmail.com`, 37 characters, in one blurb, which is about 300px of
+  16px text and fits inside a 400px screen's gutters. The four selectors that do carry `overflow-wrap:
+  anywhere` are the policy list, the contact rows and the add-on note, which is where the long ones used to
+  land.
+- **Leap years and month arithmetic**, which 130 runs had never mentioned: every `getMonth() + n` in both
+  projects is paired with a day of 1 or 0, which is leap-safe, and `dateFromKey` rejects a day its month does
+  not have.
+- **The "near me" town name**, which still averages pins (`plan.ts`, the `else if (device)` branch). It only
+  picks a label, the search is centred on the device's own position, and the `/ (n * n)` in its ORDER BY keeps a
+  dragged centroid from winning: with Tampa's mean 166 km out it still beat every suburb. Left as it is.
+- **`placeAmbiguity` with an empty question**, which is deliberate: the chips stand alone so the pick is not
+  narrated above every answer. The `nextNeed` questions with no choices are deliberate too, each with its own
+  note saying why a headcount or an hour cannot be four buttons.
+
+**Verification.** Backend `npm test` 1,003 with 1,001 pass and 2 skipped, up from 993 (10 new across
+`spelledCategory`, `townCentre` and `namedLike`); app `npm test` 1,230 pass, unchanged. Every new test was run
+against the tree with its own fix reverted and fails there. `tsc --noEmit -p .`, `tsc -b` and the backend's own
+`tsc` all clean but for TS5097. The **rehearsal ran 57 of 57 twice**, on a local Postgres 16 cluster on port
+5433 with SSL on and the on-disk Playwright Chromium. Nothing tracked under `backend/data`, `public/` or
+`src/data` was written. `STRIPE_SECRET_KEY`, `RESEND_API_KEY` and `GITHUB_TOKEN` were empty throughout.
+
+**Needs Harshil.**
+
+- **The catalog files eleven of its twelve laser tag venues under `paintball`.** Now that "laser tag" reads as
+  `lasertag`, a guest asking for it in Dallas is told "No laser tag near Dallas. Here is what else is around",
+  which is honest and still wrong about the city. Either those rows move or `lasertag` searches `paintball` too.
+- **Three business names now read as the activity they are a museum or a tour about**: "Martial Arts History
+  Museum", "Bruce Lee Heritage Tour Seattle's Martial Arts Legend" and "Gimli Glider". This is the shape the id
+  rule has always had ("Bowling Hall of Fame Museum" reads as bowling today), and it only bites a fresh ingest,
+  because a shipped `art` wins over a name. Worth a guard only if a museum-about-an-activity is common supply.
+- **A name match is still weaker evidence than a read of the pages**, and 2,413 of its matches over the shipped
+  catalog are of another kind. The remaining stubs worth a decision are "amusement" (3 right of 12), "tandem"
+  (0 of 6 for paragliding, 5 of 7 for skydive, so it names neither alone) and "whitewater" (0 of 5).
+- **A real `backend/data/outset.db` dump**, which is the twelfth run to ask. Everything above was measured on a
+  reconstruction whose `city` column came from each listing's own area line, so the per-town counts are not
+  production's; whether the three Tampa pins are filed under Tampa there too cannot be checked from here.
+- Still open from earlier runs, unchanged: there is no error boundary in this app, now sixteen runs asked;
+  "Open right now near you" is computed once a visit; the checkout splash has no control of its own;
+  `docs/E2E-LOCAL.md` documents only the Neon branch and says nothing about the local cluster every run here
+  builds instead (this run built it as the `postgres` user, which the doc should say, since `initdb` refuses to
+  run as root); a fresh container ships no `node_modules`; the 18 listings whose crawl published only closed
+  days claim with all seven shut; the phone's browse is not ranked while the desktop's is; the phone
+  confirmation offers no way to reach the shop; a guest cannot cancel a booking at all; the booking box asks
+  for ten digits of phone number where the route asks for seven; a price sort and a price filter compare two
+  dollars on six metros; the cards say "$" for a Canadian shop; and this container still injects a
+  `GITHUB_TOKEN`, which the brief says must be empty (everything tonight ran with it cleared). **Local `main`
+  was detached again**, seventh run in a row, at the hundred and thirtieth run's commit. Re-pointed with
+  `git checkout -B main origin/main` before committing.
+
 ## Coverage
 
 The catalog is 48,198 listings as of the 23 September sync, 1,873 of them Viator partner rows. Counts below
@@ -9557,6 +9670,16 @@ drag, a drag given up part way, and the order surviving a reload. The compact da
 pages, for sideways scroll and unnamed controls. Search suggestion counts against the whole catalog: every
 activity, place, elsewhere and family row pressed, none opening an empty page. Which controls the rehearsal
 can still find, now a check of its own.
+
+The concierge's shortlist against real catalog rows, which took building the database this container does not
+ship: `readIntent`, `placeAmbiguity`, `genresNear`, `candidates`, `namedLike` and `plan` over twenty real
+sentences and 46,324 operators. Every one of the sixty-four categories against its own label, so the product's
+own name for a thing resolves to it. Where a town is, when some of its pins are wrong. Which businesses a name
+match pulls in for every category, counted against the kind the catalog ships them as. Markup and mis-decoded
+characters in the words a guest reads, over every prose field of all 52,815 detail files and against the reader
+each printing surface uses: markdown links, HTML tags, entities, mojibake, replacement and control characters,
+and the longest unbreakable token in each field against the stylesheet's wrapping rules. Leap years and month
+arithmetic in both projects.
 
 Every screen that is a list of ids kept in localStorage, on a cold start with the catalog held back: Wishlists,
 Trips, Inbox, the Inbox badge, the operator dashboard itself and the claim screen's "Signed in on this device"
@@ -10500,11 +10623,13 @@ phone number while the API and the agent ask for seven and `dialPhone` will rout
 guest with a seven-digit number books through Ask, is stored, and leaves the operator a Call button that is
 correctly dark, which is three rules for one fact (see the hundred and twenty-fifth run's Needs Harshil).
 Whether the concierge's own trace panel should name a shop's number the way every other surface now does, on
-the "the phone agent would call " step in `plan.ts`, which prints the crawl's column raw. The concierge's
-shortlist, as opposed to its sentence reader: `backend/data/outset.db`
-in this container is an empty schema `migrate()` writes at startup, so every town that lives in the catalog
-reads as nowhere and `candidates`, `genresNear` and `placeAmbiguity` have never been run here against real
-rows (see this run's Needs Harshil). Which row the booking box should open on, and
+the "the phone agent would call " step in `plan.ts`, which prints the crawl's column raw. Whether the three Tampa rows pinned 3,800 km away are filed under Tampa in the real
+database too, and every other per-town count the hundred and thirty-first run measured on a catalog whose `city`
+column it reconstructed from each listing's own area line, for want of a `backend/data/outset.db` dump. Whether
+`lasertag` should search `paintball`, where eleven of the catalog's twelve laser tag venues are filed. Whether
+"amusement", "tandem" and "whitewater" should stay in the name match, each of which names something else as
+often as its own activity. Whether a business named for a museum or a tour about an activity should read as that
+activity, which three shipped names now do. Which row the booking box should open on, and
 which row a card's "from" price should name, when the cheapest row of a shop's menu is not the kind the
 listing's own headline claims: Surf City Jet Ski & Watersports heads "Jet ski rental" and opens on "Paddle
 Board Rentals" at $32, which is this run's Needs Harshil and the two older questions about a folded service
