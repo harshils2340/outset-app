@@ -32,15 +32,13 @@ const started = new Date().toISOString();
 await ensureTouchTables();
 
 type Op = { id: string; domain: string; name: string; website: string | null; email: string | null; phone: string | null; city: string | null; region: string | null; calendar_vendor: string | null; completeness: number | null; family: string | null };
-// Every activity family, as of 3 October 2026 (Harshil: "Hostie for activities"): wellness (spas, salons) is left
-// out; restaurants stay in as a comparison group beside the activities. Opened past water on 30 September
-// for a real reply-rate comparison across verticals. `family` is carried
-// into outreach_pool below so that comparison is a group-by, not a guess.
+// Every family that takes bookings (Harshil, 3 October 2026: "anything booking related"). Opened past water on
+// 30 September for a real reply-rate comparison across verticals.
 const ops = db
   .prepare(
     `SELECT id, domain, name, website, email, phone, city, region, calendar_vendor, completeness, family FROM operators
       WHERE origin NOT IN ('demo', 'test') AND claim_status = 'unclaimed' AND email LIKE '%@%'
-        AND phone IS NOT NULL AND phone != '' AND coalesce(family, '') != 'wellness'
+        AND phone IS NOT NULL AND phone != ''
         AND lower(name) NOT LIKE '%park%' AND lower(name) NOT LIKE '%county%' AND lower(name) NOT LIKE '%city of%'
         AND lower(name) NOT LIKE '%recreation%' AND lower(name) NOT LIKE '%district%' AND lower(name) NOT LIKE '%municipal%'
         AND domain NOT LIKE '%.gov' AND domain NOT LIKE '%.org' AND domain NOT LIKE '%.edu'`,
