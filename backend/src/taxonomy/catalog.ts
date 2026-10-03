@@ -232,7 +232,7 @@ export function inferCategory(text: string): CategoryDef {
    * The spelled-out form of an id that glues two words together.
    *
    * Every id here is one word, and the `byId` pass below anchors on a word boundary, so `\bminigolf` never
-   * matched "mini golf" — which is how this file's own label spells it. A guest asking the concierge for "mini
+   * matched "mini golf", which is how this file's own label spells it. A guest asking the concierge for "mini
    * golf in Tampa" fell through to the shorter `golf` and was answered with country clubs, and "disc golf"
    * went the same way; "laser tag", "water park", "theme park", "ice rink" and "martial arts" fell through to
    * the jet ski fallback, which `readIntent` throws away as a false positive, so the sentence read as naming
