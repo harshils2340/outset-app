@@ -19,6 +19,19 @@ declare global {
 
 export const STRIPE_JS = "https://js.stripe.com/v3/";
 
+/**
+ * How long the browser may spend fetching those 200 kB before this gives up on them.
+ *
+ * A script tag that is still fetching fires neither `onload` nor `onerror`, which is a third outcome and the
+ * one nothing recovered from: `pending` held a promise that never settled, so the card dialog sat on "Loading
+ * the card form..." with its skeleton for as long as the guest left it open, and no press of anything made a
+ * second request. `warmCheckout` starts this as soon as the booking box is complete, so the press of "Book and
+ * pay" minutes later joined that same stall rather than asking again. A stall is treated as the failure it is,
+ * which puts the dialog's own words on the screen ("try again from the booking box") and makes the next press
+ * a real request.
+ */
+export const STRIPE_JS_TIMEOUT_MS = 20000;
+
 let pending: Promise<StripeJs> | null = null;
 
 export function loadStripeJs(): Promise<StripeJs> {
@@ -26,15 +39,19 @@ export function loadStripeJs(): Promise<StripeJs> {
   if (pending) return pending;
   pending = new Promise<StripeJs>((resolve, reject) => {
     const s = document.createElement("script");
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const stopClock = () => { if (timer) clearTimeout(timer); timer = null; };
     const fail = () => {
+      stopClock();
       pending = null;
       s.remove();
       reject(new Error("The card form could not be loaded."));
     };
     s.src = STRIPE_JS;
     s.async = true;
-    s.onload = () => (window.Stripe ? resolve(window.Stripe) : fail());
+    s.onload = () => { if (!window.Stripe) return fail(); stopClock(); resolve(window.Stripe); };
     s.onerror = fail;
+    timer = setTimeout(fail, STRIPE_JS_TIMEOUT_MS);
     document.head.appendChild(s);
   });
   return pending;

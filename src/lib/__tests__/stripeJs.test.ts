@@ -55,3 +55,42 @@ test("a script that loads without leaving Stripe behind counts as a failure, not
   await assert.rejects(p, /card form could not be loaded/);
   assert.equal(added.length, 0);
 });
+
+test("a request that never answers is a failure too, and the next press is a real request", async (t) => {
+  // A script tag still fetching fires neither onload nor onerror. `warmCheckout` starts this request as the
+  // booking box completes, so the press of "Book and pay" joined the same stall: the dialog sat on "Loading
+  // the card form..." for as long as the guest left it open, whatever they pressed.
+  t.mock.timers.enable({ apis: ["setTimeout"] });
+  const { added, win } = fakePage();
+  const { loadStripeJs, STRIPE_JS_TIMEOUT_MS } = await import("../stripeJs?stall");
+
+  const warm = loadStripeJs();
+  assert.equal(added.length, 1, "the script is on the page and fetching");
+  // One tick short of the deadline, nothing has happened: a slow connection is not a stall.
+  t.mock.timers.tick(STRIPE_JS_TIMEOUT_MS - 1);
+  assert.equal(added.length, 1);
+  t.mock.timers.tick(1);
+  await assert.rejects(warm, /card form could not be loaded/);
+  assert.equal(added.length, 0, "the script that never answered does not stay on the page");
+
+  const press = loadStripeJs();
+  assert.equal(added.length, 1, "the guest's press really goes and asks again");
+  const stripe = (() => ({ initEmbeddedCheckout: async () => ({ mount() {}, destroy() {} }) })) as never;
+  win.Stripe = stripe;
+  added[0].onload?.();
+  assert.equal(await press, stripe);
+});
+
+test("the clock is stopped by a load that works, so nothing fails after the fact", async (t) => {
+  t.mock.timers.enable({ apis: ["setTimeout"] });
+  const { added, win } = fakePage();
+  const { loadStripeJs, STRIPE_JS_TIMEOUT_MS } = await import("../stripeJs?stopped");
+  const p = loadStripeJs();
+  const stripe = (() => ({ initEmbeddedCheckout: async () => ({ mount() {}, destroy() {} }) })) as never;
+  win.Stripe = stripe;
+  added[0].onload?.();
+  assert.equal(await p, stripe);
+  t.mock.timers.tick(STRIPE_JS_TIMEOUT_MS * 2);
+  assert.equal(added.length, 1, "the loaded script is left where it is");
+  assert.equal(await loadStripeJs(), stripe, "and it is still the shared answer");
+});
