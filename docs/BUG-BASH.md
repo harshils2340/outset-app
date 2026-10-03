@@ -9573,6 +9573,96 @@ against the tree with its own fix reverted and fails there. `tsc --noEmit -p .`,
   was detached again**, seventh run in a row, at the hundred and thirtieth run's commit. Re-pointed with
   `git checkout -B main origin/main` before committing.
 
+## 3 October 2026, hundred and thirty-second run (10:00 to 11:05 UTC)
+
+**Chosen, and why.** Nothing had landed since the hundred and thirty-first run's own entry (`e7fd9b75`), which
+records the rehearsal green at 57 of 57, so by the brief's rule the **rehearsal was skipped at the start** and
+run at the end, once this run's commits had touched `backend/src` and `src/`. Baseline after `npm install` on
+both sides (a fresh container ships no `node_modules`): root `tsc --noEmit -p .` and `tsc -b` clean, backend
+`tsc` clean but for TS5097, backend 1,003 with 1,001 pass and 2 skipped, app 1,216 pass.
+
+Target: **what a `/l/` page's own sections say against the app's listing for the same shop, section by section**,
+which the Coverage list has carried as unchecked since the pages shipped ("read as markup and not as content").
+These 15,556 pages are the second hop a search engine and a shared link take, so they are the first thing a guest
+reads about a business. Every section was computed both ways over all 52,815 shipped detail files, and the fixes
+were then driven through the real generator on 1,152 real catalog rows into a scratch `publicDir`. Nothing under
+`public/`, `backend/data` or `src/data` was written.
+
+**Found and fixed.** Four commits, pushed.
+
+- **The free cancellation line stopped mid-sentence on 6,917 pages** (`0792679a`). `freeCancel` builds "Free
+  cancellation up to 24 hours before", which ends on its own preposition, and both app surfaces finish it with
+  `tidyCancel`. This page printed the badge raw, so the one fact a guest checks before they pay read
+  "Cancellation: Free cancellation up to 24 hours before" and stopped there. `tidyCancel` lived in
+  `WebListing.tsx`, which imports CSS and so cannot be read by the sync; it moves to `src/lib/cancellation.ts`
+  beside the badge rule and is re-exported for the phone sheet. The shop's own policy, which a listing with no
+  badge falls back to, now goes through `tidyLine`: 26 more pages carried a line still shouting, opening on the
+  crawl's asterisks, or with a space left in front of its own bracket.
+- **A rule was printed as the crawl stored it, not as the app prints it** (`8dd49308`). The highlights section
+  beside them has read `tidyLine` since the day it existed; Requirements never did. **536 lines on 413 pages**
+  read one way here and another in the app: a whole bag policy in capitals, "*COVID-19 Update", a lost byte, the
+  shop's shorthand left short, "photo ID ( Passport or Drivers License)".
+- **A rule the page ran out of room for was sold to a guest as a highlight** (`d927242d`). The guard against
+  printing a line twice was built from the six rules the page has room for, so a seventh rule was no longer known
+  to be one: **117 of them on 77 pages** led the Highlights list. Angel Island Ferry's highlights opened "No
+  outside alcohol will be permitted on board"; a dolphin cruise's, "Passengers under 12 must have a parent or
+  guardian present at check in"; a tubing run's, "Tubers must be comfortable and confident in, on, and around
+  water". The app's own rule list is never cut, which is why it has never done this.
+- **Two sections the app fills from a second source and this page left empty** (`c2fd8fcf`). A listing with no
+  stored `dur` has its length read off its own menu by `durationLabel`, the reader the sync writes `dur` with, so
+  35 pages said nothing about how long a booking runs. And the Hours block falls through to the contact record
+  when every published line is a quiet hour or a happy one rather than the door, which one page needed: it showed
+  no hours where the app shows a week.
+
+**Swept and clean, or measured and left.**
+
+- **The blurb, the title, the menu rows, the hours, the FAQ, the included and not-included lists, the rating, the
+  place line, the photo grid and the JSON-LD** all already read the app's own reader or the sync's twin of it,
+  checked over all 43,677 shipped listings that carry a cover and therefore earn a page. `ownWords` is the one app
+  reader the backend never calls, and it changes nothing: 0 blurbs and 0 service descriptions on those pages.
+- **The question-named service**, where `bookableServices` drops an unpriced row and renames a priced one
+  "Tickets": 17 rows on 14 pages and 17 on 7 are printed here as the shop wrote them. Measured and left, because
+  the two rules in the tree disagree about which is right and only one row of the 34 turns on it (see Needs
+  Harshil).
+- **The sections this page has no heading for at all**, counted rather than added, because each is new UI: a
+  minimum age on 1,809 pages, "What to bring" on 3,008, "Groups" on 3,787, "Waiver and check-in" on 347, and 141
+  pages that carry a bring line or a waiver line and no Requirements section to hang it under, so the page says
+  nothing a guest must do while the app says plenty.
+
+**Verification.** Backend `npm test` 1,007 with 1,005 pass and 2 skipped, up from 1,003 (4 new on
+`listingPages`); app `npm test` 1,230 pass, unchanged. Every new test was run against the tree with its own fix
+reverted and fails there. `tsc --noEmit -p .`, `tsc -b` and the backend's own `tsc` all clean but for TS5097. The
+**rehearsal ran 57 of 57**, on a local Postgres 16 cluster on port 5433 with SSL on, built as the `postgres` user,
+and the on-disk Playwright Chromium. `STRIPE_SECRET_KEY`, `RESEND_API_KEY` and `GITHUB_TOKEN` were empty
+throughout.
+
+**Needs Harshil.**
+
+- **Whether a service whose name is a question should be on a menu at all**, which two rules in the tree answer
+  differently. `menuRow.ts`'s `FAQ_ROW` deliberately keeps "Who Stole Mona?", because it is a real escape room at
+  o-escapology-com; `WebListing.tsx`'s `isQuestion` is any name ending in "?", so the app drops that game from
+  Escapology's own menu and the static page still offers it. On the other 33 rows the crude rule is the better
+  one: `FAQ_ROW` would keep "Need To Rent A Helicopter?", "Why Wake Surf?" and "+ Is Parasailing Safe?", which
+  are page headings. One row of 34, so it is a judgement about supply and not a rule.
+- **Whether a `/l/` page should carry the four sections it has no heading for**, with the counts above: 3,787
+  listings publish group information a guest never sees on the page Google sends them to, and 141 pages say
+  nothing at all a guest has to do.
+- **Whether `MAX_LIST_ITEMS` should be six.** The cap is what put a rule under Highlights, and it is also why a
+  shop with ten rules has four of them missing from the page. Six is a page-weight budget nothing has revisited.
+- Still open from earlier runs, unchanged: there is no error boundary in this app, now seventeen runs asked; "Open
+  right now near you" is computed once a visit; the checkout splash has no control of its own; `docs/E2E-LOCAL.md`
+  documents only the Neon branch and says nothing about the local cluster every run here builds instead (`initdb`
+  refuses to run as root, so it goes up as the `postgres` user); a fresh container ships no `node_modules`; the 18
+  listings whose crawl published only closed days claim with all seven shut; the phone's browse is not ranked
+  while the desktop's is; the phone confirmation offers no way to reach the shop; a guest cannot cancel a booking
+  at all; the booking box asks for ten digits of phone number where the route asks for seven; a price sort and a
+  price filter compare two dollars on six metros; the cards say "$" for a Canadian shop; `lasertag` does not
+  search `paintball`, where eleven of the twelve laser tag venues are filed; a real `backend/data/outset.db` dump
+  is still the one thing that would settle the hundred and thirty-first run's per-town counts; and this container
+  still injects a `GITHUB_TOKEN`, which the brief says must be empty (everything tonight ran with it cleared).
+  **Local `main` was detached again**, eighth run in a row, at the hundred and thirty-first run's commit.
+  Re-pointed with `git checkout -B main` before committing.
+
 ## Coverage
 
 The catalog is 48,198 listings as of the 23 September sync, 1,873 of them Viator partner rows. Counts below
@@ -9687,6 +9777,12 @@ list. What a claimed shop advertises once it empties, unprices or reprices its o
 rails, the price filter, the price sort and in Otto's answers. The live guest preview beside the editor
 (`OpPreview`), end to end: live edits without a reload, the read-only lock, click-to-edit jumping the editor to
 the right page, and both device sizes. A claimed listing with an empty menu seen from the guest side.
+
+Every section of a static `/l/` page against the app's listing for the same shop, read as content and
+not as markup, over all 43,677 shipped listings that earn a page: the blurb, the title, the menu rows, the hours,
+the duration, the cancellation line, the rules, the highlights, the included and not-included lists, the FAQ, the
+rating, the place line, the photo grid and the JSON-LD, each computed both ways and then driven through the real
+generator on 1,152 real catalog rows. Which sections the page has no heading for at all, counted.
 
 The window the Free cancellation badge promises, over all 1,303 shipped badges: which clause on the policy
 owns the number, which side of that clause's line it sits on, a rate card written as one sentence, a window
@@ -10643,8 +10739,13 @@ Harshil). Whether a metro page should draw the shops whose own area line names i
 them under a neighbour, which is 69 listings in Toronto alone (see this run's Needs Harshil). Which of two
 catalog rows for the same business should keep its page, on the two pairs this run found. Whether a landing
 page's price range should hold two currencies apart the way the metrics page now does, on the 63 all-metro pages
-that span the US and Canada. What a `/l/` page's own sections say against the app's listing for the same shop,
-section by section, which this run read as markup and not as content. Whether the fixtures behind `?mock=` should be able to reach the Not found screen at all,
+that span the US and Canada. Whether a `/l/` page should carry the four sections it has no
+heading for, which the hundred and thirty-second run counted rather than added: a minimum age on 1,809 pages,
+"What to bring" on 3,008, "Groups" on 3,787, "Waiver and check-in" on 347, and 141 pages carrying a bring or
+waiver line with no Requirements section to hang it under. Whether `MAX_LIST_ITEMS` should be six, which is why a
+shop with ten rules has four of them missing from its page. Whether a service whose name is a question belongs on
+a menu at all, which `menuRow.ts`'s `FAQ_ROW` and `WebListing.tsx`'s `isQuestion` answer differently on one row of
+34 (see that run's Needs Harshil). Whether the fixtures behind `?mock=` should be able to reach the Not found screen at all,
 which they no longer can now that a refusal before any sign-in is answered with the sign-in box (see this run's
 Needs Harshil). Whether a figure in a currency the money block is not in should carry `money()`'s one
 hard-coded dollar sign, on the one page that now deliberately holds two currencies apart (see this run's Needs
