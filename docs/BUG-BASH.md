@@ -9164,6 +9164,89 @@ throughout.
   is no linter in this repo; and this container still injects a `GITHUB_TOKEN`, which the brief says must be
   empty (everything tonight was run with it cleared).
 
+## 3 October 2026, hundred and twenty-eighth run (06:15 to 08:05 UTC)
+
+**Chosen, and why.** Nothing had landed since the hundred and twenty-seventh run's entry but that entry
+itself (`2737dc04`), and it records the rehearsal green at 57 of 57, so by the brief's own rule the
+**rehearsal was skipped at the start** and the time went on hunting; it was run at the end, once this run's
+own commit had touched `src/`. Baseline matched that entry: root `tsc --noEmit -p .` and `tsc -b` clean,
+backend `tsc` clean but for TS5097, backend 987 with 985 pass and 2 skipped, app 1,180 pass (after
+`npm install` on both sides and after creating the Postgres cluster, both of which a fresh container still
+needs).
+
+Target: **state that belongs to one listing, on the surface that swaps another listing in under it.** Every
+area the brief lists is on Verified, and the dimension Coverage did not hold was this one: not a `useState`
+seeded from a prop going stale, which the last run swept, but a whole component instance outliving the thing
+it is about.
+
+**Found and fixed.** One commit, pushed.
+
+- **The desktop listing page stops carrying the last listing's state into the next one** (`94d35f4c`). The
+  rail at the foot of the page opens another listing in place, and `App.tsx` rendered `<WebListing>` with no
+  key, so React kept the instance. Driven in a real Chromium at 1440px: saving the 9/11 Memorial and then
+  opening Mercer Labs from its own rail left the heart reading **"Saved" on a listing nobody had saved**, and
+  the one press a guest makes to save it said **"Removed from saved"** and saved nothing. The same instance
+  carried two more things: `addonIdx`, which is a list of indexes into the previous shop's menu and reaches
+  `confirmUnclaimed`'s payload, so an add-on nobody ticked is priced and booked at the new shop's rates; and
+  `openMap`, the previous shop's open times, which decide the start times this one offers and which the API's
+  own "nothing known" answer never clears. The page already reset `avail` and the picked time by hand, which
+  is how close this was to being noticed. One key, the same one the phone sheet has had on `RequestBody`
+  since it was written, and the same browser run then read "Save", saved on one press, and held both ids.
+
+**Swept and clean, or measured and left.**
+
+- **The linter that has never run here**, from a scratch install in the scratchpad rather than this repo's
+  `package.json`: `eslint-plugin-react-hooks` over all of `src`. 13 `rules-of-hooks` errors, every one of them
+  the two documented module-constant early returns (`ADMIN_ROUTE` in `App.tsx`, `OTTO_LIVE` in `WalletCard`),
+  which are read once at boot and cannot change under a running app, so the hook order is stable. 62
+  `exhaustive-deps` warnings; the twenty that name a missing value were all read, and every one is a
+  deliberate key standing in for the value (`p?.id`, `placeKey`, `state.catalogVersion`, `near?.lat`,
+  `deadCovers.size`, `item`). Nothing new fell out of it, which is worth knowing before the question is asked
+  a thirteenth time.
+- **60 real listings** across six shapes (affiliate, Canadian, no cover, no priced menu, rated 4.8 and up,
+  random), driven at 1440px and at 400px: no throw in render, no console error that was not a blocked image,
+  no sideways scroll, and every page named its business. That is the one measurement the missing error
+  boundary makes worth taking.
+- **Every other place a component takes an entity prop with no key**: `BookingDrawer` resets on `[b.id]`,
+  `WebConfirm` holds no state of its own, `GallerySlide` and the hero tiles are pure, and the dashboard's
+  business switcher calls `setPage("home")`, so no editor survives a switch of business.
+- **The concierge's device-location path is dead from the app.** `/concierge/ask` validates and plumbs
+  `lat`/`lon` carefully and `readIntent` has a whole branch for it, but `askConcierge` posts text and session
+  alone: the app answers the place question by writing the town into the sentence (`withPlace`). Left alone,
+  with the latent defect behind it in this run's Needs Harshil.
+
+**Verification.** App `npm test` 1,202 pass, 0 fail, up from 1,198 (four new in `listingHop.test.ts`); run
+against the tree with the fix reverted, 1 of the 4 fails, and the other three pin why the key is the thing
+that resets it. Backend 987 tests, 985 pass, 2 skipped, unchanged. `tsc --noEmit -p .`, `tsc -b` and the
+backend's own `tsc` all clean but for TS5097. The **rehearsal ran 57 of 57** on the tree that was pushed, on
+a local Postgres 16 cluster on port 5433 with SSL on and the on-disk Playwright Chromium. Nothing tracked
+under `backend/data`, `public/` or `src/data` was written. `STRIPE_SECRET_KEY`, `RESEND_API_KEY` and
+`GITHUB_TOKEN` were empty throughout.
+
+**Needs Harshil.**
+
+- **The concierge's own disambiguation chips would name the wrong towns the moment a client sends
+  coordinates.** `readIntent` takes the town nearest the device when it has a point, and `placeAmbiguity`
+  returns the towns biggest first; `plan()` then reads `amb[0]` as the one it took. So a guest standing in
+  Waterloo, Iowa would be searched correctly in Iowa, told in the trace that Ontario was taken, offered a
+  chip for the Iowa they are already on, and never offered Ontario at all. Latent only because no shipped
+  client sends a point, so I have left it rather than change the agent's narrowing on a path nothing walks.
+- **This container's local `main` was behind again**, fourth run in a row: `git branch main` pointed at the
+  hundred and twelfth run's commit with `HEAD` detached on `2737dc04`. Re-pointed with
+  `git fetch origin main && git checkout -B main origin/main` before committing. Nothing lost, nothing
+  force-pushed.
+- Still open from earlier runs, unchanged: **there is no error boundary in this app**, now thirteen runs
+  asked; "Open right now near you" is computed once a visit; the checkout splash has no control of its own;
+  `docs/E2E-LOCAL.md` still says "nothing, for the normal run" while the rehearsal needs a Postgres that
+  speaks SSL, created as the `postgres` user since this session runs as root; a fresh container ships no
+  `node_modules`; the 18 listings whose crawl published only closed days claim with all seven shut; a dump of
+  the SQLite catalog, without which no run here can judge the concierge's shortlist; the phone's browse is
+  not ranked while the desktop's is; the phone confirmation offers no way to reach the shop; a guest cannot
+  cancel a booking at all; the booking box asks for ten digits of phone number where the route asks for
+  seven; a price sort and a price filter compare two dollars on six metros; the cards say "$" for a Canadian
+  shop; and this container still injects a `GITHUB_TOKEN`, which the brief says must be empty (everything
+  tonight was run with it cleared). The linter question is answered above rather than still open.
+
 ## Coverage
 
 The catalog is 48,198 listings as of the 23 September sync, 1,873 of them Viator partner rows. Counts below
@@ -10163,7 +10246,15 @@ across the local day rolling over under a tab that is already open, one night an
 backend read for the same. A picked start time against a day that stops offering it, on both booking surfaces
 and now one rule. The guest home, Trips, Inbox, Wishlists and Account tabs, and the desktop home's Filters
 dialog, through the accessible-name read that swept the dashboard and the listing: all clean at 400px, and the
-dialog clean at 1440px and 1024px.
+dialog clean at 1440px and 1024px. Per-listing state across a navigation that swaps the entity under a
+mounted component, over every place in `src` where a component takes an entity prop and holds state: the
+desktop listing page was carrying the Save heart, the ticked add-ons and the previous shop's open-slot map
+into the next listing and is keyed now, and `BookingDrawer`, the phone sheet, `WebConfirm` and the
+dashboard's business switcher each already handled it. `rules-of-hooks` and `exhaustive-deps` over all of
+`src` from a scratch eslint install: the 13 errors are the two documented module-constant early returns, and
+every one of the 20 `exhaustive-deps` warnings that names a missing value is a deliberate key standing in for
+it. 60 real listings across six shapes, driven at 1440px and 400px, for a throw in render, a console error,
+a page that does not name its business and sideways scroll.
 
 **Not yet checked.** Whether the 18 listings whose crawl published only closed days should claim with
 all seven days shut at all, now that a closed week is published rather than swallowed (see this run's Needs
@@ -10573,4 +10664,11 @@ gave it its own effect and its own cleanup. The guest home, the Trips, Inbox and
 Account tabs and the desktop's dialogs through the same accessible-name read that swept the dashboard and the
 listing: the home was clean at both widths and the rest were not opened. Whether a guest kept on their own
 picked day across the day roll should be told the page moved when that day was the one that ended, which is
-this run's Needs Harshil and new copy on the booking box rather than a defect.
+this run's Needs Harshil and new copy on the booking box rather than a defect. Whether the concierge's own
+disambiguation chips should name the town the intent actually took rather than the biggest of that name,
+which `plan()` assumes are the same and which the device branch in `readIntent` makes different: latent,
+because no shipped client sends a point (see the hundred and twenty-eighth run's Needs Harshil). Whether the
+app should send the coordinates it already holds to the concierge at all, given that the API validates and
+plumbs a point nothing posts and the app answers the place question by writing the town into the sentence.
+Whether `openMap` should also be cleared when the API answers "nothing known", independently of the key that
+now resets it, so the next unkeyed mount of a listing body cannot reintroduce the same stale times.
