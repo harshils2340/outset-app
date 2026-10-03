@@ -9075,6 +9075,95 @@ tracked under `backend/data`, `public/` or `src/data` was written. `STRIPE_SECRE
   container still injects a `GITHUB_TOKEN`, which the brief says must be empty (everything tonight was run with
   it cleared).
 
+## 3 October 2026, hundred and twenty-seventh run (05:14 to 07:05 UTC)
+
+**Chosen, and why.** Two commits had landed since the hundred and twenty-sixth run's entry (`fb103dc4`, the
+Otto pitch's Gmail placement, which touches `backend/src/outreach`, and `295ffb51`, a security sweep's log), so
+by the brief's own rule the **rehearsal was run at the start** rather than skipped. It was green, 57 of 57,
+before anything was changed. Baseline otherwise matched that entry: root `tsc --noEmit -p .` and `tsc -b`
+clean, backend `tsc` clean but for TS5097, backend 987 with 985 pass and 2 skipped, app 1,180 pass (after
+`npm install` on both sides, which a fresh container still needs, and after creating the Postgres cluster).
+
+Target: **the booking calendar's own month, and the day a guest picked, across the local day roll.** Every area
+the brief lists is on Verified, so the pick came off Not yet checked, where the phone sheet's grid not
+following a day the sheet picks for the guest has sat as "read, not reproduced" since the hundred and
+twenty-sixth run. It reproduced on the first attempt once the clock was moved to the last evening of a month
+rather than to an arbitrary date, and it was two bugs, not one.
+
+**Found and fixed.** Five commits, all pushed.
+
+- **The booking calendar follows a picked day into its own month** (`1e92f7af`). `SlotCalendar`'s `month` was
+  seeded from the picked day on mount and never told when anything else moved that day, and two things do: the
+  sheet lands the guest on the first day with start times, and the booking window rebuilds itself on the day
+  roll. Driven in a real Chromium at 400px with the page's clock set to 23:50 on 31 October, on
+  `o-islandkayaking-com`: the head read "October 2026", **no day was marked picked**, the only open day on the
+  grid was the 31st, and the Start times column beside it was listing **Sunday 1 November's** times, which the
+  sheet's own sub-heading said out loud. An hour later, with the window rebuilt, the same October grid had **no
+  bookable day on it at all** and the previous-month arrow was disabled, so there was no way to the ten days
+  the shop could actually take. The rule now lives once, as `anchorMonth` in `lib/dates`.
+- **A guest's picked day survives the local day roll instead of sliding on one** (`be6b2fb1`). Found while
+  driving the first: both surfaces held the picked day as a position in a window that is rebuilt every
+  midnight, so the same position is the next day. A guest on Sunday 1 November at 23:50 was on **Monday 2
+  November at 00:50**, at 1440px and at 400px alike, with nothing touched, the mark on the grid moved under
+  them and, on the phone, their 3 PM still showing as picked for a date they never chose. The provider writes
+  the day down beside the index and re-finds it on the roll; the sheet holds the day and reads the index off
+  it. A day that has fallen out is the day that has just ended, so that guest lands on the first day still
+  bookable and the picked time goes with it, which the desktop already did and the phone did not.
+- **Back closes Ask Outset instead of leaving the site with the conversation in it** (`906616c4`). The one item
+  on Not yet checked that is a defect rather than a question. A sheet and a chat each get their own history
+  entry; the agent overlay was not counted as one, so one back gesture at 400px landed on the page before the
+  app and took the guest's typed question and the whole thread with it. Measured at 1280px too, where pressing
+  Agent moves the guest into the phone frame. The three cannot stack (`openAsk` clears a sheet, the agent
+  closes itself before opening a listing), closing with the overlay's own control still drops the entry, and a
+  boot that lands straight on `#ask` still leaves on back, which is where that guest came from.
+- `af4837cd` keeps `dayKey` naming the day `dateIdx` lands on after a day that fell out, which is the
+  invariant rather than a fault. `99f37fd4` folds the third of the app's three month grids, the desktop
+  day-and-time picker, onto `anchorMonth`; it had its own correct copy, and a test now refuses a fourth.
+
+**Swept and clean, or measured and left.** Every `useState(() => ...)` in `src/components` and `src/state`
+against the prop it is seeded from, which is how the third grid and the two that were already right were
+found: 13 of them, and `month` was the only one going stale. The month arrows at both ends of the rebuilt
+window, which still grey correctly either side of a boundary. The home's own When pill, which reads the same
+`state.dateIdx` and so was sliding a day with the booking box and is fixed by the same commit. Worth noting
+for the next run: Coverage already claimed "every `useState` seeded from a prop, for a stale field after the
+prop changes" as verified, and this is the one that sweep missed, because the prop that moves is a date and
+the staleness only shows at a month boundary.
+
+**Verification.** App `npm test` 1,198 pass, 0 fail, up from 1,180 (eighteen new across `monthAnchor.test.ts`,
+`pickedDayRoll.test.ts` and `askBackGesture.test.ts`). Backend 987 tests, 985 pass, 2 skipped, unchanged. Every
+new source-shape test was run against the tree with its fix reverted: 1 of 9 fails in the first file before the
+third grid landed and 2 of 9 after it, 4 of 5 in the second and 2 of 4 in the third; the rest pin the rule
+itself, the window's identity between rolls and the boot guard. `tsc --noEmit -p .`, `tsc -b` and the backend's
+own `tsc` all clean but for TS5097. The **rehearsal ran 57 of 57** three times on a local Postgres 16 cluster
+on port 5433 with SSL on and the on-disk Playwright Chromium: once before anything changed, once on the tree
+carrying the first three commits and once on the tree that was pushed. Nothing tracked under `backend/data`,
+`public/` or `src/data` was written. `STRIPE_SECRET_KEY`, `RESEND_API_KEY` and `GITHUB_TOKEN` were empty
+throughout.
+
+**Needs Harshil.**
+
+- **A guest who leaves the booking box open overnight is now kept on their day, and nothing tells them the
+  page moved.** Tonight's second fix is the right default: the day they picked is the day they get. But when
+  that day is the one that has just ended, they land on the first day still bookable with their start time
+  cleared and no word said, which is the same silence the window itself used to have. One line in the sheet
+  ("1 November has passed; here is the next day we can take") would close it, and it is new copy on the
+  booking box rather than a defect, so I have left it.
+- **This container's local `main` was behind again**, third run in a row: `git branch main` pointed at the
+  hundred and twelfth run's commit while `HEAD` sat detached on `295ffb51`. `git fetch origin main`
+  force-updated `origin/main` and `main` was re-pointed at it with `git checkout -B main origin/main` before
+  committing. Nothing lost, nothing force-pushed, but three runs have now had to notice it.
+- Still open from earlier runs, unchanged: **there is no error boundary in this app**, now twelve runs asked;
+  "Open right now near you" is computed once a visit and never again; the checkout splash still has no control
+  of its own; `docs/E2E-LOCAL.md` still says "nothing, for the normal run" while the rehearsal needs a Postgres
+  that speaks SSL, created as the `postgres` user since this session runs as root; a fresh container ships no
+  `node_modules`; the 18 listings whose crawl published only closed days claim with all seven shut; a dump of
+  the SQLite catalog, without which no run here can judge the concierge's shortlist; the phone's browse is not
+  ranked while the desktop's is; the phone confirmation offers no way to reach the shop; a guest cannot cancel
+  a booking at all; the booking box asks for ten digits of phone number where the route asks for seven; a
+  price sort and a price filter compare two dollars on six metros; the cards say "$" for a Canadian shop; there
+  is no linter in this repo; and this container still injects a `GITHUB_TOKEN`, which the brief says must be
+  empty (everything tonight was run with it cleared).
+
 ## Coverage
 
 The catalog is 48,198 listings as of the 23 September sync, 1,873 of them Viator partner rows. Counts below
@@ -10059,7 +10148,14 @@ characters `POST /bookings` keeps, to the button the operator presses to ring th
 booking emails print. Every `tel:` href in `src/components`, `src/lib` and `src/state` against the one reader
 in `lib/phone.ts`, now a test of its own, and all 36,952 shipped contact phones measured against the strip
 two surfaces were still dialling with. The caps on the guest's name, mobile and address, on all four surfaces
-that draw them and at the route that applies them. The clock the booking window is drawn on, driven in a real Chromium at
+that draw them and at the route that applies them. The month every booking calendar is drawn on, and the day a guest picked, across the local day roll: all three
+grids in the app (the phone sheet's, the desktop pair and the desktop day-and-time picker) against a selection
+moved by something other than a click, driven in a real Chromium at 400px and 1440px with the page's clock set
+to the last evening of a month and then rolled; the picked day and the picked start time through that roll on
+both booking surfaces, including the day that has just ended; and every `useState(() => ...)` in
+`src/components` and `src/state` against the prop it is seeded from. Back on a phone with Ask Outset open, at
+400px and 1280px, against the history entry a sheet and a chat already get, the entry the overlay's own control
+drops, and the boot that lands straight on `#ask`. The clock the booking window is drawn on, driven in a real Chromium at
 1440px and 400px with the page's own clock moved on rather than read: the ten days the two booking surfaces
 offer, the month grids, the day-and-time picker, the shop's calendar fetch and the date a reserve press sends,
 across the local day rolling over under a tab that is already open, one night and three. Every module in
@@ -10429,12 +10525,9 @@ and Otto's answers should name the Canadian dollar the way the four charge block
 listings and the 3,045 of them that publish a price (see that run's Needs Harshil). Whether the app's own
 `src/**/__tests__`, which nothing type-checks, hide anything: checked once tonight against a scratch config, and
 what falls out is fixture shapes rather than defects, with one test building a listing in a category the app has
-no such family for. Whether the phone confirmation should carry the shop's number and arrival note the way its desktop twin does, which is a missing row rather than a defect and is new UI (see this run's Needs Harshil). Whether the concierge's crawl queue should be scoped to the town people asked about, which its own comment says it is and its SQL is not, against the same comment's argument that a Waterloo question should reach Kitchener (see this run's Needs Harshil). What else the two confirmation screens disagree about, now that the place line is one reader on both: the arrival note, the price breakdown and the rating are all on the desktop and none on the phone. Whether the phone sheet's month grid should follow a day the sheet picks for the guest, which its desktop twin
-`MonthPair` re-anchors for and `SlotCalendar` does not: the "land on a day that has start times" effect can move
-the selection into the next month while the grid still draws this one, so the grid shows no picked day beside a
-Start times column listing another month's times. Read, not reproduced: three attempts at a listing whose first
-open day falls past a month boundary all found the first day open, because `itemWeek` re-reads the shop's own
-hour lines rather than the compact week a candidate was picked by. Whether a rail and a card whose whole promise is the clock should tick,
+no such family for. Whether the phone confirmation should carry the shop's number and arrival note the way its desktop twin does, which is a missing row rather than a defect and is new UI (see this run's Needs Harshil). Whether the concierge's crawl queue should be scoped to the town people asked about, which its own comment says it is and its SQL is not, against the same comment's argument that a Waterloo question should reach Kitchener (see this run's Needs Harshil). What else the two confirmation screens disagree about, now that the place line is one reader on both: the arrival note, the price breakdown and the rating are all on the desktop and none on the phone. The phone sheet's month grid not following a day the sheet picks for the guest: driven and fixed
+by the hundred and twenty-seventh run, which reproduced it at 23:50 on the last evening of a month, where three
+earlier attempts at a listing whose first open day falls past a month boundary had not. Whether a rail and a card whose whole promise is the clock should tick,
 which is this run's Needs Harshil and the one measured thing left of tonight's family of bugs: `useNearNow`
 memoises "Open right now near you" on `[near, catalogVersion]` and a card memoises its "Open now" pill on
 `[u]`, `itemOpenState` costs 9.8 ms per render of 60 cards so neither memo can simply go, and a ticker reorders
@@ -10476,7 +10569,8 @@ once at module load, so a tab left open across midnight offers days that have be
 by the hundred and twenty-sixth run, which found the API refusing the past date was the bug rather than the
 defence against it. The `hashchange`
 listener registered inside the catalog fetch's own `.then`: closed by the hundred and twenty-fourth run, which
-gave it its own effect and its own cleanup. Whether the Ask Outset overlay should get its own history entry the way a sheet and a chat do,
-since a phone's back gesture leaves the site rather than closing it. The guest home, the Trips, Inbox and
+gave it its own effect and its own cleanup. The guest home, the Trips, Inbox and
 Account tabs and the desktop's dialogs through the same accessible-name read that swept the dashboard and the
-listing tonight: the home was clean at both widths and the rest were not opened.
+listing: the home was clean at both widths and the rest were not opened. Whether a guest kept on their own
+picked day across the day roll should be told the page moved when that day was the one that ended, which is
+this run's Needs Harshil and new copy on the booking box rather than a defect.
