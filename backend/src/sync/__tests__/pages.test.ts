@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { mkdtempSync, readdirSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { KINDS, MIN_METRO_LISTINGS, buildFaq, pageTitle, publicSite, singular, townOfArea, writeLandingPages, type Item } from "../pages.ts";
+import { KINDS, MIN_METRO_LISTINGS, buildFaq, pageTitle, publicSite, singular, townOfArea, writeLandingPages, type Item, SITE_PAGES } from "../pages.ts";
 import { METROS } from "../../taxonomy/catalog.ts";
 import { ART_ALIASES } from "../../../../src/data/synonyms.ts";
 import { GUIDES } from "../../../../src/data/guides.ts";
@@ -151,7 +151,8 @@ test("every written page is in the sitemap, and every internal link points at a 
   try {
     for (const f of r.files) assert.ok(r.sitemap.includes(`<loc>https://onoutset.com/p/${f}</loc>`), `${f} missing from sitemap`);
     const locs = r.sitemap.match(/<loc>[^<]+<\/loc>/g)!.length;
-    assert.equal(locs, r.files.length + 1); // plus the site root
+    assert.equal(locs, r.files.length + 1 + SITE_PAGES.length); // plus the site root and its own pages
+    for (const page of SITE_PAGES) assert.ok(r.sitemap.includes(`<loc>https://onoutset.com/${page}</loc>`), `${page} missing from sitemap`);
     for (const f of r.files) {
       const links = [...r.read(f).matchAll(/href="([a-z-]+\.html)"/g)].map((m) => m[1]);
       for (const l of links) assert.ok(r.files.includes(l), `${f} links to ${l}, which was not written`);

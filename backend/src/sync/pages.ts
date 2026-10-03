@@ -49,6 +49,12 @@ const defaultPublicDir = join(here, "../../../public");
  */
 const PUBLIC_SITE = "https://onoutset.com/";
 const LOCAL_ADDRESS = /^(?:https?:\/\/)?(?:localhost|127\.0\.0\.1|0\.0\.0\.0|\[::1\])(?::\d+)?(?:\/|$)/i;
+/**
+ * The site's own pages beside the root (the Outset home): the product pages and the marketplace's home. They
+ * are static files or app routes, not written here, but they belong in the same sitemap so a crawler finds them.
+ */
+export const SITE_PAGES = ["features", "integrations", "pricing", "activities"];
+
 export function publicSite(): string {
   const set = (process.env.PUBLIC_SITE_URL || process.env.SITE_URL || "").trim();
   if (!set || LOCAL_ADDRESS.test(set)) return PUBLIC_SITE;
@@ -905,7 +911,7 @@ ${cities.map((c) => `<h2>${esc(placeName(c.metro))}</h2><div class="links">${c.p
    */
   writeFileSync(
     join(publicDir, "sitemap-pages.xml"),
-    `<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${[publicSite(), `${publicSite()}p/index.html`, ...urls].map((u) => `<url><loc>${u}</loc></url>`).join("")}</urlset>`,
+    `<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${[publicSite(), ...SITE_PAGES.map((page) => publicSite() + page), `${publicSite()}p/index.html`, ...urls].map((u) => `<url><loc>${u}</loc></url>`).join("")}</urlset>`,
   );
   writeFileSync(join(publicDir, "robots.txt"), `User-agent: *\nAllow: /\nSitemap: ${publicSite()}sitemap.xml\n`);
   /**
