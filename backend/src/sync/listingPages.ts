@@ -4,7 +4,8 @@ import { fileURLToPath } from "node:url";
 import { freeCancelBadge, tidyCancel } from "../../../src/lib/cancellation.ts";
 import { sayLength } from "../../../src/lib/duration.ts";
 import { displayHours } from "../../../src/lib/hoursText.ts";
-import { cleanDesc, placeName, splitIncluded, tidyLength, tidyLine, tidyName } from "../../../src/lib/listingDerive.ts";
+import { hourLines } from "../../../src/lib/openNow.ts";
+import { cleanDesc, durationLabel, placeName, splitIncluded, tidyLength, tidyLine, tidyName } from "../../../src/lib/listingDerive.ts";
 import { listingFacts, publicRating } from "../../../src/lib/catalog.ts";
 import { money, reviewsLine } from "../../../src/lib/format.ts";
 import { photoCandidates } from "../../../src/lib/samePhoto.ts";
@@ -231,7 +232,11 @@ function page(item: Item, opts: { landingHref: string | null; landingLabel: stri
   // printed an hour line the app prints differently, 41 of them in OpenStreetMap's own syntax ("Su off; Mo
   // \"by appointment\"; Tu-Fr 09:00-16:30"), and the rest with the quote marks, the zero width spaces, the
   // headings and the days glued onto the time before them that `displayHours` exists to take off.
-  const hours = displayHours(((item as { hoursText?: string[] }).hoursText?.length ? (item as { hoursText?: string[] }).hoursText : contact?.hours) || []);
+  // The source is `hourLines` too, not the raw array: it drops a line that carries days and a clock and is not
+  // the door (a campground's quiet hours, a bar's happy hour), and a listing whose every line is one of those
+  // falls through to the contact block the way it does in the app. One shipped page showed no Hours at all
+  // where the app shows a week.
+  const hours = displayHours((hourLines(unclaimedShape(item)).length ? hourLines(unclaimedShape(item)) : contact?.hours) || []);
   // Through the badge rule every guest surface reads, not off the stored `fc`. Read raw, 171 of these pages
   // named a different window than the app did for the same shop, and one advertised free cancellation the app
   // strips because the shop only refunds a day it calls off itself.
@@ -278,7 +283,10 @@ function page(item: Item, opts: { landingHref: string | null; landingLabel: stri
     .map((f) => ({ q: tidyLine(String(f.q || "")), a: tidyLine(String(f.a || "")) }));
   // The same rule the app's cards and sheets read, so the page a search engine lands on and the page the
   // app draws never state one shop's length two ways.
-  const durRaw = (item as { dur?: string }).dur || "";
+  // The same fallback the app's own page reads: a listing with no stored `dur` has its length read off its menu
+  // by `durationLabel`, which is the one duration reader the sync already writes `dur` with. 35 shipped pages
+  // said nothing about how long a booking runs where the app names it.
+  const durRaw = (item as { dur?: string }).dur || durationLabel(unclaimedShape(item)) || "";
   const dur = durRaw ? sayLength(durRaw) : "";
   // Through the gate the cards, the hero and the phone sheet all read: a rating nobody has reviewed is not a
   // score, and the JSON-LD on this very page already refused to publish one.

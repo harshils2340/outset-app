@@ -879,3 +879,31 @@ test("a rule on the page is the line the app prints, not the line the crawl stor
   }
 });
 
+/**
+ * Two sections the app fills from a second source and this page left empty: the length of a booking, which
+ * `durationLabel` reads off the menu for the 35 shipped listings with no stored `dur`, and the Hours block,
+ * which falls through to the contact record when every line the crawl published is a quiet hour or a happy one
+ * rather than the door.
+ */
+test("duration and hours read the app's own second source when the listing's own field is empty", () => {
+  const items: Item[] = [
+    item("o-a", { cover: "https://x/a.jpg", options: [{ name: "Beginner class", detail: "45 minutes", price: 30 }] } as Partial<Item>),
+    item("o-b", {
+      cover: "https://x/b.jpg",
+      hoursText: ["Quiet hours Mon-Sun 10:00 PM - 7:00 AM"],
+      contact: { domain: "b.com", hours: ["Mon-Fri 9:00 AM - 5:00 PM"] },
+    } as Partial<Item>),
+  ];
+  const r = run(items);
+  try {
+    const a = r.read("o-a.html");
+    assert.ok(a.includes("<b>Duration:</b> 45 min"), "the page says nothing about how long a booking runs");
+    const b = r.read("o-b.html");
+    assert.ok(b.includes("<h2>Hours</h2>"), "the page dropped the Hours block the app draws");
+    assert.ok(b.includes("Mon-Fri 9:00 AM - 5:00 PM"), "the page lost the contact block's week");
+    assert.ok(!b.includes("Quiet hours"), "a quiet hour is printed as the shop's trading hours");
+  } finally {
+    r.cleanup();
+  }
+});
+
