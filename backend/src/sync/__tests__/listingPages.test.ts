@@ -907,3 +907,26 @@ test("duration and hours read the app's own second source when the listing's own
   }
 });
 
+/**
+ * The guard that stops a rule being printed again as a selling point was built from the six rules this page has
+ * room for, so a seventh rule was no longer known to be one: 117 lines on 77 shipped pages were sold to a guest
+ * under "Highlights". Angel Island Ferry's own "No outside alcohol will be permitted on board" led its list.
+ */
+test("a rule past the six this page prints is still not sold as a highlight", () => {
+  const items: Item[] = [
+    item("o-a", {
+      cover: "https://x/a.jpg",
+      requirements: ["Rule one", "Rule two", "Rule three", "Rule four", "Rule five", "Rule six", "No outside alcohol will be permitted on board"],
+      specs: ["No outside alcohol will be permitted on board", "Sunset views of the bay"],
+    } as Partial<Item>),
+  ];
+  const r = run(items);
+  try {
+    const a = r.read("o-a.html");
+    const hi = a.slice(a.indexOf("<h2>Highlights</h2>"), a.indexOf("<h2>Requirements</h2>"));
+    assert.ok(hi.includes("Sunset views of the bay"), "the one real highlight went missing");
+    assert.ok(!hi.includes("No outside alcohol"), "a rule the page ran out of room for is sold as a highlight");
+  } finally {
+    r.cleanup();
+  }
+});

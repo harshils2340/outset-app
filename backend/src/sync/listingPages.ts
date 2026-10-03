@@ -240,6 +240,7 @@ function page(item: Item, opts: { landingHref: string | null; landingLabel: stri
   // Through the badge rule every guest surface reads, not off the stored `fc`. Read raw, 171 of these pages
   // named a different window than the app did for the same shop, and one advertised free cancellation the app
   // strips because the shop only refunds a day it calls off itself.
+  //
   // And through the same two readers that finish the sentence. The badge `freeCancel` builds ends on its own
   // preposition, so 6,917 of these pages read "Cancellation: Free cancellation up to 24 hours before" and
   // stopped there, where both app surfaces say "before your start time". The shop's own policy, which is what
@@ -267,9 +268,15 @@ function page(item: Item, opts: { landingHref: string | null; landingLabel: stri
   // already read. Printed raw, 536 lines on 413 of these pages read one way here and another in the app: a
   // whole bag policy still shouting in capitals, a line opening on the crawl's own "*" or "**", a lost byte,
   // the shop's shorthand left short, and the space the page left in front of its own bracket or full stop.
-  const requirements = (stated.length ? stated : facts.who.filter((l) => l.posted).map((l) => l.text)).slice(0, MAX_LIST_ITEMS);
-  // The same guard the app uses: a line already printed as a rule is not repeated as a selling point.
-  const reqKeys = new Set(requirements.map(factKey));
+  const rules = stated.length ? stated : facts.who.filter((l) => l.posted).map((l) => l.text);
+  const requirements = rules.slice(0, MAX_LIST_ITEMS);
+  // The same guard the app uses: a line already printed as a rule is not repeated as a selling point. Built
+  // from every rule the listing holds, not the six this page has room for. Built from the printed six, the
+  // rules past the cut were no longer known to be rules, and 117 of them on 77 shipped pages were sold to a
+  // guest as highlights of the trip: "No outside alcohol will be permitted on board", "Passengers under 12
+  // must have a parent or guardian present at check in", "Tubers must be comfortable and confident in, on,
+  // and around water". The app's own list is never cut, which is why it has never done this.
+  const reqKeys = new Set(rules.map(factKey));
   const published = (item as { highlights?: string[] }).highlights || [];
   const highlights = (published.length ? published : facts.about)
     .filter((h) => !reqKeys.has(factKey(h)))
