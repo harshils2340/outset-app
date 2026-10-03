@@ -154,7 +154,8 @@ export function brandFooter(to: string): { lines: string[]; html: string } {
 
 /**
  * Otto is a phone answering pitch, so eligibility is "does this business actually take calls," not the
- * listing pitch's photo/price completeness bar. Open to every family, not just `water`, as of 30 September
+ * listing pitch's photo/price completeness bar. Every activity family except food and wellness (3 October 2026:
+ * restaurants and salons already have dedicated AI receptionists), widened past `water` on 30 September
  * 2026 at Harshil's direction: the pitch is "answer calls and book the guest," which holds for any
  * booking-based business, not only marinas and watersports, and he wants a real per-family reply-rate
  * comparison rather than a single vertical assumed to be the best one. `family` isn't stored on
@@ -169,7 +170,7 @@ export function generateOttoDrafts(): number {
       .prepare(
         `SELECT * FROM operators
          WHERE origin NOT IN ('demo', 'test') AND claim_status = 'unclaimed' AND email LIKE '%@%'
-           AND phone IS NOT NULL AND phone != ''
+           AND phone IS NOT NULL AND phone != '' AND coalesce(family, '') NOT IN ('food', 'wellness')
            AND lower(name) NOT LIKE '%park%' AND lower(name) NOT LIKE '%county%' AND lower(name) NOT LIKE '%city of%'
            AND lower(name) NOT LIKE '%recreation%' AND lower(name) NOT LIKE '%district%' AND lower(name) NOT LIKE '%municipal%'
            AND domain NOT LIKE '%.gov' AND domain NOT LIKE '%.org' AND domain NOT LIKE '%.edu'`,

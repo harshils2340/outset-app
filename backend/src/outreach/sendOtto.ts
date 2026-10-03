@@ -55,7 +55,7 @@ export async function sendOttoOutreach(opts: {
       .prepare(
         `SELECT * FROM operators
          WHERE origin NOT IN ('demo', 'test') AND claim_status = 'unclaimed' AND email LIKE '%@%'
-           AND phone IS NOT NULL AND phone != ''
+           AND phone IS NOT NULL AND phone != '' AND coalesce(family, '') NOT IN ('food', 'wellness')
            AND lower(name) NOT LIKE '%park%' AND lower(name) NOT LIKE '%county%' AND lower(name) NOT LIKE '%city of%'
            AND lower(name) NOT LIKE '%recreation%' AND lower(name) NOT LIKE '%district%' AND lower(name) NOT LIKE '%municipal%'
            AND domain NOT LIKE '%.gov' AND domain NOT LIKE '%.org' AND domain NOT LIKE '%.edu'

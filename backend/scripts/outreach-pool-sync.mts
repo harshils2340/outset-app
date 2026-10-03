@@ -32,14 +32,15 @@ const started = new Date().toISOString();
 await ensureTouchTables();
 
 type Op = { id: string; domain: string; name: string; website: string | null; email: string | null; phone: string | null; city: string | null; region: string | null; calendar_vendor: string | null; completeness: number | null; family: string | null };
-// Open to every family, not just 'water', as of 30 September 2026 at Harshil's direction: he wants a real
-// reply-rate comparison across verticals, not an assumption that water is the best one. `family` is carried
+// Every activity family, as of 3 October 2026 (Harshil: "Hostie for activities"): food and wellness are left
+// out because restaurants and salons already have dedicated AI receptionists. Opened past water on 30 September
+// for a real reply-rate comparison across verticals. `family` is carried
 // into outreach_pool below so that comparison is a group-by, not a guess.
 const ops = db
   .prepare(
     `SELECT id, domain, name, website, email, phone, city, region, calendar_vendor, completeness, family FROM operators
       WHERE origin NOT IN ('demo', 'test') AND claim_status = 'unclaimed' AND email LIKE '%@%'
-        AND phone IS NOT NULL AND phone != ''
+        AND phone IS NOT NULL AND phone != '' AND coalesce(family, '') NOT IN ('food', 'wellness')
         AND lower(name) NOT LIKE '%park%' AND lower(name) NOT LIKE '%county%' AND lower(name) NOT LIKE '%city of%'
         AND lower(name) NOT LIKE '%recreation%' AND lower(name) NOT LIKE '%district%' AND lower(name) NOT LIKE '%municipal%'
         AND domain NOT LIKE '%.gov' AND domain NOT LIKE '%.org' AND domain NOT LIKE '%.edu'`,
