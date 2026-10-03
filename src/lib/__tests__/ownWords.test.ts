@@ -104,3 +104,38 @@ test("the descriptions this leaves alone are all of them but those", () => {
   // filter eating real copy, which the ceiling guards.
   assert.ok(cleared < 100, "expected only the filler and the binary, got " + cleared);
 });
+
+/**
+ * A hacked page's own marketing, in the language its author writes, where the operator's description should be.
+ * 40 shipped listings read this way on the page a guest opens first. Each blurb below is one of them.
+ */
+test("a paragraph of Indonesian casino marketing is not the shop's own words", () => {
+  for (const [blurb, who] of [
+    ["PTTOGEL hadir sebagai agen toto online terpercaya yang memberikan pengalaman bermain lebih nyaman dengan dukungan sistem modern.", "Greenwich CrossFit, Greenwich, CT"],
+    ["Di situs gacor ODIN77, kami memberikan cashback besar setiap minggu untuk semua member setia kami.", "Ford Amphitheater at Coney Island, NY"],
+    ["WAKTOGEL merupakan bandar toto slot online yang dipercaya banyak pemain hingga saat ini.", "Kimberly Klark Gallery, New York, NY"],
+    ["ARENASLOT88 adalah situs yang dibuat buat kamu yang cari venue acara terbaik dengan modal ringan.", "Largo Event Center, FL"],
+    ["OLLO4D menghadirkan pilihan permainan toto online dengan beragam pasaran yang dapat diakses melalui satu halaman.", "Dinosite, UT"],
+    ["SATSET138 agen penyedia hiburan digital terpercaya.", "Four Corners RV Resort, FL"],
+    ["Main di DANGDUT4D, platform game slot favorit terlengkap dan resmi 2026.", "Archery Bow Range Chicago, IL"],
+    ["Kami sedang melakukan pembaruan sistem untuk meningkatkan pengalaman Anda.", "Buttzville Brewing, NJ"],
+  ]) {
+    assert.equal(ownWords(blurb), "", who + " should be left with no description rather than this one");
+  }
+});
+
+/**
+ * Two signals, not one, because the single words are shared: "Dan" and "Cara" are English names, and "slot",
+ * "bonus" and "deposit" are English nouns a real booking page writes.
+ */
+test("an operator's own English description survives, including the words the spam shares", () => {
+  for (const blurb of [
+    "Dan and Cara have run the dock since 2011, and they will have you on the water inside ten minutes.",
+    "Book a slot in the morning for the calmest water. A deposit holds your boat, and the balance is due on the day.",
+    "Ask about our loyalty bonus: every tenth ride is on us, and members get first pick of the sunset slot.",
+    "A casino is a five minute walk from the marina, if the weather turns and you would rather stay dry.",
+    "Judith leads the Tuesday class. Bring a towel, a bottle and nothing else.",
+  ]) {
+    assert.equal(ownWords(blurb), blurb, "this is the shop's own writing");
+  }
+});
