@@ -337,12 +337,23 @@ function RequestBody({
   const { saved } = usePrefs();
   const metro = metroById(item.metroId);
   const catName = CATS.find((c) => c.id === item.cat)?.name ?? item.cat;
-  // The day and party picked in the search sheet carry into the booking, the way Airbnb carries dates and guests.
-  const [dateIdx, setDateIdx] = useState(() => {
+  /**
+   * The day and party picked in the search sheet carry into the booking, the way Airbnb carries dates and
+   * guests.
+   *
+   * The day is held as its own date rather than as a position in the ten-day window, because that window is
+   * rebuilt when the local day rolls over (see `bookingDates`) and the same position is then the next day. A
+   * guest who picked Sunday 1 November at ten to midnight was reading Monday 2 November's start times a minute
+   * later with nothing touched, under a heading that had quietly changed with them. Read back as a position,
+   * so a day that has fallen out of the window lands the guest on the first day still in it.
+   */
+  const [dayKey, setDayKey] = useState(() => {
     const w = getPrefs().when;
     const i = w ? dates.findIndex((d) => dateKey(d) === w) : -1;
-    return i >= 0 ? i : 0;
+    return dateKey(dates[i >= 0 ? i : 0]);
   });
+  const dateIdx = Math.max(0, dates.findIndex((d) => dateKey(d) === dayKey));
+  const setDateIdx = (i: number) => setDayKey(dateKey(dates[i] ?? dates[0]));
   const [time, setTime] = useState<string | null>(null);
   const [qty, setQty] = useState(() => startingParty(QTY_MAX));
   const [optionIdx, setOptionIdx] = useState<number | null>(item.options.length === 1 ? 0 : null);
@@ -524,6 +535,17 @@ function RequestBody({
   useEffect(() => {
     if (time && !chipTimes.split(",").includes(time)) setTime(null);
   }, [chipTimes, time]);
+  /**
+   * A picked day that is no longer in the window is the day that has just ended, so land on the first day
+   * still in it and drop the start time with it. The desktop page's reducer does the same on the roll: the
+   * time was picked for a date this screen is no longer showing, and leaving it picked leaves Reserve live on
+   * a booking whose date changed with nobody touching it.
+   */
+  useEffect(() => {
+    if (dates.some((d) => dateKey(d) === dayKey)) return;
+    setDayKey(dateKey(dates[0]));
+    setTime(null);
+  }, [dates, dayKey]);
   // Land the guest on a day that has start times rather than an empty one, as the desktop page does: opened in
   // the evening, the sheet said "No more start times today" under today's date and left the guest to find tomorrow.
   // Runs when the times change (live departures or open slots arriving), never on a day the guest picked themselves.

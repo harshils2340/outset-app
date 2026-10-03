@@ -59,6 +59,8 @@ export type AppState = {
    */
   locating: boolean;
   dateIdx: number;
+  /** The day `dateIdx` was picked on, as YYYY-MM-DD, so the roll can find it again. Empty until one is. */
+  dayKey: string;
   listingId: string | null;
   slot: string | null;
   qty: number;
@@ -92,6 +94,8 @@ type Action =
   | { type: "hydrate"; bookings: Booking[]; chats: Record<string, ChatMessage[]> }
   | { type: "catalogLoaded"; added: number; complete?: boolean }
   | { type: "catalogTouched" }
+  /** The local day rolled over, so the ten-day window has been rebuilt under whatever the guest had picked. */
+  | { type: "dayRolled" }
   | { type: "tab"; tab: TabId }
   | { type: "goto"; tab: TabId }
   | { type: "cat"; cat: CategoryId }
@@ -215,6 +219,23 @@ function reducer(state: AppState, action: Action): AppState {
       return { ...state, catalogReady: true, catalogComplete: state.catalogComplete || !!action.complete, catalogVersion: action.added ? state.catalogVersion + 1 : state.catalogVersion };
     case "catalogTouched":
       return { ...state, catalogVersion: state.catalogVersion + 1 };
+    case "dayRolled": {
+      /**
+       * Put the guest back on the day they picked, which is not the position they picked it at.
+       *
+       * `dateIdx` is an index into the ten-day window, and that window is rebuilt on the roll, so the same
+       * index is the next day: driven in a real Chromium at 1440px with the page's clock moved on, a guest
+       * sitting on Sunday 1 November at 23:50 was on Monday 2 November at 00:50, with nothing touched and
+       * the day marked on the grid moved under them. The day they picked is bookable for the whole of it.
+       *
+       * `dayKey` is what they picked, so it is read rather than the index. Empty means nothing has been
+       * picked yet, and the first day of the new window is the right place to be. A day that has fallen out
+       * of the window is the day that has just ended, so that guest lands on the first day still in it and
+       * the start time they had picked on the old day goes with it.
+       */
+      const i = state.dayKey ? bookingDates().findIndex((d) => dateKey(d) === state.dayKey) : 0;
+      return { ...state, catalogVersion: state.catalogVersion + 1, dateIdx: i >= 0 ? i : 0, slot: i >= 0 ? state.slot : null };
+    }
     case "tab":
       return { ...state, tab: action.tab, screen: action.tab };
     case "goto":
@@ -232,7 +253,8 @@ function reducer(state: AppState, action: Action): AppState {
     case "openMetro":
       return { ...state, sheet: "metro" };
     case "date":
-      return { ...state, dateIdx: action.dateIdx, slot: null };
+      // The day beside the index, because the index is a position in a window that is rebuilt every midnight.
+      return { ...state, dateIdx: action.dateIdx, dayKey: dateKey(bookingDates()[action.dateIdx] ?? bookingDates()[0]), slot: null };
     case "openListing":
       return {
         ...state,
@@ -449,6 +471,7 @@ const initial: AppState = {
   near: null,
   locating: false,
   dateIdx: 0,
+  dayKey: "",
   listingId: null,
   slot: null,
   qty: 1,
@@ -721,7 +744,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     let timer = 0;
     const arm = () => {
       timer = window.setTimeout(() => {
-        dispatch({ type: "catalogTouched" });
+        dispatch({ type: "dayRolled" });
         arm();
       }, msToNextDay());
     };
