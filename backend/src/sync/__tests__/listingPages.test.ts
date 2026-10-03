@@ -15,10 +15,10 @@ function item(id: string, extra: Partial<Item> = {}): Item {
   return { id, title: id, art: "cooking", area: "Toronto, ON", metroId: "toronto", options: [{ name: "Class", detail: "", price: 60 }], ...extra } as Item;
 }
 
-function run(items: Item[]) {
+function run(items: Item[], opts: { inSearch?: boolean } = { inSearch: true }) {
   const dir = mkdtempSync(join(tmpdir(), "outset-listing-pages-"));
-  const landing = writeLandingPages(items, { publicDir: dir });
-  const listing = writeListingPages(items, landing, { publicDir: dir });
+  const landing = writeLandingPages(items, { publicDir: dir, ...opts });
+  const listing = writeListingPages(items, landing, { publicDir: dir, ...opts });
   const files = readdirSync(join(dir, "l")).filter((f) => f.endsWith(".html")).sort();
   const read = (f: string) => readFileSync(join(dir, "l", f), "utf8");
   return { dir, landing, listing, files, read, cleanup: () => rmSync(dir, { recursive: true, force: true }) };
@@ -78,8 +78,8 @@ test("a page needs a photo and something to act on; unlisted never gets one", ()
 test("a rerun clears a listing page whose listing lost its cover or disappeared", () => {
   const r = run([item("o-a", { cover: "https://x/a.jpg" }), item("o-b", { cover: "https://x/b.jpg" })]);
   try {
-    const landing2 = writeLandingPages([item("o-a", { cover: "https://x/a.jpg" })], { publicDir: r.dir });
-    writeListingPages([item("o-a", { cover: "https://x/a.jpg" })], landing2, { publicDir: r.dir });
+    const landing2 = writeLandingPages([item("o-a", { cover: "https://x/a.jpg" })], { publicDir: r.dir, inSearch: true });
+    writeListingPages([item("o-a", { cover: "https://x/a.jpg" })], landing2, { publicDir: r.dir, inSearch: true });
     const files = readdirSync(join(r.dir, "l")).filter((f) => f.endsWith(".html"));
     assert.deepEqual(files, ["o-a.html"]);
   } finally {
@@ -268,8 +268,8 @@ test("a stale extra sitemap chunk from a bigger previous run is removed", () => 
   writeFileSync(join(dir, "sitemap-listings-2.xml"), "<urlset/>");
   try {
     const items: Item[] = [item("o-1", { cover: "https://x/1.jpg" })];
-    const landing = writeLandingPages(items, { publicDir: dir });
-    writeListingPages(items, landing, { publicDir: dir });
+    const landing = writeLandingPages(items, { publicDir: dir, inSearch: true });
+    writeListingPages(items, landing, { publicDir: dir, inSearch: true });
     assert.deepEqual(readdirSync(dir).filter((f) => /^sitemap-listings-\d+\.xml$/.test(f)), ["sitemap-listings-1.xml"]);
   } finally {
     rmSync(dir, { recursive: true, force: true });
@@ -926,6 +926,20 @@ test("a rule past the six this page prints is still not sold as a highlight", ()
     const hi = a.slice(a.indexOf("<h2>Highlights</h2>"), a.indexOf("<h2>Requirements</h2>"));
     assert.ok(hi.includes("Sunset views of the bay"), "the one real highlight went missing");
     assert.ok(!hi.includes("No outside alcohol"), "a rule the page ran out of room for is sold as a highlight");
+  } finally {
+    r.cleanup();
+  }
+});
+
+test("by default listing pages are noindex, no listings sitemap is written, and the index names only the pages sitemap", () => {
+  const r = run([item("o-a", { cover: "https://x/a.jpg" }), item("o-b", { cover: "https://x/b.jpg" })], {});
+  try {
+    assert.ok(r.files.length > 0);
+    for (const f of r.files) assert.ok(r.read(f).includes('<meta name="robots" content="noindex">'), `${f} should be noindex`);
+    assert.deepEqual(readdirSync(r.dir).filter((f) => /^sitemap-listings-\d+\.xml$/.test(f)), []);
+    const index = readFileSync(join(r.dir, "sitemap.xml"), "utf8");
+    assert.equal((index.match(/<loc>/g) || []).length, 1);
+    assert.match(index, /<loc>https:\/\/onoutset\.com\/sitemap-pages\.xml<\/loc>/);
   } finally {
     r.cleanup();
   }

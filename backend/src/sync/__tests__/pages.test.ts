@@ -35,9 +35,9 @@ const fixture: Item[] = [
   item("kayak", null, 1),
 ];
 
-function run(items: Item[]) {
+function run(items: Item[], opts: { inSearch?: boolean } = { inSearch: true }) {
   const dir = mkdtempSync(join(tmpdir(), "outset-pages-"));
-  const result = writeLandingPages(items, { publicDir: dir });
+  const result = writeLandingPages(items, { publicDir: dir, ...opts });
   const files = readdirSync(join(dir, "p")).filter((f) => f.endsWith(".html")).sort();
   const read = (f: string) => readFileSync(join(dir, "p", f), "utf8");
   const sitemap = readFileSync(join(dir, "sitemap-pages.xml"), "utf8");
@@ -770,5 +770,18 @@ test("the lede and the meta description name the dollar their cheapest shop char
     assert.ok(!/from \$5[^0-9]/.test(html), "no bare dollar sign is left on the Canadian floor");
   } finally {
     rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("by default the marketplace pages stay out of search: each is noindex and the sitemap lists only the site's own pages", () => {
+  const r = run(fixture, {});
+  try {
+    for (const f of r.files) assert.ok(r.read(f).includes('<meta name="robots" content="noindex">'), `${f} should be noindex`);
+    assert.doesNotMatch(r.sitemap, /onoutset\.com\/p\//);
+    assert.equal(r.sitemap.match(/<loc>[^<]+<\/loc>/g)!.length, 1 + SITE_PAGES.length);
+    for (const page of SITE_PAGES) assert.ok(r.sitemap.includes(`<loc>https://onoutset.com/${page}</loc>`), `${page} missing from sitemap`);
+    assert.ok(!SITE_PAGES.includes("activities"), "the marketplace home is not offered either");
+  } finally {
+    r.cleanup();
   }
 });

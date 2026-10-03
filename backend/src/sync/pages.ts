@@ -53,7 +53,22 @@ const LOCAL_ADDRESS = /^(?:https?:\/\/)?(?:localhost|127\.0\.0\.1|0\.0\.0\.0|\[:
  * The site's own pages beside the root (the Outset home): the product pages and the marketplace's home. They
  * are static files or app routes, not written here, but they belong in the same sitemap so a crawler finds them.
  */
-export const SITE_PAGES = ["features", "integrations", "pricing", "activities"];
+export const SITE_PAGES = ["features", "integrations", "pricing"];
+
+/**
+ * Whether the marketplace's generated pages (/p/ by activity and city, /l/ per listing) are offered to search
+ * engines. Off since 3 October 2026, Harshil's call: onoutset.com is Outset, the AI front desk, and about 17,000
+ * thin directory pages on a young domain had Google reading the site as an activities directory (14,032 of them
+ * "Discovered, currently not indexed") while the few product pages are the ones that bring in businesses. The
+ * pages are still written and still work for anyone who follows a link (an outreach email's "your free Outset
+ * page", a shared listing); they carry robots noindex and stay out of the sitemap. Set true to offer them again.
+ */
+export const MARKETPLACE_IN_SEARCH = false;
+
+/** The page with a robots noindex tag, unless it already carries a robots tag of its own (a partner page does). */
+export function noindex(html: string): string {
+  return html.includes('<meta name="robots"') ? html : html.replace("<head>", '<head><meta name="robots" content="noindex">');
+}
 
 export function publicSite(): string {
   const set = (process.env.PUBLIC_SITE_URL || process.env.SITE_URL || "").trim();
@@ -681,7 +696,8 @@ ${pageFooter()}
  */
 export type LandingPagesResult = { pages: number; metroPages: number; cityPages: number; kindPages: number; urls: string[]; existingPages: Set<string> };
 
-export function writeLandingPages(rawItems: Item[], opts: { publicDir?: string } = {}): LandingPagesResult {
+export function writeLandingPages(rawItems: Item[], opts: { publicDir?: string; inSearch?: boolean } = {}): LandingPagesResult {
+  const inSearch = opts.inSearch ?? MARKETPLACE_IN_SEARCH;
   const items = bookablePages(rawItems);
   const publicDir = opts.publicDir || defaultPublicDir;
   const dir = join(publicDir, "p");
@@ -806,7 +822,7 @@ export function writeLandingPages(rawItems: Item[], opts: { publicDir?: string }
   const urls: string[] = [];
   const existingPages = new Set<string>();
   const write = (file: string, html: string) => {
-    writeFileSync(join(dir, file), html);
+    writeFileSync(join(dir, file), inSearch ? html : noindex(html));
     urls.push(`${publicSite()}p/${file}`);
   };
   let metroCount = 0;
@@ -900,7 +916,7 @@ ${socialCard({ title: "Things to do by activity and city · Outset", description
 <h2>Everywhere</h2><div class="links">${kindPages.map((k) => `<a href="${fileFor(k.art, null)}">${esc(k.search)}<small>${num((byKind.get(k.art) || []).length)}</small></a>`).join("")}</div>
 ${cities.map((c) => `<h2>${esc(placeName(c.metro))}</h2><div class="links">${c.pages.map((p) => `<a href="${fileFor(p.kind.art, c.metro.id)}">${esc(p.kind.search)}<small>${num(p.items.length)}</small></a>`).join("")}</div>`).join("\n")}
 </main>${pageFooter()}</body></html>`;
-  writeFileSync(join(dir, "index.html"), index);
+  writeFileSync(join(dir, "index.html"), inSearch ? index : noindex(index));
   /**
    * A sitemap can hold at most 50,000 URLs. This one alone never gets close, but the listing pages
    * (listingPages.ts, /l/<id>.html) do, so the two are kept in separate files from the start: this is
@@ -911,7 +927,7 @@ ${cities.map((c) => `<h2>${esc(placeName(c.metro))}</h2><div class="links">${c.p
    */
   writeFileSync(
     join(publicDir, "sitemap-pages.xml"),
-    `<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${[publicSite(), ...SITE_PAGES.map((page) => publicSite() + page), `${publicSite()}p/index.html`, ...urls].map((u) => `<url><loc>${u}</loc></url>`).join("")}</urlset>`,
+    `<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${[publicSite(), ...SITE_PAGES.map((page) => publicSite() + page), ...(inSearch ? [`${publicSite()}p/index.html`, ...urls] : [])].map((u) => `<url><loc>${u}</loc></url>`).join("")}</urlset>`,
   );
   writeFileSync(join(publicDir, "robots.txt"), `User-agent: *\nAllow: /\nSitemap: ${publicSite()}sitemap.xml\n`);
   /**

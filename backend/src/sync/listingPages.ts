@@ -12,7 +12,7 @@ import { photoCandidates } from "../../../src/lib/samePhoto.ts";
 import type { Unclaimed } from "../../../src/data/types.ts";
 import { METROS } from "../taxonomy/catalog.ts";
 import { REGION_NAME, countryOfArea, regionOfArea } from "../../../src/data/regions.ts";
-import { KINDS, bookablePages, cardPhoto, fileFor, hasListingPage, pageFooter, pageTitle, placeName as metroPlaceName, priceOf, publicSite, socialCard, type Item, type Kind, type Place } from "./pages.ts";
+import { KINDS, bookablePages, cardPhoto, fileFor, hasListingPage, pageFooter, pageTitle, placeName as metroPlaceName, priceOf, publicSite, socialCard, MARKETPLACE_IN_SEARCH, noindex, type Item, type Kind, type Place } from "./pages.ts";
 
 /**
  * One static page per listing, /l/<id>.html: the business's own name, area, blurb, menu, hours, policies, FAQ
@@ -396,7 +396,9 @@ export type ListingPagesResult = { pages: number; totalBytes: number; avgBytes: 
  * reliable way to know whether "<art> in <metro>" actually got a page, since a metro under MIN_METRO_LISTINGS or
  * an all-guessed kind gets none. Call writeLandingPages first and pass its result straight through.
  */
-export function writeListingPages(rawItems: Item[], landingPages: { existingPages: Set<string> }, opts: { publicDir?: string } = {}): ListingPagesResult {
+export function writeListingPages(rawItems: Item[], landingPages: { existingPages: Set<string> }, opts: { publicDir?: string; inSearch?: boolean } = {}): ListingPagesResult {
+  // Out of search by default (MARKETPLACE_IN_SEARCH in pages.ts): every page is noindex and no listings sitemap is offered.
+  const inSearch = opts.inSearch ?? MARKETPLACE_IN_SEARCH;
   // Same menu the app shows and the city pages quote: see bookablePages in pages.ts.
   const items = bookablePages(rawItems);
   const publicDir = opts.publicDir || defaultPublicDir;
@@ -423,15 +425,16 @@ export function writeListingPages(rawItems: Item[], landingPages: { existingPage
     }
     const html = page(item, { landingHref, landingLabel: landingLabelFor(item, metro, landingHref), kindPageHref });
     const file = `${item.id}.html`;
-    writeFileSync(join(dir, file), html);
+    writeFileSync(join(dir, file), inSearch ? html : noindex(html));
     // A partner page is noindex (see page()), so it is not offered to search engines here either.
     if (!(item as { affiliate?: unknown }).affiliate) urls.push(`${publicSite()}l/${file}`);
     totalBytes += Buffer.byteLength(html, "utf8");
   }
 
   const sitemapFiles: string[] = [];
-  for (let i = 0; i < urls.length; i += SITEMAP_CHUNK) {
-    const chunk = urls.slice(i, i + SITEMAP_CHUNK);
+  const offered = inSearch ? urls : [];
+  for (let i = 0; i < offered.length; i += SITEMAP_CHUNK) {
+    const chunk = offered.slice(i, i + SITEMAP_CHUNK);
     const n = sitemapFiles.length + 1;
     const name = `sitemap-listings-${n}.xml`;
     writeFileSync(
