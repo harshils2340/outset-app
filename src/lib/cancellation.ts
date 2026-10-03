@@ -213,3 +213,16 @@ export function freeCancelBadge(item: { fc?: string; cancellation?: string; poli
   if (corpus && onlyOperatorCancels(corpus)) return null;
   return freeCancel(item.cancellation, corpus) || item.fc || null;
 }
+
+/**
+ * The badge as a guest reads it. `freeCancel` builds "Free cancellation up to 24 hours before", which ends on
+ * the preposition and needs the thing it points at, so every guest surface finishes the sentence.
+ *
+ * This lived in `WebListing.tsx`, which imports CSS and so cannot be read by the sync that builds the static
+ * `/l/` pages. Those pages printed the badge raw, and 6,917 of them ended the line mid-sentence: "Cancellation:
+ * Free cancellation up to 24 hours before". That is the page a search engine sends a guest to, and the first
+ * thing it told them about getting their money back stopped in the middle.
+ */
+export function tidyCancel(text: string): string {
+  return text.replace(/\bbefore\.?$/i, "before your start time");
+}

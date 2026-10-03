@@ -1,7 +1,7 @@
 import { mkdirSync, readdirSync, unlinkSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { freeCancelBadge } from "../../../src/lib/cancellation.ts";
+import { freeCancelBadge, tidyCancel } from "../../../src/lib/cancellation.ts";
 import { sayLength } from "../../../src/lib/duration.ts";
 import { displayHours } from "../../../src/lib/hoursText.ts";
 import { cleanDesc, placeName, splitIncluded, tidyLength, tidyLine, tidyName } from "../../../src/lib/listingDerive.ts";
@@ -235,7 +235,14 @@ function page(item: Item, opts: { landingHref: string | null; landingLabel: stri
   // Through the badge rule every guest surface reads, not off the stored `fc`. Read raw, 171 of these pages
   // named a different window than the app did for the same shop, and one advertised free cancellation the app
   // strips because the shop only refunds a day it calls off itself.
-  const cancellation = freeCancelBadge(item as { fc?: string; cancellation?: string; policies?: string[] }) || (item as { cancellation?: string }).cancellation || "";
+  // And through the same two readers that finish the sentence. The badge `freeCancel` builds ends on its own
+  // preposition, so 6,917 of these pages read "Cancellation: Free cancellation up to 24 hours before" and
+  // stopped there, where both app surfaces say "before your start time". The shop's own policy, which is what
+  // a listing with no badge falls back to, was printed exactly as the crawl stored it on 26 more: a lost byte,
+  // the shop's jargon left short, and a sentence still shouting.
+  const badge = freeCancelBadge(item as { fc?: string; cancellation?: string; policies?: string[] });
+  const statedCancel = (item as { cancellation?: string }).cancellation;
+  const cancellation = badge ? tidyCancel(badge) : statedCancel ? tidyLine(statedCancel) : "";
   // Through the same rule the app's listing reads, not the raw published lines. Read raw, 5,263 of these pages
   // printed the shop's own "not included" lines under the heading "What's included": "Gratuities", "Lunch",
   // "Hotel pickup and drop-off" and "Alcoholic drinks" were all offered to a guest as things the price covers.

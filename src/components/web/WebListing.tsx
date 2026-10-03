@@ -16,7 +16,7 @@ import { srcSet, thumb } from "../../lib/images";
 import { embedAutoplay, isGif, listingMedia, photoCandidates, probePhotos, type Media } from "../../lib/media";
 import { arrivalWords, bringLine, cleanDesc, durationLabel, groupCap as readGroupCap, lengthWords, minAge, notAlreadyShown, placeName, splitIncluded, splitPolicies, tidyLength, tidyLine, tidyName, variantPickLabel } from "../../lib/listingDerive";
 import { sayLength } from "../../lib/duration";
-import { freeCancelBadge } from "../../lib/cancellation";
+import { freeCancelBadge, tidyCancel } from "../../lib/cancellation";
 import { reportDeadCover, useDeadCovers } from "../../lib/deadCovers";
 import { pickSimilar } from "../../lib/similar";
 import { bookableStart, clockIn, hourLines, itemOpenState, itemWeek, zoneFor } from "../../lib/openNow";
@@ -157,6 +157,8 @@ export function possessive(name: string): string {
 // builds the static pages read too, so they live in `lib/listingDerive`
 // where a test can load them without the stylesheet this file imports. Re-exported here for the call sites.
 export { splitIncluded, tidyLength, tidyLine, tidyName };
+// `tidyCancel` now lives in lib/cancellation.ts, where the sync can read it too; re-exported for the sheet.
+export { tidyCancel };
 
 /**
  * What the operator says about arriving, or "" when they say nothing. A greeting or a sign-off is not arrival
@@ -280,11 +282,6 @@ export const tidyDuration = sayLength;
 /** "84457 Overseas Hwy, Islamorada, FL, 33036" loses the comma before the ZIP. */
 export function tidyAddress(text: string): string {
   return text.replace(/,\s*(\d{5}(?:-\d{4})?|[A-Z]\d[A-Z] ?\d[A-Z]\d)$/, " $1");
-}
-
-/** "Free cancellation up to 48 hours before" ends on a preposition; say before what. */
-export function tidyCancel(text: string): string {
-  return text.replace(/\bbefore\.?$/i, "before your start time");
 }
 
 /* ---------- reviews ---------- */

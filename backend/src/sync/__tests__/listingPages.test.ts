@@ -817,3 +817,35 @@ test("the static listing page names a menu row the way the app names it", () => 
     r.cleanup();
   }
 });
+
+/**
+ * `freeCancel` builds a badge that ends on its own preposition, "Free cancellation up to 24 hours before", and
+ * both app surfaces finish the sentence with `tidyCancel`. This page printed the badge raw, so 6,917 of the
+ * shipped pages stopped mid-sentence on the one fact a guest looks for before they pay. The policy a listing
+ * with no badge falls back to was printed exactly as the crawl stored it on 26 more, where the app prints it
+ * through `tidyLine`.
+ */
+test("the cancellation line finishes its own sentence, and a stated policy is the line the app prints", () => {
+  const items: Item[] = [
+    item("o-a", { cover: "https://x/a.jpg", cancellation: "Full refund if you cancel up to 24 hours in advance." } as Partial<Item>),
+    // No promise to the guest at all, so the badge is withheld and the shop's own policy is the line: still
+    // shouting, opening on the crawl's own asterisks, and with a space left in front of its bracket.
+    item("o-b", {
+      cover: "https://x/b.jpg",
+      cancellation: "** ALL SALES ARE FINAL AND NON-REFUNDABLE ( NO EXCEPTIONS )",
+    } as Partial<Item>),
+  ];
+  const r = run(items);
+  try {
+    const a = r.read("o-a.html");
+    assert.ok(a.includes("Free cancellation up to 24 hours before your start time"), "the badge still ends on its preposition");
+    assert.ok(!/24 hours before<\/p>|24 hours before&/.test(a), "the line still stops mid-sentence");
+    const b = r.read("o-b.html");
+    assert.ok(!b.includes("Free cancellation"), "a shop that refunds nobody is advertising a promise");
+    assert.ok(!b.includes("** ALL SALES"), "the policy is printed exactly as the crawl stored it");
+    assert.ok(b.includes("All sales are final and non-refundable (no exceptions)"), "the policy is not the line the app prints: " + b.slice(b.indexOf("Cancellation:"), b.indexOf("Cancellation:") + 160));
+  } finally {
+    r.cleanup();
+  }
+});
+
