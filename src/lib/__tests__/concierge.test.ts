@@ -651,6 +651,41 @@ test("a live shop we do not hold still becomes a listing Ask can book", () => {
   }), id);
 });
 
+/**
+ * Two shops that fold to one stub id. The id is the domain or the name with its punctuation taken out plus the
+ * town, and the record behind it is what the pay sheet prices, what the confirmation names and where the
+ * booking is filed, so the second shop must not be handed the first's.
+ */
+test("two shops whose stub ids fold together get one listing each", () => {
+  const option = (name: string, domain: string) => ({
+    name,
+    domain,
+    city: "Westerville",
+    region: "OH",
+    rating: null,
+    reviews: null,
+    category: "swim",
+    bookingUrl: "",
+    departures: [],
+    route: "feed" as const,
+    phone: null,
+    services: [],
+  });
+  // The hyphen and the underscore fold together, which is how two Aqua-Tots shared one catalog id.
+  const first = listingForOption(option("Aqua-Tots Westerville", "aqua-tots.example"));
+  const second = listingForOption(option("Aqua-Tots North", "aqua_tots.example"));
+  assert.notEqual(first, second);
+  assert.equal(experienceById(first)?.title, "Aqua-Tots Westerville");
+  assert.equal(experienceById(second)?.title, "Aqua-Tots North");
+  // The same shop asked for twice still gets the stub it already has.
+  assert.equal(listingForOption(option("Aqua-Tots North", "aqua_tots.example")), second);
+  // With no domain at all, the name is all there is to tell two shops apart.
+  const a = listingForOption({ ...option("The Escape Room", ""), category: "escape" });
+  const b = listingForOption({ ...option("The Escape Room Downtown", ""), category: "escape" });
+  assert.notEqual(a, b);
+  assert.equal(experienceById(b)?.title, "The Escape Room Downtown");
+});
+
 test("a chain in Waterloo is not booked as the Tampa shop that shares the domain", () => {
   assert.equal(listingIdFor({ domain: "escapology.com", city: "Waterloo", name: "Escapology Waterloo" }), null);
   const id = listingForOption({

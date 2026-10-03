@@ -440,6 +440,14 @@ export function listingIdFor(option: { domain: string; city?: string | null; nam
   return null;
 }
 
+/** Whether the record already held under a stub id is this shop, rather than another that folds to it. */
+function isSameShop(held: Unclaimed | null, option: ConciergeOption): boolean {
+  if (!held) return true; // nothing there: the id is free
+  const host = domainOf(option.domain || "");
+  const theirs = domainOf(held.src || "");
+  return host || theirs ? host === theirs : held.title === option.name;
+}
+
 /**
  * A listing Ask can book against. Catalog first, then a stub so a live shop we have never ingested still
  * finishes on Outset instead of dumping the guest onto the vendor's own pay page.
@@ -450,7 +458,18 @@ export function listingForOption(option: ConciergeOption): string {
   const host = domainOf(option.domain || "");
   const place = foldPlace(option.city || "").replace(/ /g, "").slice(0, 16);
   const slug = ((host || option.name).toLowerCase().replace(/[^a-z0-9]+/g, "") + place).slice(0, 48) || "shop";
-  const id = "cg-" + slug;
+  /**
+   * The stub id is a shop's domain or name with the punctuation taken out, plus its town, cut to 48: two
+   * different shops can ask for one. A domain spelled with a hyphen and the same one spelled with an
+   * underscore fold together ("aqua-tots.com" and "aqua_tots.com" shared a catalog id on the same rule), and
+   * two shops of one chain in one town, neither carrying a domain, fold on their name.
+   *
+   * Handing the second of them the first's stub books the first: the record behind the id is what the pay
+   * sheet prices, what the confirmation names and where the booking is filed. So the id is reused only when it
+   * is already this shop, and the next shop gets one of its own.
+   */
+  let id = "cg-" + slug;
+  for (let n = 2; n <= 50 && !isSameShop(experienceById(id), option); n += 1) id = "cg-" + slug.slice(0, 44) + "-" + n;
   if (experienceById(id)) return id;
   const art = (ART_LABEL[option.category] ? option.category : "tour") as ArtKind;
   const here = `${option.city || ""} ${option.region || ""}`;
