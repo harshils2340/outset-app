@@ -3,6 +3,7 @@ import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { db } from "../db/client.ts";
+import { catalogId } from "./catalogId.ts";
 import { readJson } from "./store.ts";
 import { contactEmail } from "../../../src/lib/email.ts";
 
@@ -35,8 +36,6 @@ export function maskEmail(email: string): string {
   return (user || "").slice(0, 1) + "...@" + (domain || "");
 }
 
-const slug = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 48);
-
 export function hostOf(url: string): string {
   try {
     return new URL(url.startsWith("http") ? url : "https://" + url).hostname.toLowerCase().replace(/^www\./, "");
@@ -57,7 +56,7 @@ export function writeClaimIndex(): { path: string; count: number; withEmail: num
   const idx: Index = {};
   let withEmail = 0;
   for (const r of rows) {
-    const id = "o-" + slug(r.domain);
+    const id = catalogId(r.domain);
     const domains = Array.from(new Set([ownDomain(r.domain), r.website ? ownDomain(hostOf(r.website)) : null].filter((x): x is string => !!x)));
     const entry: Entry = { d: domains };
     // Only an address an owner could be asked to write from: `contactEmail` decodes the ones a site hid from

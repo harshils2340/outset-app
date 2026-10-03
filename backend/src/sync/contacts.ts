@@ -8,6 +8,7 @@ import { writeLandingPages } from "./pages.ts";
 import { writeListingPages } from "./listingPages.ts";
 import { encodeWeek, isTradingHoursLine } from "./hours.ts";
 import { claimKeyHash } from "../lib/claim.ts";
+import { catalogId } from "../lib/catalogId.ts";
 import { clip, endAtWord, lastSentenceEnd } from "../lib/clip.ts";
 import { dropPlaceholderPins } from "./placeholderPins.ts";
 import { dropBorrowedTowns } from "./borrowedTowns.ts";
@@ -275,6 +276,7 @@ function titleKey(t: string): string {
   return t.toLowerCase().replace(/\b(llc|inc|ltd|co|corp|company)\b/g, "").replace(/[^a-z0-9]+/g, " ").trim();
 }
 
+/** A city or metro name as one word for matching. A listing id is not made here: see lib/catalogId.ts. */
 function slug(s: string): string {
   return s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 48);
 }
@@ -361,7 +363,7 @@ export function toCatalogItem(r: CatalogRow): Record<string, unknown> {
   const spamCompromised = hasSpamText || isolatedForeignScript;
   if (spamCompromised) {
     const reason = hasSpamText ? "hacked-page spam in a crawled fact or offering" : "an isolated run of a script the rest of the listing never uses";
-    console.warn(`[sync] quarantined ${r.domain} (o-${slug(r.domain)}): ${reason}`);
+    console.warn(`[sync] quarantined ${r.domain} (${catalogId(r.domain)}): ${reason}`);
     cleanupLog?.quarantined.push({ id: r.domain, reason });
   }
   // The operator's own pages: the catalog domain, the website field's host (sister brand or a second domain),
@@ -499,8 +501,8 @@ export function toCatalogItem(r: CatalogRow): Record<string, unknown> {
   const region = regionCode(r.region);
   const area = r.city ? (region && !r.city.includes(region) ? r.city + ", " + region : r.city) : region || "";
   const item: Record<string, unknown> = {
-    id: "o-" + slug(r.domain),
-    claimKey: claimKeyHash("o-" + slug(r.domain)),
+    id: catalogId(r.domain),
+    claimKey: claimKeyHash(catalogId(r.domain)),
     title,
     cat: family || "water",
     // The test listing (origin 'test') is published like any other shop, in every list, search, rail and landing
@@ -2371,7 +2373,7 @@ export function syncCatalogToApp(): { path: string; count: number } {
   const published = new Set((operators as { id: string }[]).map((o) => o.id));
   const liveUrls: Record<string, string> = {};
   for (const row of db.prepare(`SELECT o.domain AS domain, f.fact_value AS url FROM operators o JOIN facts f ON f.operator_id = o.id AND f.fact_key = 'booking_url' WHERE ${readableSql("f.fact_value")}`).all() as { domain: string; url: string }[]) {
-    const id = "o-" + slug(row.domain);
+    const id = catalogId(row.domain);
     if (!published.has(id) || !isReadable(row.url)) continue;
     // FareHarbor, Peek and Xola have the listing page's own richer reader; keep one of those over a concierge-only link.
     if (!liveUrls[id] || (!listingReader(liveUrls[id]) && listingReader(row.url))) liveUrls[id] = row.url;

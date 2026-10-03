@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { VENDORS } from "../enrich/vendors.ts";
+import { catalogId } from "../lib/catalogId.ts";
 import { db, nowIso } from "../db/client.ts";
 import { mailPostal, unsubPageUrl } from "../lib/unsub.ts";
 import { tidyHours } from "../sync/contacts.ts";
@@ -30,10 +31,12 @@ type Op = {
   calendar_vendor: string | null;
 };
 
-/** The guest app keys catalog operators by domain: "o-" + slug(domain). Deep links use that id, not the DB uuid. */
-export function catalogId(domain: string): string {
-  return "o-" + domain.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 48);
-}
+/**
+ * The guest app keys catalog operators by domain. Deep links use that id, not the DB uuid, and it is the same
+ * reader the catalog, the detail files and the claim index use, so an outreach email cannot carry a link to a
+ * listing that publishes under a different id (see lib/catalogId.ts).
+ */
+export { catalogId };
 
 /** Vendors whose live calendar Outset reads (src/enrich/availability.ts): guests only see times the operator has open. */
 export const LIVE_CALENDAR = new Set(["fareharbor", "peek", "xola"]);
