@@ -186,7 +186,13 @@ export function App() {
           </div>
         ) : state.screen !== "operator" && state.sheet === "request" && reqTarget ? (
           <div className="web">
-            <WebListing item={reqTarget} onClose={closeSheet} onOpen={(id) => { window.scrollTo(0, 0); openRequest(id); }} />
+            {/*
+              Keyed by the listing, because the rail at the bottom of this page opens another one in place.
+              Without the key React keeps the instance and every piece of per-listing state in it: the Save
+              heart read "Saved" on a listing nobody had saved, and the one press a guest makes to save it
+              said "Removed from saved" instead. The phone sheet has keyed this since it was written.
+            */}
+            <WebListing key={reqTarget.id} item={reqTarget} onClose={closeSheet} onOpen={(id) => { window.scrollTo(0, 0); openRequest(id); }} />
           </div>
         ) : state.screen !== "operator" && state.sheet === "request" && state.reqTargetId && !state.catalogComplete ? (
           <div className="web">
