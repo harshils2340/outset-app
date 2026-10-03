@@ -47,10 +47,17 @@ export function listingFromMaps(h: MapsPlace, q: string): Unclaimed {
       return u;
     }
   }
-  const known = experienceById("g-" + h.placeId.replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 40));
+  /**
+   * The whole place id, not the first 40 characters of it. Google's shorter ids are random enough that a cut
+   * made no difference, but the ones that encode an address ("Ei..." in base64) share as long a prefix as the
+   * addresses do, so two units at one address or two numbers on one street could fold to a single id. The
+   * second shop was then handed the first's card and opened the first's page, which is the same fault two
+   * Aqua-Tots had on a folded catalog id. These ids live in this visit's overlay and nothing stores them.
+   */
+  const id = "g-" + h.placeId.replace(/[^a-zA-Z0-9_-]/g, "");
+  const known = experienceById(id);
   if (known) return known;
   const art = (describeQuery(q).arts[0] || "tour") as ArtKind;
-  const id = "g-" + h.placeId.replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 40);
   const metro = nearestMetro(h.lat, h.lon, 400);
   const u: Unclaimed = {
     id,
