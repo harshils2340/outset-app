@@ -9347,6 +9347,119 @@ written. `STRIPE_SECRET_KEY`, `RESEND_API_KEY` and `GITHUB_TOKEN` were empty thr
   fifth run in a row: it pointed at the hundred and twelfth run's commit with `HEAD` detached. Re-pointed
   with `git checkout -B main origin/main` before committing.
 
+## 3 October 2026, hundred and thirtieth run (08:16 to 09:10 UTC)
+
+**Chosen, and why.** Nothing had landed since the hundred and twenty-ninth run's entry but that entry itself
+(`3ee8e52e`), and it records the rehearsal green at 57 of 57, so by the brief's own rule the **rehearsal was
+skipped at the start** and the time went on hunting; it was run three times afterwards, once the commits had
+touched `src/` and `backend/src/`. Baseline matched that entry after `npm install` on both sides: root
+`tsc --noEmit -p .` and `tsc -b` clean, backend `tsc` clean but for TS5097, backend 987 with 985 pass and 2
+skipped, app 1,216 pass.
+
+Target: **whether a key the product resolves a business by names one business.** Every area the brief lists is
+on Verified, and this dimension was not: the catalog has been swept for duplicate menu rows, duplicate photos
+and duplicate FAQ questions, and never for two shops under one id. The first query answered it.
+
+**Found and fixed.** Six commits, pushed.
+
+- **Two different businesses shipped under one listing id** (`e82d0b58`). The id is the operator's own domain
+  slugged, and the slug folds every run of punctuation to one hyphen and cuts at 48 characters, so
+  "aqua-tots.com" and "aqua_tots.com" both asked for `o-aqua-tots-com`: Aqua-Tots in Westerville, Ohio and
+  Aqua-Tots in Dallas, Texas. It was minted in four places and **every writer settled it differently**.
+  catalog.json carried both rows, the app's merge kept the first (Westerville, with its cover and its tags),
+  and `public/o/o-aqua-tots-com.json` plus the claim-index entry were written by the second. So **the
+  Westerville card opened a page headed "Dallas, TX"**, with a Dallas phone number, no menu, no hours and
+  "we will ask when you request", **and the only address allowed to claim that listing was one at the other
+  shop's domain**. `backend/src/lib/catalogId.ts` settles a collision once, from the domains alone: the first
+  domain in order keeps the plain id, the others get a stable hash of their own on the end. Order does not
+  come into it, so the catalog, the detail files, the live index, the claim index and the outreach drafts
+  agree without agreeing on how they walk the table. 46,323 of 46,324 shipped ids are unchanged.
+- **A listing keeps its own facts when the file it reads names another shop** (`3711d11c`). `hydrateItem`
+  replaces a catalog row wholesale with the detail file, trusting the file name, so the fault above also
+  stripped the card behind the page of the photo it had been drawn with. A record on another domain is refused
+  and the screen keeps the card's facts with the honest gap under them.
+- **The dashboard stops seeding a shop's own profile from another shop's file** (`462c8b75`). The operator
+  dashboard fills a fresh claim's photos and description from the seed's crawled twin, under an id it guesses
+  from the domain through that same slug, and checked nothing it got back. One reader for the rule now,
+  `sameBusiness`, asked by both places the app reads a listing's own file.
+- **A second shop that folds to a taken concierge stub id gets a listing of its own** (`4d1a5ca9`). Ask builds
+  a stub for a live shop the catalog has never ingested, keyed on the domain or the name with its punctuation
+  taken out plus the town, cut to 48. The second shop was handed the first's stub, and that record is what the
+  pay sheet prices, what the confirmation names and where the booking is filed, so **tapping the second shop
+  booked the first**.
+- **Two Maps results that agree for 40 characters stop opening as one shop** (`ad4eb59e`). The card for a shop
+  Google listed was keyed by its place id cut to 40, and Google's address-encoded ids are base64 of the
+  address, so they share as long a prefix as the addresses do. The whole place id is the key now; these ids
+  live in the visit's overlay and nothing stores them.
+- **A name OpenStreetMap joined with a semicolon stopped printing as two names** (`0ede2570`). Found while
+  reading the colliding row's neighbours: OSM joins a tag's values with a semicolon and no space, and **25
+  shipped names are two names glued together**, a shop beside its own spelling ("Paper Mill
+  Playhouse;Papermill Playhouse") or two businesses at one address ("Fun Factory;Taco Bell", "Greyhound Bus
+  Station;Freedom Rides Museum"). Every one was printed whole on the card, the hero, the pay sheet, the
+  confirmation, the static page, the outreach email and in Otto's answers. `shopTitle` takes the fullest half
+  the shop's own domain names, and OSM's own first value where the domain names neither; a semicolon the shop
+  wrote itself has a space after it, as all 5 partner products that carry one do, and stays.
+
+**Swept and clean, or measured and left.**
+
+- **Every shipped detail file against its catalog row**, all 52,815: `id` matches the filename on every one,
+  every file has a row, and exactly **one** file's `src` disagrees with its row's, the Aqua-Tots pair above.
+- **Every claim-index entry against the catalog**, 46,324 with a row: 787 are claimable from a domain the
+  listing itself does not name, 786 of them `osm-` and `gplace-` rows whose claimable domain is the website on
+  file, which is the rule working. The 787th is the same Aqua-Tots.
+- **Every booking code path.** Codes are minted in the browser and the route refuses a duplicate under the
+  listing's own advisory lock, so two guests cannot share one. Clean.
+- **Every other key a shop is resolved by**: the demo profile's fixed id, the landing pages' town-plus-region
+  slug (which already carries the region because two states share a town name), the review and deal dedupe
+  keys, the content-addressed upload names and the HMAC claim tokens. Nothing else reuses a record without
+  asking whose it is.
+- **The 291 `gplace-` synthetic domains**, whose Google place ids are case-sensitive and which the slug
+  lowercases: all 291 are still distinct once folded, so the id rule above is what stands between them and a
+  collision.
+
+**Verification.** App `npm test` 1,230 pass, 0 fail, up from 1,216 (14 new across `catalogId`, `sameBusiness`,
+`hydrateItem`, `concierge`, `mapsNearby` and `shopName`); backend 993 with 991 pass and 2 skipped, up from 987
+(6 new). Each new test was run against the tree with its own fix reverted and fails there. `tsc --noEmit -p .`,
+`tsc -b` and the backend's own `tsc` all clean but for TS5097. The **rehearsal ran 57 of 57 three times**,
+on a local Postgres 16 cluster on port 5433 with SSL on and the on-disk Playwright Chromium. Nothing tracked
+under `backend/data`, `public/` or `src/data` was written. `STRIPE_SECRET_KEY`, `RESEND_API_KEY` and
+`GITHUB_TOKEN` were empty throughout.
+
+**Needs Harshil.**
+
+- **The published catalog still holds the collision until a sync runs.** The app now refuses the mismatched
+  detail file, so the Westerville page shows its own card facts and the honest gap rather than Dallas, but the
+  Dallas shop stays out of the catalog and its own page stays unreachable until the sync mints it an id.
+- **Whether the Dallas row is a franchise location or a mistyped domain.** `aqua_tots.com` is not a hostname
+  anyone can resolve, an underscore is not legal in one, and Aqua-Tots is a franchise, so the two rows may well
+  be one chain the crawl split. That is a supply judgement, not a rule.
+- **Four shipped domains carry a scheme glued on**: `lasvegasshootingcenter.com;http`, `tnmot.org;https`,
+  `easttroyrr.org;https`, `thehand.space;http`. Their ids read `o-lasvegasshootingcenter-com-http`, the
+  contact block publishes the glued string as the shop's domain, and only the website on file can claim them.
+  The same OSM join is behind it, and fixing it means normalising the domain where the row is read, which
+  moves four ids.
+- **Five area lines and some streets are joined the same way**, which the title fix does not reach: "Terryville;Plymouth, CT",
+  "DeWitt;Syracuse, NY", "Wausau;Texas, WI", "Willimantic;Windham, CT", "Leavenworth;Plain, WA", and
+  "5155;5115 South Dean Martin Drive;Dean Martin Drive". A card prints the area raw, by design, so this wants
+  the sync rather than a reader, and it wants a choice: the first value is the village and the second the town
+  it sits in.
+- **Eight of the 25 joined names are two different businesses at one address**, where the catalog holds one row
+  and now prints the first value: Greyhound Bus Station over Freedom Rides Museum, Niagara Falls Armoury over
+  Niagara Falls Museum, Pizza and Taproom over Martin City Brewing Company, Tribby Café over Overlook Gallery
+  among them. Which of the two the listing is about cannot be read off the page.
+- Still open from earlier runs, unchanged: **there is no error boundary in this app**, now fifteen runs asked;
+  "Open right now near you" is computed once a visit; the checkout splash has no control of its own;
+  `docs/E2E-LOCAL.md` still documents only the Neon branch and says nothing about the local cluster every run
+  here builds instead; a fresh container ships no `node_modules`; the 18 listings whose crawl published only
+  closed days claim with all seven shut; a dump of the SQLite catalog, without which no run here can judge the
+  concierge's shortlist; the phone's browse is not ranked while the desktop's is; the phone confirmation offers
+  no way to reach the shop; a guest cannot cancel a booking at all; the booking box asks for ten digits of
+  phone number where the route asks for seven; a price sort and a price filter compare two dollars on six
+  metros; the cards say "$" for a Canadian shop; and this container still injects a `GITHUB_TOKEN`, which the
+  brief says must be empty (everything tonight was run with it cleared). **Local `main` was behind again**,
+  sixth run in a row: `HEAD` was detached at the hundred and twenty-ninth run's commit. Re-pointed with
+  `git checkout -B main origin/main` before committing.
+
 ## Coverage
 
 The catalog is 48,198 listings as of the 23 September sync, 1,873 of them Viator partner rows. Counts below
@@ -10361,7 +10474,16 @@ with the listing detail file, the dashboard's seed twin read, the concierge stre
 Stripe.js script tag all given one; every hand-built promise in both trees walked for a path that resolves
 nothing; every `<button>` whose `onClick` starts an async handler against something stopping a second press,
 which is how the sign-in code's own button was found spending an owner's attempts on a correct code; and
-every direct `localStorage` read and write in the app, all 48, for a quota or private-mode throw.
+every direct `localStorage` read and write in the app, all 48, for a quota or private-mode throw. Whether a
+key the product resolves a business by names one business: every id minted from a domain in both trees, over
+all 46,324 shipped operator domains, with the slug's folded punctuation and its 48 character cut both closed
+in one reader; every one of the 52,815 shipped detail files against its catalog row, for a file whose `id` is
+not its name and a file whose shop is not the row's; every claim-index entry against the catalog, for a
+listing claimable from a domain it does not name; the concierge's own stub ids and the Maps card's place ids,
+both of which reused a record without asking whose it was; booking codes, the landing pages' town slug, the
+review and deal dedupe keys, the upload names and the claim tokens. The business name read for a value
+OpenStreetMap joined to another with a semicolon, over all 52,816 shipped names, against the 5 where the
+semicolon is the shop's own punctuation.
 
 **Not yet checked.** Whether `POST /auth/verify` should count a try it is about to find correct, which is
 what makes any client retry cost an owner one of five attempts (see this run's Needs Harshil). Whether a
@@ -10783,4 +10905,16 @@ because no shipped client sends a point (see the hundred and twenty-eighth run's
 app should send the coordinates it already holds to the concierge at all, given that the API validates and
 plumbs a point nothing posts and the app answers the place question by writing the town into the sentence.
 Whether `openMap` should also be cleared when the API answers "nothing known", independently of the key that
-now resets it, so the next unkeyed mount of a listing body cannot reintroduce the same stale times.
+now resets it, so the next unkeyed mount of a listing body cannot reintroduce the same stale times. Whether the Aqua-Tots pair is one franchise the crawl split in two or two shops on two
+domains, which is the one supply judgement behind tonight's id rule (see the hundred and thirtieth run's Needs
+Harshil). Whether the four domains carrying a glued scheme (`lasvegasshootingcenter.com;http` and three more)
+should be normalised where the row is read, which would move four ids and would also stop the contact block
+publishing the glued string as the shop's own domain. Whether the five area lines and the streets joined with a
+semicolon the same way should be cut the way a name now is, and if so whether the village or the town it sits
+in is the place ("Terryville;Plymouth, CT", "Leavenworth;Plain, WA"): a card prints the area raw by design, so
+it wants the sync rather than a reader. Which of two businesses at one address a listing is about, on the 8 of
+25 joined names where the halves are two real shops and the first value now stands (Greyhound Bus Station over
+Freedom Rides Museum, Pizza and Taproom over Martin City Brewing Company). Whether a catalog id should depend
+on the other domains in the table at all: tonight's rule hands the plain id to the first domain in order, which
+is what keeps all 46,323 uncontested ids still, and means a collision loser's id would move if the winner were
+ever deleted.
