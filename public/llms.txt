@@ -1,0 +1,22 @@
+# Outset
+
+> Outset is a 24/7 AI front desk (AI receptionist) for businesses that take bookings. When a business's team is busy with guests or the business is closed, Outset's AI assistant, Otto, answers the phone in the business's name instead of letting the call go to voicemail. It answers only from the business's own published prices, hours, age rules and policies, helps the caller find a time and book on the business's own booking page, takes a message for anything it can't answer, and sends the team a summary of every call. Staff keep answering first; Outset covers the calls nobody can get to.
+
+Outset is built for activity businesses (escape rooms, tours, boat and jet ski rentals, fishing charters, karting, skydiving, paintball, trail rides, kayak tours) and works for any business that takes bookings by phone, including spas, studios, golf courses and restaurants. It serves businesses in the United States and Canada. Setup is free and takes about a day; there is no long contract.
+
+## Pages
+
+- [Home](https://onoutset.com/): what Outset does, a 42-second sample call, and answers to common questions
+- [Features](https://onoutset.com/features): answering every call, answers from the business's facts, booking help, call summaries, and setup
+- [Integrations](https://onoutset.com/integrations): works with FareHarbor, Peek, Xola, ROLLER, Bookeo, Checkfront, Rezdy, Resova, Bókun, TrekkSoft, Rezgo and 26 more booking systems
+- [Pricing](https://onoutset.com/pricing): Essential, Pro and Groups plans; the price is set per business on a short demo call
+
+## Company
+
+- Founder: Harshil Shah, Toronto, Canada
+- Contact: hello@onoutset.com
+- Book a demo: https://cal.com/harshil-shah-7tkvs7/outset
+
+## Also from Outset
+
+- [Activities](https://onoutset.com/activities): a marketplace to find and book local activities across the United States and Canada
