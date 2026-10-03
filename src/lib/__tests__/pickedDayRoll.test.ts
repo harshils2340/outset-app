@@ -32,9 +32,9 @@ test("the provider remembers the day, not only the position", () => {
   // The picked day is written down whenever one is picked.
   assert.match(prov, /case "date":[\s\S]{0,400}dayKey: dateKey\(bookingDates\(\)\[action\.dateIdx\]/);
   // And read back on the roll rather than the index being kept.
-  assert.match(prov, /case "dayRolled"[\s\S]{0,1600}bookingDates\(\)\.findIndex\(\(d\) => dateKey\(d\) === state\.dayKey\)/);
+  assert.match(prov, /case "dayRolled"[\s\S]{0,1700}days\.findIndex\(\(d\) => dateKey\(d\) === state\.dayKey\)/);
   // A day that has gone takes the picked start time with it.
-  assert.match(prov, /case "dayRolled"[\s\S]{0,1700}slot: i >= 0 \? state\.slot : null/);
+  assert.match(prov, /case "dayRolled"[\s\S]{0,2000}slot: i >= 0 \? state\.slot : null/);
 });
 
 test("the midnight timer tells the reducer the day rolled rather than only nudging a redraw", () => {

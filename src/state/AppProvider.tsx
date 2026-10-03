@@ -233,8 +233,11 @@ function reducer(state: AppState, action: Action): AppState {
        * of the window is the day that has just ended, so that guest lands on the first day still in it and
        * the start time they had picked on the old day goes with it.
        */
-      const i = state.dayKey ? bookingDates().findIndex((d) => dateKey(d) === state.dayKey) : 0;
-      return { ...state, catalogVersion: state.catalogVersion + 1, dateIdx: i >= 0 ? i : 0, slot: i >= 0 ? state.slot : null };
+      const days = bookingDates();
+      const i = state.dayKey ? days.findIndex((d) => dateKey(d) === state.dayKey) : 0;
+      const at = i >= 0 ? i : 0;
+      // The key follows the index, so it still names the day the guest is on after a day that fell out.
+      return { ...state, catalogVersion: state.catalogVersion + 1, dateIdx: at, dayKey: state.dayKey ? dateKey(days[at]) : "", slot: i >= 0 ? state.slot : null };
     }
     case "tab":
       return { ...state, tab: action.tab, screen: action.tab };
