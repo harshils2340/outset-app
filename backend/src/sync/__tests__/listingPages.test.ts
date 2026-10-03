@@ -849,3 +849,33 @@ test("the cancellation line finishes its own sentence, and a stated policy is th
   }
 });
 
+/**
+ * Highlights beside them on this page have read `tidyLine` since the day the section existed; the rules never
+ * did. 536 lines on 413 shipped pages read one way here and another in the app: a bag policy still in capitals,
+ * a line opening on the crawl's own asterisk, the shop's shorthand left short, and a stray space in front of a
+ * bracket or a full stop.
+ */
+test("a rule on the page is the line the app prints, not the line the crawl stored", () => {
+  const items: Item[] = [
+    item("o-a", {
+      cover: "https://x/a.jpg",
+      requirements: [
+        "*COVID-19 Update: Guests should not attend if they test positive",
+        "PARTICIPANTS MUST CHECK IN 30 MINUTES PRIOR TO DEPARTURE TIME",
+        "Must show a valid photo ID ( Passport or Drivers License).",
+      ],
+    } as Partial<Item>),
+  ];
+  const r = run(items);
+  try {
+    const a = r.read("o-a.html");
+    const reqs = a.slice(a.indexOf("<h2>Requirements</h2>"));
+    assert.ok(reqs.includes("COVID-19 Update: Guests should not attend"), "the rule went missing");
+    assert.ok(!reqs.includes("*COVID-19"), "a line still opens on the crawl's own asterisk");
+    assert.ok(reqs.includes("Participants must check in 30 minutes prior to departure time"), "a rule is still shouting: " + reqs.slice(0, 300));
+    assert.ok(reqs.includes("Must show a valid photo ID (Passport or Drivers License)."), "the space in front of the bracket is still there");
+  } finally {
+    r.cleanup();
+  }
+});
+

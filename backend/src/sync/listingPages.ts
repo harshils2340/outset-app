@@ -258,6 +258,10 @@ function page(item: Item, opts: { landingHref: string | null; landingLabel: stri
   // listings that publish their own highlights showed none of them here either.
   const facts = listingFacts(unclaimedShape(item));
   const stated = (item as { requirements?: string[] }).requirements || [];
+  // Through `tidyLine`, which is what the app prints a rule through and what the highlights beside them here
+  // already read. Printed raw, 536 lines on 413 of these pages read one way here and another in the app: a
+  // whole bag policy still shouting in capitals, a line opening on the crawl's own "*" or "**", a lost byte,
+  // the shop's shorthand left short, and the space the page left in front of its own bracket or full stop.
   const requirements = (stated.length ? stated : facts.who.filter((l) => l.posted).map((l) => l.text)).slice(0, MAX_LIST_ITEMS);
   // The same guard the app uses: a line already printed as a rule is not repeated as a selling point.
   const reqKeys = new Set(requirements.map(factKey));
@@ -303,7 +307,7 @@ function page(item: Item, opts: { landingHref: string | null; landingLabel: stri
   const includesHtml =
     (includes.length ? `<h2>What's included</h2><ul class="plain">${includes.map((l) => `<li>${esc(l)}</li>`).join("")}</ul>` : "") +
     (notIncluded.length ? `<h2>Not included</h2><ul class="plain">${notIncluded.map((n) => `<li>${esc(n.text)}</li>`).join("")}</ul>` : "");
-  const requirementsHtml = requirements.length ? `<h2>Requirements</h2><ul class="plain">${requirements.map((l) => `<li>${esc(l)}</li>`).join("")}</ul>` : "";
+  const requirementsHtml = requirements.length ? `<h2>Requirements</h2><ul class="plain">${requirements.map((l) => `<li>${esc(tidyLine(l))}</li>`).join("")}</ul>` : "";
   const highlightsHtml = highlights.length ? `<h2>Highlights</h2><ul class="plain">${highlights.map((l) => `<li>${esc(l)}</li>`).join("")}</ul>` : "";
   const faqHtml = faq.length ? `<h2>Questions</h2><div class="faq">${faq.map((f) => `<h3>${esc(f.q)}</h3><p>${esc(f.a)}</p>`).join("")}</div>` : "";
   // "1 reviews" on 982 shipped pages: every other surface counts the word with the number through `reviewsLine`.
