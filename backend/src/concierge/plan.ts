@@ -111,6 +111,66 @@ export function matchRegion(text: string): string | null {
 /** Every place in the catalog whose name appears in the sentence, with how many businesses sit there. */
 export type PlaceMatch = { city: string; region: string; n: number; lat: number; lon: number };
 
+/** One business's pin, as the town queries below read it. */
+type Pin = { city: string; region: string; lat: number; lon: number };
+
+/**
+ * Where a town is, taken from the businesses we hold in it: the middle of their pins, not their average.
+ *
+ * A mean moves with every outlier, and a catalog crawled off 48,000 other people's websites has plenty: a
+ * chain pins every branch at its head office, and a shop that publishes no address at all gets the pin of
+ * whatever its page did name. Three such rows out of Tampa's 127, each about 3,800 km away, moved the town's
+ * centre 166 km into the Gulf of Mexico, and since everything after this is measured in kilometres from that
+ * point, the 40 km circle drawn on it held **none** of Tampa's own businesses: the densest, hand-verified
+ * metro in the product answered "jet ski rental in tampa tomorrow" with nothing at all, and offered no genres
+ * to narrow by either. Vancouver, Washington went the same way, 107 km out and 31 of its 45 shops lost.
+ *
+ * A median is unmoved by a handful of wrong pins: it costs one sort per town and puts Tampa back at
+ * 27.96, -82.46, with 115 of its 127 inside the circle.
+ */
+function medianPoint(pins: Pin[]): { lat: number; lon: number } {
+  const mid = (xs: number[]) => {
+    xs.sort((a, b) => a - b);
+    const m = xs.length >> 1;
+    return xs.length % 2 ? xs[m] : (xs[m - 1] + xs[m]) / 2;
+  };
+  return { lat: mid(pins.map((p) => p.lat)), lon: mid(pins.map((p) => p.lon)) };
+}
+
+/**
+ * The towns one scan's worth of pins names, counted and centred. The grouping, the floor of three businesses
+ * and the cap of twenty were a `GROUP BY ... HAVING ... LIMIT` until the centre stopped being an aggregate the
+ * database can compute; the predicate that feeds this still does the matching, so it is the same single scan.
+ */
+function townsOf(pins: Pin[], least = 3, cap = 20): PlaceMatch[] {
+  const groups = new Map<string, { city: string; region: string; pins: Pin[] }>();
+  for (const p of pins) {
+    const key = p.city.toLowerCase() + "\u0000" + p.region;
+    const g = groups.get(key) || { city: p.city, region: p.region, pins: [] };
+    g.pins.push(p);
+    groups.set(key, g);
+  }
+  return [...groups.values()]
+    .filter((g) => g.pins.length >= least)
+    .sort((a, b) => b.pins.length - a.pins.length)
+    .slice(0, cap)
+    .map((g) => ({ city: g.city, region: g.region, n: g.pins.length, ...medianPoint(g.pins) }));
+}
+
+/**
+ * The same centre for towns that arrived already counted. The typo fallback has to count every town in the
+ * table to find the four hundred biggest, which no median can be folded into, and it keeps at most a couple of
+ * rows afterwards, so those few are re-centred with a query of their own.
+ */
+function recentre(towns: PlaceMatch[]): PlaceMatch[] {
+  if (!towns.length) return towns;
+  const q = db.prepare("SELECT city, region, lat, lon FROM operators WHERE lower(city) = ? AND region IS ? AND lat IS NOT NULL");
+  return towns.map((t) => {
+    const pins = q.all(t.city.toLowerCase(), t.region) as Pin[];
+    return pins.length ? { ...t, ...medianPoint(pins) } : t;
+  });
+}
+
 /**
  * Whether `phrase` appears in `haystack` as its own word, not merely as a run of the same letters inside a
  * longer one.
@@ -424,14 +484,13 @@ export function readIntent(text: string, prior?: Intent | null, device?: { lat: 
    * fifty-five operators' worth of guests in Waterloo, Iowa. Which one they meant is not guessable from the
    * sentence, so the whole list comes back and the planner asks.
    */
-  const exactPlaces = (
+  const exactPlaces = townsOf(
     db
       .prepare(
-        `SELECT city, region, COUNT(*) AS n, AVG(lat) AS lat, AVG(lon) AS lon FROM operators
-          WHERE city IS NOT NULL AND length(city) >= 4 AND lat IS NOT NULL AND instr(?, lower(city)) > 0
-          GROUP BY lower(city), region HAVING n >= 3 ORDER BY n DESC LIMIT 20`,
+        `SELECT city, region, lat, lon FROM operators
+          WHERE city IS NOT NULL AND length(city) >= 4 AND lat IS NOT NULL AND instr(?, lower(city)) > 0`,
       )
-      .all(t) as PlaceMatch[]
+      .all(t) as Pin[],
   ).filter((r) => wordIn(t, r.city));
 
   /**
@@ -444,15 +503,17 @@ export function readIntent(text: string, prior?: Intent | null, device?: { lat: 
   const allPlaces =
     exactPlaces.length || !t.split(/[^a-z]+/).some((tok) => tok.length >= 5)
       ? exactPlaces
-      : (
-          db
-            .prepare(
-              `SELECT city, region, COUNT(*) AS n, AVG(lat) AS lat, AVG(lon) AS lon FROM operators
-                WHERE city IS NOT NULL AND length(city) >= 5 AND lat IS NOT NULL
-                GROUP BY lower(city), region HAVING n >= 3 ORDER BY n DESC LIMIT 400`,
-            )
-            .all() as PlaceMatch[]
-        ).filter((r) => near(r.city.toLowerCase(), 1));
+      : recentre(
+          (
+            db
+              .prepare(
+                `SELECT city, region, COUNT(*) AS n, AVG(lat) AS lat, AVG(lon) AS lon FROM operators
+                  WHERE city IS NOT NULL AND length(city) >= 5 AND lat IS NOT NULL
+                  GROUP BY lower(city), region HAVING n >= 3 ORDER BY n DESC LIMIT 400`,
+              )
+              .all() as PlaceMatch[]
+          ).filter((r) => near(r.city.toLowerCase(), 1)),
+        );
 
   /**
    * A province is not a town of the same name, but it is also not a reason to forget the town. Dropping the
