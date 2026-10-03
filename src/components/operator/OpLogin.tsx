@@ -270,6 +270,15 @@ export function OpLogin({ claimId, claimToken, compact, onEnter, onBack }: { cla
   const [signinEmail, setSigninEmail] = useState("");
   /** The listings a spent sign-in code already bought, so a retry on this screen never sends that code again. */
   const [verifiedIds, setVerifiedIds] = useState<string[] | null>(null);
+  /**
+   * Whether the code is being checked right now. "Open my dashboard" was the one button on this screen with
+   * no busy state: the API gets 12 seconds and its host sleeps when idle, so pressing it did nothing visible
+   * for that long and an owner pressed it again. Every press is another `POST /auth/verify`, which counts the
+   * try before it compares the code and burns the code on the sixth, so an impatient owner holding a correct
+   * code was told it did not match. The first press also deletes the code server-side, so the second press
+   * painted "that code has expired" over a sign-in that was working.
+   */
+  const [checking, setChecking] = useState(false);
   const [mode, setMode] = useState<"claim" | "signin">("claim");
   const [sentOk, setSentOk] = useState(true);
 
@@ -417,18 +426,24 @@ export function OpLogin({ claimId, claimToken, compact, onEnter, onBack }: { cla
   };
 
   const finishSignIn = async () => {
+    if (checking) return;
     setErr(null);
     // A code the API accepted is gone from its side, and the session it handed back is already saved on this
     // device. Pressing the button again after a listing failed to load must therefore retry the load, not the
     // code: sending a spent code back answers "code expired, request a new one" and strands a signed-in owner.
-    if (verifiedIds) { await enterWithIds(verifiedIds); return; }
-    const r = await verifySignInCode(signinEmail, code);
-    // An API that never answered has not read the code, so it is still good for the rest of its ten minutes.
-    // Calling it wrong sent owners back to retype a correct code, and the API counts six tries and then burns it.
-    if (!r.ok) { setErr(r.error || (r.unanswered ? "We couldn't reach Outset to check that code. Check your connection and try again: your code is still good." : "That code does not match.")); return; }
-    if (!r.ids.length) { setErr("No listing is linked to that email yet. Use the claim link from your email."); return; }
-    setVerifiedIds(r.ids);
-    await enterWithIds(r.ids);
+    setChecking(true);
+    try {
+      if (verifiedIds) { await enterWithIds(verifiedIds); return; }
+      const r = await verifySignInCode(signinEmail, code);
+      // An API that never answered has not read the code, so it is still good for the rest of its ten minutes.
+      // Calling it wrong sent owners back to retype a correct code, and the API counts six tries and then burns it.
+      if (!r.ok) { setErr(r.error || (r.unanswered ? "We couldn't reach Outset to check that code. Check your connection and try again: your code is still good." : "That code does not match.")); return; }
+      if (!r.ids.length) { setErr("No listing is linked to that email yet. Use the claim link from your email."); return; }
+      setVerifiedIds(r.ids);
+      await enterWithIds(r.ids);
+    } finally {
+      setChecking(false);
+    }
   };
 
   /** New claim: the API emails the signed link, but only to an address it can tie to this business. */
@@ -457,6 +472,7 @@ export function OpLogin({ claimId, claimToken, compact, onEnter, onBack }: { cla
   };
 
   const finish = () => {
+    if (checking) return;
     if (mode === "signin") { void finishSignIn(); return; }
     if (!picked) return;
     if (isApi) {
@@ -715,7 +731,7 @@ export function OpLogin({ claimId, claimToken, compact, onEnter, onBack }: { cla
             )}
             <label className="odfield"><span>Verification code</span><input inputMode="numeric" autoFocus value={code} onChange={(e) => { setCode(e.target.value); setErr(null); }} placeholder="000 000" onKeyDown={(e) => e.key === "Enter" && finish()} /></label>
             {err ? <p className="oderr">{err}</p> : null}
-            <button type="button" className="cta odwide" onClick={finish}>Open my dashboard</button>
+            <button type="button" className="cta odwide" disabled={checking} aria-busy={checking} title={checking ? "Checking the code you typed" : undefined} onClick={finish}>{checking ? "Checking…" : "Open my dashboard"}</button>
           </>
         ) : null}
       </div>
