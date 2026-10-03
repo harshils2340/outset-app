@@ -196,14 +196,36 @@ export async function askConcierge(
   return plain(body, opts.signal);
 }
 
+/**
+ * How long the socket may go completely quiet before this gives up on it.
+ *
+ * `fetch` has no deadline and neither does reading a body, so a stream that opens and then stops sending left
+ * `reader.read()` pending for the rest of the session: the working card span, the guest's only way out was
+ * Stop, and the plain route that this file promises every failure ends at was never tried. The server writes a
+ * step the moment the plan records one and polls its own queue every 60 ms, so 45 seconds of silence is a
+ * wedge rather than a slow shop. Firing costs one thing only, the plan run again on the plain route, which is
+ * what a browser with no streams does on every question.
+ */
+const STREAM_IDLE_MS = 45000;
+
 /** null when the stream could not be used at all, so the caller falls back. A refusal from the API is not null. */
 async function stream(body: string, opts: { onStep?: (s: ConciergeStep) => void; signal?: AbortSignal }): Promise<AskResult | null> {
+  // Our own controller, so the guest's Stop and the idle deadline can both reach the same request. Combining
+  // them with `AbortSignal.any` would be shorter and is younger than the Safari this has to run on.
+  const ctl = new AbortController();
+  const bail = () => ctl.abort();
+  opts.signal?.addEventListener("abort", bail);
+  let idle = setTimeout(bail, STREAM_IDLE_MS);
+  const heard = () => {
+    clearTimeout(idle);
+    idle = setTimeout(bail, STREAM_IDLE_MS);
+  };
   try {
     const res = await fetch(API_URL + "/concierge/stream", {
       method: "POST",
       headers: { "content-type": "application/json", accept: "text/event-stream" },
       body,
-      signal: opts.signal,
+      signal: ctl.signal,
     });
     // A 400 is the API reading the sentence and declining it, which is an answer, not a transport failure.
     if (res.status === 400) {
@@ -220,6 +242,7 @@ async function stream(body: string, opts: { onStep?: (s: ConciergeStep) => void;
     for (;;) {
       const { value, done } = await reader.read();
       if (done) break;
+      heard();
       // `stream: true` so a multi-byte character split across two chunks is held rather than mangled.
       buf += dec.decode(value, { stream: true });
       const read = readFrames(buf);
@@ -241,9 +264,13 @@ async function stream(body: string, opts: { onStep?: (s: ConciergeStep) => void;
     // The socket closed with nothing on it. The plain route may still answer, so say nothing and let it try.
     return null;
   } catch (e) {
+    // The guest's own Stop, which is a stop and not a failure. Our idle abort falls through to the plain route.
     if (opts.signal?.aborted) return { ok: false, error: "" };
     console.warn(`[concierge] stream: ${(e as Error).message}`);
     return null;
+  } finally {
+    clearTimeout(idle);
+    opts.signal?.removeEventListener("abort", bail);
   }
 }
 
