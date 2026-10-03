@@ -14,8 +14,18 @@
  * A space in front of a final question or exclamation mark says the mark is the page's, not the name's, so
  * "Siesta Key Fishing Charters-Inshore & Offshore Fishing Trips ?" loses it while an escape room called "Who
  * Stole Mona?" keeps its own. "Arts+" and "& Fitness" keep their sign, because a shop can be named for one.
+ *
+ * A semicolon with nothing after it is one value, not two: OpenStreetMap joins a tag's several values that
+ * way, so 25 shipped names are two names glued into one. Most are a shop and its own alternative spelling
+ * ("Paper Mill Playhouse;Papermill Playhouse", "Browns Crafthouse Kitchen & Bar;Browns Crafthouse") and some
+ * are two businesses sharing an address ("Fun Factory;Taco Bell", "Las Vegas Shooting Center;Hollywood Car
+ * Museum"), and every one of them was printed whole, on the card, the hero and in Otto's answers. The half the
+ * shop's own domain names wins, which is how a Taco Bell on locations.tacobell.com stops being a Fun Factory;
+ * with no domain to go on, OpenStreetMap's own first value stands. A semicolon the shop wrote itself is
+ * followed by a space, as the 5 partner products that carry one are ("City tour; afternoon in Montreal"), and
+ * that is punctuation inside one name, so it stays.
  */
-export function shopTitle(raw: string): string {
+export function shopTitle(raw: string, domain?: string | null): string {
   const name = String(raw || "").replace(/\s+/g, " ").trim();
   if (!name) return name;
   let t = name;
@@ -29,5 +39,18 @@ export function shopTitle(raw: string): string {
     .replace(/[\s,;:|&/–—-]+$/, "")
     .replace(/\s+/g, " ")
     .trim();
+  if (/;\S/.test(t)) {
+    const letters = (x: string) => x.toLowerCase().replace(/[^a-z0-9]+/g, "");
+    // The label the business is registered under: "tacobell" out of locations.tacobell.com.
+    const labels = (domain || "").toLowerCase().replace(/^https?:\/\//, "").split("/")[0].split(".").filter(Boolean);
+    const key = letters(labels.length > 1 ? labels[labels.length - 2] : labels[0] || "");
+    // A name's worth of letters on both sides before a domain can be said to carry one: "nmm.life" names
+    // neither of its two halves, and three letters would carry almost anything.
+    const names = (x: string) => key.length >= 5 && letters(x).length >= 5 && (key.includes(letters(x)) || letters(x).includes(key));
+    const parts = t.split(/;(?=\S)/).map((x) => x.trim()).filter((x) => x.length >= 3);
+    // The fullest of the halves the domain names ("Browns Crafthouse Kitchen & Bar" over "Browns Crafthouse").
+    const named = parts.filter(names).sort((a, b) => b.length - a.length)[0];
+    t = named || parts[0] || t;
+  }
   return t.length >= 3 ? t : name;
 }

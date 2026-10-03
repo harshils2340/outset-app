@@ -82,3 +82,49 @@ test("the shipped record the defect was found on reads clean through the tidy", 
   assert.match(String(raw.title), /\($/, "the shipped record still ends on the open bracket");
   assert.equal(shopTitle(String(raw.title)), "2 Hour Guided Segway Tour");
 });
+
+/**
+ * Two values joined with a semicolon.
+ *
+ * OpenStreetMap joins a tag's several values with a semicolon and no space, and 25 shipped names arrived that
+ * way: a shop beside its own alternative spelling, or two businesses sharing an address. Every one of them was
+ * printed whole, on the card, the page hero, the booking sheet, the confirmation and in Otto's answers.
+ */
+test("a name and its own alternative spelling print as one name", () => {
+  assert.equal(shopTitle("Paper Mill Playhouse;Papermill Playhouse", "papermill.org"), "Paper Mill Playhouse");
+  assert.equal(shopTitle("Germantown Historical Society;Germantown Historic Society", "osm-way-335497699"), "Germantown Historical Society");
+  assert.equal(shopTitle("Broken Spoke;The Broken Spoke", "brokenspokeaustintx.net"), "Broken Spoke");
+});
+
+test("the half the shop's own domain names wins, at its fullest", () => {
+  // A Taco Bell on locations.tacobell.com is not a Fun Factory, whichever value OpenStreetMap wrote first.
+  assert.equal(shopTitle("Fun Factory;Taco Bell", "locations.tacobell.com"), "Taco Bell");
+  assert.equal(shopTitle("Eclipse Grange;Parish Players", "parishplayers.org"), "Parish Players");
+  // Both halves name simplechanges.org, so the one that says more does.
+  assert.equal(shopTitle("Simple Changes Farm;Simple Changes Therapeutic Riding Center", "simplechanges.org"), "Simple Changes Therapeutic Riding Center");
+  assert.equal(shopTitle("Browns Crafthouse Kitchen & Bar;Browns Crafthouse", "brownscrafthouse.com"), "Browns Crafthouse Kitchen & Bar");
+});
+
+test("with no domain to go on, the first value stands", () => {
+  // nmm.life names neither of its halves, and three letters would carry almost any name.
+  assert.equal(shopTitle("Niagara Falls Armoury;Niagara Falls Museum", "nmm.life"), "Niagara Falls Armoury");
+  assert.equal(shopTitle("Pizza and Taproom;Martin City Brewing Company"), "Pizza and Taproom");
+});
+
+test("a semicolon the shop wrote itself is punctuation and stays", () => {
+  // The 5 partner products that carry one, all of them a sentence rather than two names.
+  assert.equal(shopTitle("City tour; afternoon in Montreal", "viator.com"), "City tour; afternoon in Montreal");
+  assert.equal(shopTitle("Okanagan Blackberry Fest; Wine Flights & Charcuterie - Kelowna", "viator.com"), "Okanagan Blackberry Fest; Wine Flights & Charcuterie - Kelowna");
+});
+
+test("a semicolon at either end is still trimmed rather than split on", () => {
+  assert.equal(shopTitle(";Water Street Brewing Company", "waterstreetbrewingco.com"), "Water Street Brewing Company");
+  assert.equal(shopTitle("Pub de la Microbrasserie de Tadoussac;", "microtadoussac.com"), "Pub de la Microbrasserie de Tadoussac");
+});
+
+test("the shipped records the join was found on read clean through the tidy", () => {
+  const ops = (JSON.parse(readFileSync(new URL("../../../public/catalog.json", import.meta.url), "utf8")) as { operators: { title: string; src?: string }[] }).operators;
+  const joined = ops.filter((o) => /;\S/.test(o.title || ""));
+  assert.ok(joined.length >= 20, "the shipped catalog still carries the joined names: " + joined.length);
+  for (const o of joined) assert.doesNotMatch(shopTitle(o.title, o.src), /;\S/, o.title);
+});

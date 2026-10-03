@@ -116,7 +116,7 @@ export function domainOf(src: string): string {
 function asPublished(raw: Unclaimed): Unclaimed {
   const item = bookableMenu(raw);
   const blurb = ownWords(item.blurb);
-  const title = shopTitle(item.title);
+  const title = shopTitle(item.title, item.src);
   const descs = (item.services || []).map((s) => ownWords(s.desc));
   if (title === item.title && blurb === (item.blurb || "") && descs.every((d, i) => d === ((item.services || [])[i].desc || ""))) return item;
   return {

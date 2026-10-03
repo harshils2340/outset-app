@@ -403,7 +403,7 @@ export function toCatalogItem(r: CatalogRow): Record<string, unknown> {
     // Two rows are the same option when name and label match; the label is the detail, and the duration only when there is none.
     .filter((o, i, a) => a.findIndex((x) => x.name.toLowerCase() === o.name.toLowerCase() && (x.detail || x.duration || "").toLowerCase() === (o.detail || o.duration || "").toLowerCase()) === i)
     .map((o) => ({ ...o, price_unit: fixUnit(o) }));
-  const title = cleanTitle(decodeEntities(r.name), { city: r.city, region: r.region, legalName: r.legal_name });
+  const title = cleanTitle(decodeEntities(r.name), { city: r.city, region: r.region, legalName: r.legal_name, domain: r.domain });
   const keysWithOwnBranch = new Set(rawFacts.filter((f) => trusted(f.source_url) && !offCity(f.source_url)).map((f) => f.fact_key));
   // A quarantined operator's record stays (its title, domain, category and location all come from the operators
   // table, not the crawl, so the listing still exists to browse and its claim link still works), but nothing the
@@ -1327,7 +1327,7 @@ function tidyItem(item: Record<string, unknown>, id: string): Record<string, unk
 
 const SITE_WORDS = /^(?:home|homepage|welcome|official (?:site|website|home ?page)|website|site|online|book(?:ing)? online|book now|reservations?|home ?page|index|main)$/i;
 /** Who a title belongs to, so a location tail ("at Clearwater Beach", "- Tampa Bay") can be told from a name ("The Legacy at Green Hills"). */
-export type TitleContext = { city?: string | null; region?: string | null; legalName?: string | null };
+export type TitleContext = { city?: string | null; region?: string | null; legalName?: string | null; domain?: string | null };
 
 const STATE_NAMES: Record<string, string> = {
   AL: "Alabama", AK: "Alaska", AZ: "Arizona", AR: "Arkansas", CA: "California", CO: "Colorado", CT: "Connecticut", DE: "Delaware", FL: "Florida", GA: "Georgia",
@@ -1584,7 +1584,7 @@ export function cleanTitle(raw: string, ctx: TitleContext = {}): string {
   t = t.replace(/[\s\-–—|:,]+$/g, "");
   // The punctuation the crawl left inside the name, and the bracket it never closed. Same rule the app reads
   // the 54 already shipped through (`src/lib/shopName.ts`), so a sync writes what a guest is already seeing.
-  t = shopTitle(t);
+  t = shopTitle(t, ctx.domain);
   // Never a stub or a bare domain: fall back to the legal name, then to the raw title.
   if (t.length < 3 || /^(?:https?:\/\/|www\.)|^[a-z0-9-]+\.[a-z]{2,}$/i.test(t)) return legal.length >= 3 ? legal : raw.trim();
   return t;
@@ -2155,7 +2155,7 @@ export function passesCatalogFilters(
   if (opts.dead.has(r.id)) return false;
   if (NOT_EXPERIENCE.test(r.name) || /^\s*\$?\d+(\.\d+)?\s*$/.test(r.name)) return false;
   // "Home", "Welcome" and a bare domain are page titles, not business names. A guest cannot tell what they are.
-  const t = cleanTitle(decodeEntities(r.name), { city: r.city, region: r.region, legalName: r.legal_name });
+  const t = cleanTitle(decodeEntities(r.name), { city: r.city, region: r.region, legalName: r.legal_name, domain: r.domain });
   if (t.length < 3 || SITE_WORDS.test(t) || NAV_LABEL.test(t) || GENERIC_TITLE.test(t) || /^(?:https?:\/\/|www\.)/i.test(t)) return false;
   // Outside the US and Canada, by pin or by address, is outside the market (a Cairns balloon flight tagged HI).
   if (r.lat != null && r.lon != null && !inNorthAmerica(r.lat, r.lon)) return false;
