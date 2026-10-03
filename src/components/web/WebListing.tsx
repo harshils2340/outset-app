@@ -34,7 +34,7 @@ import { shownReviews, type ShownReview } from "../../lib/reviews";
 import { seasonFact, seasonNoteLine } from "../../lib/season";
 import { listingUrl } from "../../lib/site";
 import { adminWebsite, isAdmin, subscribeAdmin } from "../../lib/admin";
-import { dateKey, startOfToday } from "../../lib/dates";
+import { anchorMonth, dateKey, startOfToday } from "../../lib/dates";
 import { fewSeats, liveEmptyNote, liveRead, liveWins, type TimeChip } from "../../lib/liveTimes";
 import { safeHttpUrl } from "../../lib/urlSafety";
 import { startingParty } from "../explore/prefs";
@@ -524,12 +524,9 @@ function MonthPair({ dates, dateIdx, onPickDate, chipsFor }: { dates: Date[]; da
   const [month, setMonth] = useState(() => new Date(selected.getFullYear(), selected.getMonth(), 1));
   const selectedKey = dateKey(selected);
   useEffect(() => {
-    // Keep the selection on screen when the card moves it into a month this pair is not showing.
-    setMonth((m) => {
-      const next = new Date(m.getFullYear(), m.getMonth() + 1, 1);
-      const inView = (d: Date) => (d.getFullYear() === m.getFullYear() && d.getMonth() === m.getMonth()) || (d.getFullYear() === next.getFullYear() && d.getMonth() === next.getMonth());
-      return inView(selected) ? m : new Date(selected.getFullYear(), selected.getMonth(), 1);
-    });
+    // Keep the selection on screen when the card moves it into a month this pair is not showing. Two months
+    // wide, so the rule is `anchorMonth`'s with a span of two; the phone sheet's single grid reads the same one.
+    setMonth((m) => anchorMonth(m, selected, 2));
   }, [selectedKey]);
   const index = useMemo(() => {
     const m = new Map<string, number>();

@@ -1,6 +1,6 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ICONS } from "../../data/icons";
-import { dateKey, startOfToday } from "../../lib/dates";
+import { anchorMonth, dateKey, startOfToday } from "../../lib/dates";
 import { dayPickLabel, fmtTime } from "../../lib/format";
 import { Markup } from "../Markup";
 
@@ -62,6 +62,22 @@ export function SlotCalendar({
 
   const todayKey = dateKey(startOfToday());
   const selectedKey = dateKey(selected);
+
+  /**
+   * Follow the picked day into its own month when something other than a guest's click moves it there.
+   *
+   * `month` is seeded from the picked day when the calendar mounts, and two things move that day afterwards:
+   * the phone sheet lands the guest on the first day that has start times (so an evening visit on the last of
+   * the month starts on the first of the next one), and the booking window rebuilds itself on the local day
+   * roll. Neither touches this grid, so it kept drawing the month it opened on: measured in a real Chromium at
+   * 400px at 23:50 on 31 October, the head read "October 2026" with no day looking picked, the only day left
+   * open was the 31st, and the Start times column beside it was listing Sunday 1 November's. An hour later the
+   * October grid had no bookable day on it at all. `MonthPair` on the desktop page already re-anchors for the
+   * same reason; this is that rule for the one-month grid.
+   */
+  useEffect(() => {
+    setMonth((m) => anchorMonth(m, selected));
+  }, [selectedKey]);
 
   // Leading blanks so the first of the month lands under the right weekday.
   const cells = useMemo(() => {

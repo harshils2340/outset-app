@@ -82,3 +82,24 @@ export function msToNextDay(now: Date = new Date()): number {
   const next = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
   return Math.max(1000, next.getTime() - now.getTime());
 }
+
+/**
+ * Which month a calendar should be drawn on, given the month it is showing and the day that is picked.
+ *
+ * Both booking surfaces seed their month from the picked day when they mount, and then two things move that
+ * day without anybody clicking the grid: the phone sheet lands the guest on the first day that has start
+ * times, and the booking window rebuilds itself on the local day roll (see `bookingDates`). A grid that does
+ * not follow draws a month the selection is not in, so no day looks picked and the start times beside it
+ * belong to a month that is not on screen.
+ *
+ * `shown` is returned unchanged when the picked day is already in view, so a guest who paged forward keeps
+ * the month they paged to. `span` is how many months the grid draws from `shown`: one for the phone sheet's
+ * single grid, two for the desktop page's pair.
+ */
+export function anchorMonth(shown: Date, selected: Date, span = 1): Date {
+  for (let i = 0; i < Math.max(1, span); i++) {
+    const m = new Date(shown.getFullYear(), shown.getMonth() + i, 1);
+    if (selected.getFullYear() === m.getFullYear() && selected.getMonth() === m.getMonth()) return shown;
+  }
+  return new Date(selected.getFullYear(), selected.getMonth(), 1);
+}
