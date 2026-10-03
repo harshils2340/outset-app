@@ -28,7 +28,7 @@ function cspApiOrigin(mode: string): Plugin {
  * ahead of the SPA catch-all; without the same rule here, /otto on the dev server fell through to the app and
  * showed the guest home, so every local check of the Otto page had to be typed as /otto.html.
  */
-const CLEAN_URLS: Record<string, string> = { "/": "/otto.html", "/activities": "/index.html", "/features": "/features.html", "/integrations": "/integrations.html", "/pricing": "/pricing.html", "/otto": "/otto/index.html", "/about": "/about.html", "/terms": "/terms.html", "/privacy": "/privacy.html" };
+const CLEAN_URLS: Record<string, string> = { "/": "/otto.html", "/activities": "/index.html", "/features": "/features.html", "/integrations": "/integrations.html", "/pricing": "/pricing.html", "/for/escape-rooms": "/for/escape-rooms.html", "/otto": "/otto/index.html", "/about": "/about.html", "/terms": "/terms.html", "/privacy": "/privacy.html" };
 function cleanUrls(): Plugin {
   const rewrite = (server: { middlewares: { use: (fn: (req: { url?: string }, res: unknown, next: () => void) => void) => void } }) => {
     server.middlewares.use((req, _res, next) => {

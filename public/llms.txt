@@ -10,6 +10,7 @@ Outset is built for activity businesses (escape rooms, tours, boat and jet ski r
 - [Features](https://onoutset.com/features): answering every call, answers from the business's facts, booking help, call summaries, and setup
 - [Integrations](https://onoutset.com/integrations): works with FareHarbor, Peek, Xola, ROLLER, Bookeo, Checkfront, Rezdy, Resova, Bókun, TrekkSoft, Rezgo and 26 more booking systems
 - [Pricing](https://onoutset.com/pricing): Essential, Pro and Groups plans; the price is set per business on a short demo call
+- [Escape rooms](https://onoutset.com/for/escape-rooms): Outset as an AI receptionist for escape rooms; how it answers what escape room callers ask (open times tonight, players per room, age limits, how scary a room is, game length, birthday and corporate groups, late arrivals, parking) while game masters run games or after close, and the escape room booking systems it works with (Bookeo, Resova, Off The Couch, FareHarbor, Xola, Checkfront)
 
 ## Company
 

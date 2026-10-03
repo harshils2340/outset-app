@@ -53,7 +53,7 @@ const LOCAL_ADDRESS = /^(?:https?:\/\/)?(?:localhost|127\.0\.0\.1|0\.0\.0\.0|\[:
  * The site's own pages beside the root (the Outset home): the product pages and the marketplace's home. They
  * are static files or app routes, not written here, but they belong in the same sitemap so a crawler finds them.
  */
-export const SITE_PAGES = ["features", "integrations", "pricing"];
+export const SITE_PAGES = ["features", "integrations", "pricing", "for/escape-rooms"];
 
 /**
  * Whether the marketplace's generated pages (/p/ by activity and city, /l/ per listing) are offered to search
