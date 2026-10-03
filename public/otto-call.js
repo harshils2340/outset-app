@@ -16,7 +16,7 @@
       if (!audio || !call || !callcol) return;
       var play = $("play"), restart = $("restart"), hear = $("hear"), scrub = $("scrub"), tip = $("tip"), cur = $("cur"),
           durEl = $("dur"), st = $("st"), now = $("now"), prev = $("prev"), did = $("did");
-      var LABEL = { otto: "Otto", caller: "Caller" };
+      var LABEL = { otto: "Otto", caller: "Marcus" };
       function fmt(s) { s = Math.max(0, Math.floor(s || 0)); return Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0"); }
       function reduced() { return !!(window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches); }
 

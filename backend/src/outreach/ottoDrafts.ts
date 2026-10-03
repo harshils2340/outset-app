@@ -59,7 +59,8 @@ function whatOttoDoes(id: string | null): string {
  * Which copy a send carried, stored on outreach_sends.variant (touches.ts) so replies can be read against the
  * version that earned them. Bump it whenever the body changes.
  */
-export const COPY_VERSION = "2026-10-02";
+// 2026-10-03: the product is named Outset in the body ("I built Outset"); Otto stays the assistant's name on calls.
+export const COPY_VERSION = "2026-10-03";
 
 /**
  * The 2 October 2026 pitch. 596 sends of the 1 October copy earned one human reply, and a placement test
@@ -87,7 +88,7 @@ export function draftOttoCopy(op: OttoOp, email?: string, opts?: { greet?: strin
   const subject = "Missed calls at " + op.name;
   const question = "When everyone at " + op.name + " is busy with guests or you've closed for the day, where do the calls go?";
   const pain = "For most operators it's voicemail, and the caller hangs up and books with the next place that picks up.";
-  const what = "I built Otto, a 24/7 customer service line for your phone. " + whatOttoDoes(op.calendar_vendor) + " You get a summary of every call.";
+  const what = "I built Outset, a 24/7 customer service line for your phone. " + whatOttoDoes(op.calendar_vendor) + " You get a summary of every call.";
   const hearText = "Here's a 40-second recording of it on a real call: " + OTTO;
   const hearHtml = "Here's a 40-second recording of it on a real call: " + link(OTTO, "give it a listen") + ".";
   const offer = "I'll set it up on your line for free, and you only keep it if it books you a guest. Worth a quick reply?";

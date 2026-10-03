@@ -18,7 +18,7 @@ test("short: a question, the pain, what Otto does, one recording, an offer", () 
   assert.equal(c.subject, "Missed calls at " + op.name);
   assert.ok(c.body.includes("When everyone at " + op.name + " is busy with guests or you've closed for the day, where do the calls go?"), c.body);
   assert.ok(c.body.includes("books with the next place that picks up"), c.body);
-  assert.ok(c.body.includes("I built Otto, a 24/7 customer service line for your phone."), c.body);
+  assert.ok(c.body.includes("I built Outset, a 24/7 customer service line for your phone."), c.body);
   assert.ok(c.body.includes("answers only from your own company info"), "grounded: never makes anything up");
   assert.ok(c.body.includes("you only keep it if it books you a guest. Worth a quick reply?"), c.body);
   const beforeSignoff = c.body.split("\nHarshil\n")[0];
