@@ -1837,20 +1837,41 @@ export function describeOffset(min: number): string {
 }
 
 /**
+ * The first word of a category's label or search phrase, where that word names something other than the
+ * activity. `namedLike` below matches a business name against both the whole phrase and its first word, because
+ * a shop calls itself "Martial Arts and Boxing" or just "Martial Arts Academy", and the match is a bare
+ * substring because shops glue their own words together ("Sportfishing Charters", "Jetskivibes") and a word
+ * boundary throws those away.
+ *
+ * A bare substring over a word like "water" is a quiet disaster, the same one `inferCategory` was cured of.
+ * Counted over the shipped catalog, these seven stubs pulled in 1,226 businesses of some other kind for 186 of
+ * their own: "water" found 744 names and 714 of them were jet ski hire, Clearwater charters and watersports
+ * shops, offered as a water park; "pool" found 183 and 179 were swimming pools and a whirlpool jet boat,
+ * offered as a billiards hall; "disc" found Discovery Cruises, Discretion Brewing and Undisclosed Excursions;
+ * "mini" found Dominion City Brewing; "indoor" found climbing gyms and gun ranges, offered as karting; "party"
+ * found party boats, offered as an event venue; and "food" found a seafood charter.
+ *
+ * Kept, because they do name the activity: "martial" (315 right of 318), "pilates" (190 of 209), "sunset",
+ * "inshore", "boxing", "comedy", "shooting", "pickleball" and "laser", which is the only way the eleven laser
+ * tag arenas filed under paintball are found at all.
+ */
+const NOT_THE_ACTIVITY = new Set(["water", "pool", "disc", "party", "mini", "indoor", "food"]);
+
+/**
  * Businesses whose own name says what they do, for when the category column disagrees.
  *
  * Only used when the category shortlist is nearly empty, because a name match is weaker evidence than a read
  * of the shop's pages: plenty of businesses have "adventure" or "tours" in the name and sell something else
  * entirely. On a shortlist of one, weaker evidence beats none.
  */
-function namedLike(intent: Intent, limit: number): Option[] {
+export function namedLike(intent: Intent, limit: number): Option[] {
   if (!intent.point || !intent.categoryId) return [];
   const cat = CATEGORIES.find((c) => c.id === intent.categoryId);
   if (!cat) return [];
   /** The words a shop would put in its own name: "axe throwing", "Axe throwing", "axe". */
   const words = [...new Set([cat.searchQuery, cat.label, cat.id].filter(Boolean).map((w) => String(w).toLowerCase()))]
     .flatMap((w) => [w, w.split(" ")[0]])
-    .filter((w) => w.length >= 4);
+    .filter((w) => w.length >= 4 && !NOT_THE_ACTIVITY.has(w));
   if (!words.length) return [];
 
   const { lat, lon } = intent.point;
