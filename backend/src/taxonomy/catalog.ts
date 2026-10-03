@@ -159,6 +159,34 @@ export function familyForArt(art: string, fallback: string | null): string | nul
   return categoryById(art)?.family || fallback;
 }
 
+/**
+ * The spelled-out form of an id that glues two words together.
+ *
+ * Every id here is one word and the `byId` pass anchors on a word boundary, so `\bminigolf` never matched
+ * "mini golf", which is how this file's own label spells it. A guest asking the concierge for "mini golf in
+ * Tampa" fell through to the shorter `golf` and was answered with country clubs, and "disc golf" went the same
+ * way; "laser tag", "water park", "theme park", "ice rink" and "martial arts" fell through to the jet ski
+ * fallback, which `readIntent` throws away as a false positive, so the sentence read as naming no activity at
+ * all and the guest was asked what sort of thing they wanted. The same words also reach this function as a
+ * crawled business name and as one line of a shop's menu.
+ *
+ * Only the spelling of a category this file already defines, never a new synonym, and read inside the `byId`
+ * pass so the longest id still wins: a "Waterpark and Mini Golf" is a water park either way round.
+ *
+ * "Art class", the label on `pottery`, is deliberately not here: 8 of the 12 shipped listings whose name says
+ * it are filed under gymnastics, so the phrase is not that category's alone.
+ */
+const SPELLED: Record<string, RegExp> = {
+  minigolf: /\bmini[ -]golf/,
+  discgolf: /\bdisc[ -]golf/,
+  lasertag: /\blaser[ -]tag/,
+  waterpark: /\bwater[ -]park/,
+  themepark: /\btheme[ -]park/,
+  icerink: /\bice[ -](?:rink|skating)|\bskating rink/,
+  martialarts: /\bmartial[ -]arts/,
+  gliding: /\bglider\b/,
+};
+
 export function inferCategory(text: string): CategoryDef {
   const t = text.toLowerCase();
   if (/wave.?runner|waverunner|\bpwc\b|jet.?ski/.test(t)) return categoryById("jetski")!;
@@ -200,12 +228,28 @@ export function inferCategory(text: string): CategoryDef {
    * the word to END there too; the long ones keep the prefix match, because that is what lets "escaperoom"
    * and "kayaking" resolve at all.
    */
+  /**
+   * The spelled-out form of an id that glues two words together.
+   *
+   * Every id here is one word, and the `byId` pass below anchors on a word boundary, so `\bminigolf` never
+   * matched "mini golf" — which is how this file's own label spells it. A guest asking the concierge for "mini
+   * golf in Tampa" fell through to the shorter `golf` and was answered with country clubs, and "disc golf"
+   * went the same way; "laser tag", "water park", "theme park", "ice rink" and "martial arts" fell through to
+   * the jet ski fallback, which `readIntent` throws away as a false positive, so the sentence read as naming
+   * no activity at all and the guest was asked what sort of thing they wanted. The same words reach this
+   * function as a crawled business name and as one line of a shop's menu.
+   *
+   * Only the spelling of a category this file already defines, never a new synonym, and placed in front of
+   * `byId` rather than the rules above it so a compound still loses to a longer one that contains it.
+   */
   const byId = [...CATEGORIES]
     .sort((a, b) => b.id.length - a.id.length)
     .find((c) => {
       // Short ids must end the word, give or take an English ending: "ski", "skis", "skiing" — never "skin".
       const pat = c.id.length <= 4 ? "\\b" + c.id + "(?:s|es|ing)?\\b" : "\\b" + c.id;
-      return new RegExp(pat).test(t);
+      if (new RegExp(pat).test(t)) return true;
+      const spelled = SPELLED[c.id];
+      return !!spelled && spelled.test(t);
     });
   if (byId) return byId;
   return categoryById("jetski")!;
