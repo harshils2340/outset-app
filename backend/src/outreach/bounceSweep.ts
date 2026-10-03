@@ -75,9 +75,47 @@ export async function collectBounces(days: number): Promise<Bounce[]> {
  * automatic answers do not count, since nobody chose to stop anything; they are returned flagged so the log
  * still shows them. Free-mail domains match on the full address only, never the domain.
  */
-export type Reply = { from: string; mailbox: string; subject: string; at: string; operatorIds: string[]; auto: boolean; snippet: string };
+export type Reply = { from: string; mailbox: string; subject: string; at: string; operatorIds: string[]; auto: boolean; snippet: string; redirect: string | null };
 
-const AUTO_SUBJECT = /^(automatic reply|auto(matic)?[- ]?(reply|response)|out of (the )?office|away|we regret to inform|thank you for (your )?(email|contacting|reaching)|undeliverable|delivery status)/i;
+const AUTO_SUBJECT = /^(automatic reply|auto(matic)?[- ]?(reply|response)|out of (the )?office|away|we regret to inform|thank you for (your )?(email|contacting|reaching)|undeliverable|delivery status|forwarding e-?mail)/i;
+
+// Only phrases a person answering the pitch would not write. Two real auto-replies came back as ordinary
+// "Re:" mail with none of the auto headers (Ocean Obsession, 29 September: "This email doesn't get checked
+// often"; Commisso Estate Winery, 1 October: "this domain will be removed ... Please forward your email to"),
+// and both were reported to Harshil as replies. A missed human reply costs more than a false alarm, so softer
+// lines a person might type ("I will get back to you soon") are deliberately left out.
+const AUTO_BODY = /doesn['’]?t get (checked|read|monitored)|(is|isn['’]?t|not) (being )?(regularly |frequently |often )?(checked|monitored)|no longer (in use|monitored|active|being monitored)|will be (removed|discontinued|deactivated|shut down)|(please )?(forward|re-?send|redirect) your (e-?mail|message)|this is an automated|auto(matic|mated)?[- ]?(reply|response|responder)|out of (the )?office|i am (currently )?(away|out of|on (vacation|leave|holiday))/i;
+
+/** Text of a fetched body part: base64 and quoted-printable decoded, html stripped. */
+export function bodyText(raw: string): string {
+  let s = raw;
+  const compact = s.replace(/\s+/g, "");
+  if (compact.length >= 24 && /^[A-Za-z0-9+/]+={0,2}$/.test(compact)) {
+    s = Buffer.from(compact, "base64").toString("utf8");
+  } else if (/=\r?\n|=[0-9A-F]{2}/.test(s)) {
+    s = Buffer.from(s.replace(/=\r?\n/g, "").replace(/=([0-9A-F]{2})/g, (_, h) => String.fromCharCode(parseInt(h, 16))), "latin1").toString("utf8");
+  }
+  return s.replace(/<[^>]+>/g, " ").replace(/&nbsp;/g, " ").replace(/&amp;/g, "&");
+}
+
+/** The part of a reply the sender wrote, before the quoted original. */
+function newPart(text: string): string {
+  return text.split(/-{2,}\s*original message|^on .{0,120}wrote:|^from: |_{8,}/im)[0];
+}
+
+/**
+ * Whether a message is automatic, and the address it points to instead when it names one: the better contact
+ * an unread inbox hands off to ("please email: Mirela..."), which is worth more than the address we wrote to.
+ */
+export function classifyReply(m: { from: string; subject: string; headers: string; body: string; own: Set<string> }): { auto: boolean; redirect: string | null; text: string } {
+  const text = newPart(bodyText(m.body)).replace(/\s+/g, " ").trim();
+  const byHeader = /auto-submitted:\s*auto-(replied|generated)|x-autoreply|x-autorespond|precedence:\s*(auto_reply|bulk|junk)/.test(m.headers.toLowerCase());
+  const auto = byHeader || AUTO_SUBJECT.test(m.subject) || (text.length < 700 && AUTO_BODY.test(text));
+  const redirect = auto
+    ? (text.match(EMAIL) || []).map((e) => e.toLowerCase()).find((e) => e !== m.from && !m.own.has(e) && !e.endsWith("@onoutset.com") && !/no-?reply|donotreply|mailer-daemon/.test(e)) || null
+    : null;
+  return { auto, redirect, text };
+}
 
 export async function collectReplies(days: number, index: { byEmail: Map<string, Set<string>>; byDomain: Map<string, Set<string>> }): Promise<Reply[]> {
   const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
@@ -98,11 +136,9 @@ export async function collectReplies(days: number, index: { byEmail: Map<string,
           const domain = from.split("@")[1] || "";
           const ops = index.byEmail.get(from) || index.byDomain.get(domain);
           if (!ops) continue;
-          const headers = (msg.headers?.toString("utf8") || "").toLowerCase();
           const subject = msg.envelope?.subject || "";
-          const auto = /auto-submitted:\s*auto-(replied|generated)|x-autoreply|x-autorespond|precedence:\s*(auto_reply|bulk|junk)/.test(headers) || AUTO_SUBJECT.test(subject);
-          const snippet = (msg.bodyParts?.get("1")?.toString("utf8") || "").replace(/=\r?\n/g, "").replace(/\s+/g, " ").slice(0, 200);
-          out.push({ from, mailbox: id.user, subject, at: msg.envelope?.date ? new Date(msg.envelope.date).toISOString() : nowIso(), operatorIds: [...ops], auto, snippet });
+          const c = classifyReply({ from, subject, headers: msg.headers?.toString("utf8") || "", body: msg.bodyParts?.get("1")?.toString("utf8") || "", own });
+          out.push({ from, mailbox: id.user, subject, at: msg.envelope?.date ? new Date(msg.envelope.date).toISOString() : nowIso(), operatorIds: [...ops], auto: c.auto, snippet: c.text.slice(0, 400), redirect: c.redirect });
         }
       } finally {
         lock.release();
@@ -114,6 +150,14 @@ export async function collectReplies(days: number, index: { byEmail: Map<string,
     }
   }
   return out;
+}
+
+/**
+ * An automatic reply that names a better contact: hand the business to Harshil (status 'handoff', which every
+ * send and the resend skip) so no follow-up goes to an inbox that told us it is unread or going away.
+ */
+export async function markRedirect(r: Reply): Promise<void> {
+  for (const op of r.operatorIds) await recordTouch({ operatorId: op, email: r.from, status: "handoff", mailbox: r.mailbox, at: r.at }).catch(() => undefined);
 }
 
 /** Mark a human reply on every business it belongs to, so nothing more is ever sent to them. */

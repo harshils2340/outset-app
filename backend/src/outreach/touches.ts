@@ -198,6 +198,14 @@ export async function resendCandidates(limit: number, currentVariant: string): P
   );
 }
 
+/** Operators already handed to Harshil by hand, so a redirecting auto-reply is reported once, not every day. */
+export async function handedOffOperators(): Promise<Set<string>> {
+  if (!pgConfigured()) return new Set();
+  await ensureTouchTables();
+  const rows = await query<{ operator_id: string }>("select distinct operator_id from outreach_sends where status = 'handoff'");
+  return new Set(rows.map((r) => r.operator_id));
+}
+
 /** Operators already marked replied, so a reply sweep can tell a new reply from one it already reported. */
 export async function repliedOperators(): Promise<Set<string>> {
   await ensureTouchTables();

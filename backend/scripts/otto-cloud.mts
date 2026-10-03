@@ -7,10 +7,10 @@ import { COPY_VERSION, draftOttoCopy } from "../src/outreach/ottoDrafts.ts";
 import { recordSend } from "../src/lib/outreachLog.ts";
 import { recordRun, rungFor, type RampState } from "../src/outreach/ramp.ts";
 import { MAILBOX_ERROR, NETWORK_ERROR, dayStartIso, pickIdentity } from "../src/outreach/mailboxes.ts";
-import { collectBounces, collectReplies, markReplied, suppressBounce } from "../src/outreach/bounceSweep.ts";
+import { collectBounces, collectReplies, markRedirect, markReplied, suppressBounce } from "../src/outreach/bounceSweep.ts";
 import { placementTest, placementVerdict } from "../src/outreach/placement.ts";
 import {
-  RESEND_KIND, loadRamp, mailedIndex, poolCandidates, recordTouch, repliedOperators, resendCandidates, saveRamp, sentTodayByMailbox, type PoolRow,
+  RESEND_KIND, handedOffOperators, loadRamp, mailedIndex, poolCandidates, recordTouch, repliedOperators, resendCandidates, saveRamp, sentTodayByMailbox, type PoolRow,
 } from "../src/outreach/touches.ts";
 import { todayIn } from "../src/lib/zone.ts";
 
@@ -84,10 +84,20 @@ async function notify(subject: string, text: string): Promise<void> {
 if (!dry) {
   try {
     const known = await repliedOperators();
+    const handed = await handedOffOperators();
     const replies = await collectReplies(14, await mailedIndex());
     const fresh: string[] = [];
+    const redirects: string[] = [];
     for (const r of replies) {
-      if (r.auto) { console.log(`auto-reply (not counted): ${r.from}: ${r.subject.slice(0, 80)}`); continue; }
+      if (r.auto) {
+        console.log(`auto-reply (not counted): ${r.from}: ${r.subject.slice(0, 80)}` + (r.redirect ? ` -> points to ${r.redirect}` : ""));
+        if (r.redirect && r.operatorIds.some((id) => !handed.has(id))) {
+          await markRedirect(r);
+          for (const id of r.operatorIds) handed.add(id);
+          redirects.push(`${r.from} auto-replied and points to ${r.redirect}\n${r.snippet}\n`);
+        }
+        continue;
+      }
       const isNew = r.operatorIds.some((id) => !known.has(id));
       await markReplied(r);
       for (const id of r.operatorIds) known.add(id);
@@ -96,6 +106,8 @@ if (!dry) {
     console.log(`otto-cloud: ${replies.filter((r) => !r.auto).length} human repl(ies) in 14 days, ${fresh.length} new`);
     if (fresh.length) await notify(`Otto: ${fresh.length} new repl${fresh.length === 1 ? "y" : "ies"} to the pitch`,
       "These businesses replied. Each one is now off every future send. Open the inbox named to answer.\n\n" + fresh.join("\n"));
+    if (redirects.length) await notify(`Otto: ${redirects.length} auto-repl${redirects.length === 1 ? "y names" : "ies name"} a better contact`,
+      "These are automatic replies, not people. Each names a better address to pitch; the business is off the automated sends and yours to email by hand.\n\n" + redirects.join("\n"));
   } catch (e) {
     console.error("otto-cloud: reply sweep failed, sending anyway (bounces and suppression still apply): " + (e as Error).message);
   }
