@@ -39,7 +39,8 @@ type OttoState = RampState & {
   placement?: { day: string; version: string; summary: string; hold: boolean };
 };
 /** Placement is re-checked every other day (Harshil, 2 October 2026), and always after the copy changes. */
-const PLACEMENT_EVERY_DAYS = 2;
+// Daily since 3 October 2026 (Harshil: keep checking that the emails land in Primary, not Promotions).
+const PLACEMENT_EVERY_DAYS = 1;
 const notifyTo = (process.env.OUTREACH_ALERT_TO || "harshils2340@gmail.com").trim();
 
 const suppression = await loadSuppression();

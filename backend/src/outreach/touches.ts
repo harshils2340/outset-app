@@ -153,15 +153,29 @@ export async function saveRamp(campaign: string, state: RampState): Promise<void
 }
 
 /** The next candidates in send order that no machine has touched, with every suppression check still to come. */
+/**
+ * Who goes first. Harshil, 3 October 2026: 421 of the first 701 sends went to water-sports shops, out of season
+ * by October, and one human replied. So the queue now leads with the businesses whose phones ring in the cold
+ * months, escape rooms first (they have their own page, onoutset.com/for/escape-rooms), then the rest of indoor,
+ * karting, indoor play, wellness and food experiences, with water and air last until spring. Inside a family a
+ * named mailbox (jeff@, a personal gmail) goes before a desk inbox (info@, bookings@): the owner decides, the
+ * front desk forwards. Completeness breaks the remaining ties, as before.
+ */
+export const FAMILY_ORDER = ["indoor", "motorsport", "play", "wellness", "food", "outdoor", "water", "air"];
+const DESK_INBOX = "^(info|hello|hi|contact|contactus|book|booknow|booking|bookings|reservation|reservations|res|sales|office|admin|support|help|team|staff|mail|email|events|inquiries|enquiries|general|frontdesk|guestservices|customerservice|service)$";
+
 export async function poolCandidates(limit: number, kind = "otto"): Promise<PoolRow[]> {
   await ensureTouchTables();
   return query<PoolRow>(
     `select p.* from outreach_pool p
       where not exists (select 1 from outreach_sends s where s.kind = $2 and s.operator_id = p.operator_id and s.status in ('sent', 'handoff', 'replied'))
         and not exists (select 1 from outreach_sends s where s.kind = $2 and s.email = p.email)
-      order by p.completeness desc nulls last, p.operator_id
+      order by coalesce(array_position($3::text[], p.family), 99),
+        coalesce(p.family = 'indoor' and (p.name ilike '%escape%' or p.website ilike '%escape%'), false) desc,
+        (split_part(p.email, '@', 1) ~* $4),
+        p.completeness desc nulls last, p.operator_id
       limit $1`,
-    [limit, kind],
+    [limit, kind, FAMILY_ORDER, DESK_INBOX],
   );
 }
 
