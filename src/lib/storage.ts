@@ -60,7 +60,15 @@ export function loadChats(): Record<string, ChatMessage[]> {
     if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return {};
     const out: Record<string, ChatMessage[]> = {};
     for (const [id, thread] of Object.entries(parsed as Record<string, unknown>)) {
-      if (Array.isArray(thread)) out[id] = thread.filter(isChatMessage);
+      if (!Array.isArray(thread)) continue;
+      const msgs = thread.filter(isChatMessage);
+      // A thread with nothing readable left in it is not a thread. The shape guard above drops a message an
+      // older build or a hand-edited value wrote differently, exactly as isBooking drops a row, and keeping
+      // the id behind it left a conversation with no messages: the Inbox tab reads the last one to draw its
+      // preview line and its time, so the Messages tab threw on render, and with no error boundary in this
+      // app that is the whole screen gone white, on every visit until the key is cleared. The tab bar's badge
+      // counted it too, so the tab offered a conversation that could not be opened.
+      if (msgs.length) out[id] = msgs;
     }
     return out;
   } catch {

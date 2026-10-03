@@ -74,6 +74,25 @@ test("loadChats drops a malformed message and a malformed thread, keeps the rest
   assert.equal(out.u2, undefined);
 });
 
+/**
+ * The Inbox tab and the tab bar's badge read the last message of every thread the map holds, so a thread the
+ * shape guard emptied is a crash on render and a badge over a page that cannot open. An empty stored thread is
+ * the same shape and the same answer.
+ */
+test("loadChats drops a thread left with no readable message, and one stored empty", () => {
+  reset();
+  localStorage.setItem(
+    "outset.chats.v2",
+    JSON.stringify({
+      "u1": [{ who: "them", t: "older build wrote no stamp" }],
+      "u2": [],
+      "u3": [{ who: "me", t: "hi", at: "10:02 AM" }],
+    }),
+  );
+  const out = loadChats();
+  assert.deepEqual(Object.keys(out), ["u3"]);
+});
+
 test("loadGuest keeps only the string fields, dropping a field of the wrong type instead of handing it to .trim()", () => {
   reset();
   localStorage.setItem("outset.guest", JSON.stringify({ name: 12345, phone: "555-0100", email: { nested: true } }));
