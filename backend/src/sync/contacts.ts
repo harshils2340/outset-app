@@ -343,18 +343,27 @@ export function toCatalogItem(r: CatalogRow): Record<string, unknown> {
   // the same injected text a blurb does. The operator's row (and so its claim link) is untouched; only what this
   // sync would have published from the crawl is withheld.
   const MEDIA_FACT_KEY = /^(photo|cover|video|video_embed|service_photo)$/;
+  // The cloud crawl's own photo harvest counts as a crawled fact, because that is what it is. It arrives
+  // through a sidecar rather than the facts table (`photoSidecar.ts`: the GitHub Actions runners have no
+  // SQLite), so it reached the cover line below without passing this screen and without being withheld from a
+  // quarantined operator. That is where the spam actually was: 13 shipped listings carry 24 Indonesian
+  // gambling-banner image addresses, 11 of them as the cover, which is the one image on the browse card and
+  // at the top of the page. The Birth Place of the Republican Party in Ripon, Market House Museum in Paducah,
+  // Salida Golf Club, Timberview Golf Club and Windsor Gymnastics all led with "bannerlottohk1.webp",
+  // "bandar-togel", "satset138-maxwin" or "pttogel-togel-online".
+  const sidecarPhotos = [...crawledPhotosFor(r.id).photos, ...(isChainLocation(r.domain) ? crawledPhotosFor(brandId(r.website)).photos : [])];
   const foreignScript = foreignScriptCompromised(
     rawFacts.filter((f) => TEXT_KEYS.test(f.fact_key)).map((f) => f.fact_value),
     rawOfferings.map((o) => o.name + " " + (o.detail || "")),
   );
-  const hasSpamText =
-    rawFacts.some((f) => (TEXT_KEYS.test(f.fact_key) || MEDIA_FACT_KEY.test(f.fact_key)) && isCompromisedText(f.fact_value)) ||
-    // The narrower phrase check, not the full one: a compact rate card can legitimately repeat a short phrase
-    // across most of its own length, which is exactly the shape isKeywordStuffed looks for.
-    rawOfferings.some((o) => isCompromisedPhrase(o.name + " " + (o.detail || "")));
+  const hasSpamText = hasHackedSpam(
+    rawFacts.filter((f) => TEXT_KEYS.test(f.fact_key) || MEDIA_FACT_KEY.test(f.fact_key)).map((f) => f.fact_value),
+    rawOfferings.map((o) => o.name + " " + (o.detail || "")),
+    sidecarPhotos,
+  );
   const spamCompromised = hasSpamText || foreignScript != null;
   if (spamCompromised) {
-    const reason = hasSpamText ? "hacked-page spam in a crawled fact or offering" : foreignScript!;
+    const reason = hasSpamText ? "hacked-page spam in a crawled fact, offering or photo address" : foreignScript!;
     console.warn(`[sync] quarantined ${r.domain} (${catalogId(r.domain)}): ${reason}`);
     cleanupLog?.quarantined.push({ id: r.domain, reason });
   }
@@ -478,7 +487,7 @@ export function toCatalogItem(r: CatalogRow): Record<string, unknown> {
     // fetched the site, they are all there is, and when it has, the older harvest already earned its order.
     // cleanImageUrl first: crawls before 14 September 2026 split srcset on every comma and stored pieces of
     // Wix and Cloudinary transform URLs, which resolve to pages that do not exist.
-    keepScreened(uniq([...widgetPhotos, ...pick("cover"), ...pick("photo"), ...crawledPhotosFor(r.id).photos, ...(isChainLocation(r.domain) ? crawledPhotosFor(brandId(r.website)).photos : [])].map(cleanImageUrl).filter((u): u is string => !!u).filter(isPhotoName))).map((url) => ({
+    keepScreened(uniq([...widgetPhotos, ...pick("cover"), ...pick("photo"), ...(spamCompromised ? [] : sidecarPhotos)].map(cleanImageUrl).filter((u): u is string => !!u).filter(isPhotoName))).map((url) => ({
       url,
       page: photoPage.get(url) || null,
       item: photoItem.get(url) || itemByPage.get(photoPage.get(url) || "") || null,
@@ -884,6 +893,19 @@ export function isCompromisedText(value: string): boolean {
  * all come from the operators table and stay, so a shop wrongly caught here is still there to browse and to
  * claim, and one real crawl after the hack is cleaned publishes its facts again.
  */
+/**
+ * Whether anything the crawl read off this operator's pages is a hacked page's, over the three kinds of thing
+ * it reads. `texts` are its text and media facts, `rows` its menu, `mediaUrls` the cloud crawl's own photo
+ * harvest, which arrives through `photoSidecar.ts` rather than the facts table and so was screened by nothing
+ * at all: that is where the 24 gambling-banner addresses on 13 shipped listings came in.
+ *
+ * `rows` take the narrower phrase check rather than the full one, because a compact rate card can legitimately
+ * repeat a short phrase across most of its own length, which is exactly the shape `isKeywordStuffed` looks for.
+ */
+export function hasHackedSpam(texts: string[], rows: string[], mediaUrls: string[]): boolean {
+  return texts.some(isCompromisedText) || mediaUrls.some(isCompromisedText) || rows.some(isCompromisedPhrase);
+}
+
 export function foreignScriptCompromised(facts: string[], rows: string[]): string | null {
   const foreignRows = rows.filter((v) => FOREIGN_SCRIPT_RUN.test(v));
   if (rows.length > 0 && foreignRows.length === rows.length) {
