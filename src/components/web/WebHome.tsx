@@ -744,7 +744,7 @@ function UserMenu({ onOperators }: { onOperators: () => void }) {
           </button>
           <hr />
           <button type="button" role="menuitem" onClick={go(onOperators)}>For operators</button>
-          <a role="menuitem" href="/otto" onClick={() => setOpen(false)}>AI front desk for your phone</a>
+          <a role="menuitem" href="/" onClick={() => setOpen(false)}>AI front desk for your phone</a>
           <hr />
           <button type="button" role="menuitem" onClick={go(onOperators)}>Operator log in or sign up</button>
         </div>
@@ -1599,7 +1599,7 @@ export function WebHome({ onOperators, onAsk, asking = false, askSeed = "", onCl
           )}
           <div className="ah-right">
             {asking ? null : modeSwitch}
-            <a className="ah-host" href="/otto">Otto</a>
+            <a className="ah-host" href="/">Otto</a>
             <button type="button" className="ah-host" onClick={onOperators}>List your business</button>
             <UserMenu onOperators={onOperators} />
           </div>
@@ -1867,7 +1867,7 @@ export function WebHome({ onOperators, onAsk, asking = false, askSeed = "", onCl
                 <li><button type="button" onClick={onOperators}>Operator log in</button></li>
                 {/* The other half of Outset: the AI front desk sold to operators, on its own page. Both sites link
                     each other, this from the marketplace, and the Outset mark on that page back here. */}
-                <li><a href="/otto">Otto: AI front desk for your phone</a></li>
+                <li><a href="/">Otto: AI front desk for your phone</a></li>
                 {OTTO_LIVE ? <li><a href="#safe">You pay, or Otto does</a></li> : null}
               </ul>
             </section>

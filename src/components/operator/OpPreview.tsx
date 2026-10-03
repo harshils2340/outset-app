@@ -78,7 +78,7 @@ export function savePreviewPrefs(patch: Partial<Prefs>): void {
 }
 
 export function previewSrc(id: string): string {
-  return import.meta.env.BASE_URL + "?preview=1#o=" + encodeURIComponent(id);
+  return import.meta.env.BASE_URL + "activities?preview=1#o=" + encodeURIComponent(id);
 }
 
 /** Largest width the panel may take: the editor keeps EDITOR_MIN_W beside it. */

@@ -1219,16 +1219,29 @@ function RequestBody({
                   <small className="go">{dist ? dist + " · Get directions" : "Get directions"}</small>
                 </span>
               </a>
+              {/* "Choose who to call" is a choice between Ask Outset and a person. With the agent switched off
+                  (`AGENT_MODE_LIVE` reads `GUEST_AGENT`, lib/flags.ts) only the person is left, so the number
+                  rings the shop on the first tap instead of opening a picker with one thing in it. */}
               {callHref && contact?.phone ? (
-                <button type="button" className="crow" onClick={() => setCallOpen((v) => !v)} aria-expanded={callOpen}>
-                  <Markup html={ICONS.phone} />
-                  <span>
-                    <b>{fmtPhone(contact.phone)}</b>
-                    <small>{callOpen ? "Choose who to call" : "Tap to call"}</small>
-                  </span>
-                </button>
+                AGENT_MODE_LIVE ? (
+                  <button type="button" className="crow" onClick={() => setCallOpen((v) => !v)} aria-expanded={callOpen}>
+                    <Markup html={ICONS.phone} />
+                    <span>
+                      <b>{fmtPhone(contact.phone)}</b>
+                      <small>{callOpen ? "Choose who to call" : "Tap to call"}</small>
+                    </span>
+                  </button>
+                ) : (
+                  <a className="crow" href={callHref} onClick={(e) => e.stopPropagation()}>
+                    <Markup html={ICONS.phone} />
+                    <span>
+                      <b>{fmtPhone(contact.phone)}</b>
+                      <small>Tap to call</small>
+                    </span>
+                  </a>
+                )
               ) : null}
-              {callOpen && callHref ? (
+              {AGENT_MODE_LIVE && callOpen && callHref ? (
                 <div className="callpick">
                   {AGENT_MODE_LIVE ? (
                     <>

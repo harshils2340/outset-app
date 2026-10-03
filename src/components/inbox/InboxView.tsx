@@ -1,6 +1,7 @@
 import { LISTINGS } from "../../data/listings";
 import { ICONS } from "../../data/icons";
 import { experienceById, initials, stillArriving } from "../../lib/catalog";
+import { GUEST_AGENT } from "../../lib/flags";
 import { useApp } from "../../state/AppProvider";
 import { Markup } from "../Markup";
 
@@ -17,6 +18,10 @@ export type ThreadRow = { id: string; name: string; init: string; agent: boolean
  * operator has left the catalog no longer leaves a "1" on the tab over a page saying "No threads yet".
  */
 export function inboxThreads(chats: Record<string, unknown>, catalogComplete: boolean): { rows: ThreadRow[]; loading: boolean; total: number } {
+  // Every thread here is an operator's agent answering for the shop, so with the guest agent switched off
+  // (`GUEST_AGENT`, lib/flags.ts) there is nothing to list and nothing for the tab bar to count. The threads
+  // stay stored on the device and come back with the switch.
+  if (!GUEST_AGENT) return { rows: [], loading: false, total: 0 };
   const ids = Object.keys(chats);
   const rows = ids
     .map((id) => {
@@ -83,8 +88,9 @@ export function InboxView() {
           <div className="glyph">
             <Markup html={ICONS.chat} />
           </div>
-          <b>No threads yet</b>
-          <p>Book a trip, then message the operator here.</p>
+          {/* "Message the operator here" promised the agent's chat, which is switched off with it. */}
+          <b>{GUEST_AGENT ? "No threads yet" : "No messages yet"}</b>
+          <p>{GUEST_AGENT ? "Book a trip, then message the operator here." : "Your bookings and check-in codes are under Trips."}</p>
         </div>
       )}
       <div className="spacer" />

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { GUEST_AGENT } from "../../lib/flags";
 import { hasApi, uploadPhoto } from "../../lib/api";
 import { CATS } from "../../data/categories";
 import { GUIDES } from "../../data/guides";
@@ -330,7 +331,7 @@ export function OpListing() {
 
           <section className="odcard" data-jump="policy">
             <div className="odcardhead"><h3>Things to know</h3></div>
-            <p className="odmuted">Copied from your booking system and website, in your words. Every line here shows on your listing, and the assistant answers guests from it.</p>
+            <p className="odmuted">Copied from your booking system and website, in your words. Every line here shows on your listing{GUEST_AGENT ? ", and the assistant answers guests from it" : ""}.</p>
 
             <h4 className="odsub">Cancellation policy</h4>
             <label className="odfield"><span className="odvh">Cancellation policy</span>

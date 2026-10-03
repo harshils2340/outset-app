@@ -127,6 +127,10 @@ test("the chat thread a guest reopens still consults the switch", () => {
  * while its own way in, the "Ask Outset about <shop>" button, sat outside every branch of it, so a shop that
  * had switched the assistant off was still offering a guest its own published answers. This reads the branch
  * itself: the button that opens the agent must be inside the switch's true arm.
+ *
+ * Since 3 October 2026 that whole block, "Questions before you book?" with both arms, sits behind
+ * `GUEST_AGENT` (lib/flags.ts) and is off for every guest; `guestAgentOff.test.ts` holds that. This holds the
+ * operator's own switch inside it, for when the block comes back.
  */
 test("the desktop listing's Ask button sits inside the switch, not beside it", () => {
   const src = readFileSync(join(here, "../../components/web/WebListing.tsx"), "utf8");

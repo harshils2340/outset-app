@@ -587,7 +587,7 @@ function page(kind: Kind, metro: Place | null, items: Item[], nearby: Neighbour[
       // A listing that earns its own static page (hasListingPage, /l/<id>.html) sends the crawler there instead
       // of straight to the hash route, so it reaches the listing's full facts in one hop from here. Every other
       // listing opens in the app, where it has always lived.
-      const cardHref = hasListingPage(i) ? `${publicSite()}l/${esc(i.id)}.html` : `${publicSite()}#o=${esc(i.id)}`;
+      const cardHref = hasListingPage(i) ? `${publicSite()}l/${esc(i.id)}.html` : `${publicSite()}activities#o=${esc(i.id)}`;
       return `<a class="card" href="${cardHref}">
   <div class="art">${photo ? `<img src="${esc(photo.src)}"${photo.srcSet ? ` srcset="${esc(photo.srcSet)}" sizes="${CARD_SIZES}"` : ""} alt="${esc(i.title)}" width="560" height="560" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">` : ""}</div>
   <b>${esc(i.title)}</b><small>${esc(i.area)}</small>
@@ -610,7 +610,7 @@ function page(kind: Kind, metro: Place | null, items: Item[], nearby: Neighbour[
        * a fact about the place and not a claim about this list.
        */
       numberOfItems: listed.length,
-      itemListElement: listed.map((i, n) => ({ "@type": "ListItem", position: n + 1, name: i.title, url: `${publicSite()}#o=${i.id}` })),
+      itemListElement: listed.map((i, n) => ({ "@type": "ListItem", position: n + 1, name: i.title, url: `${publicSite()}activities#o=${i.id}` })),
     },
     {
       "@context": "https://schema.org",
@@ -641,7 +641,7 @@ function page(kind: Kind, metro: Place | null, items: Item[], nearby: Neighbour[
   const more =
     items.length > listed.length
       ? `<p class="more">Showing ${num(listed.length)} of ${num(items.length)}, the ones with a photo and a price first. ` +
-        `<a href="${publicSite()}">Open Outset</a> for the rest${byCity ? ", or pick a city below" : ""}.</p>`
+        `<a href="${publicSite()}activities">Open Outset</a> for the rest${byCity ? ", or pick a city below" : ""}.</p>`
       : "";
   return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>${esc(title)} · Outset</title>
@@ -650,7 +650,7 @@ function page(kind: Kind, metro: Place | null, items: Item[], nearby: Neighbour[
 ${socialCard({ title: `${title} · Outset`, description, url: canonical, photo: listed.find((i) => i.cover)?.cover })}
 <script type="application/ld+json">${ldJson(ld)}</script>
 <style>${CSS}</style></head><body>
-<header><div class="wrap top"><a class="logo" href="${publicSite()}">Outset</a><a class="cta" href="${publicSite()}">Open Outset</a></div></header>
+<header><div class="wrap top"><a class="logo" href="${publicSite()}activities">Outset</a><a class="cta" href="${publicSite()}activities">Open Outset</a></div></header>
 <main class="wrap">
 <nav class="crumbs"><a href="${publicSite()}">Outset</a><span>›</span><a href="index.html">By activity and city</a>${metro ? `<span>›</span><a href="${fileFor(kind.art, null)}">${esc(kind.search)}</a>${extra.upLink ? `<span>›</span><a href="${extra.upLink.file}">${esc(extra.upLink.label)}</a>` : ""}<span>›</span>${esc(metro.name)}` : `<span>›</span>${esc(kind.search)}`}</nav>
 <h1>${esc(title)}</h1>
@@ -890,7 +890,7 @@ export function writeLandingPages(rawItems: Item[], opts: { publicDir?: string }
 <meta name="description" content="${esc(indexDescription)}">
 <link rel="canonical" href="${publicSite()}p/index.html">
 ${socialCard({ title: "Things to do by activity and city · Outset", description: indexDescription, url: `${publicSite()}p/index.html` })}
-<style>${CSS}</style></head><body><header><div class="wrap top"><a class="logo" href="${publicSite()}">Outset</a><a class="cta" href="${publicSite()}">Open Outset</a></div></header><main class="wrap"><h1>Things to do by activity and city</h1>
+<style>${CSS}</style></head><body><header><div class="wrap top"><a class="logo" href="${publicSite()}activities">Outset</a><a class="cta" href="${publicSite()}activities">Open Outset</a></div></header><main class="wrap"><h1>Things to do by activity and city</h1>
 <h2>Everywhere</h2><div class="links">${kindPages.map((k) => `<a href="${fileFor(k.art, null)}">${esc(k.search)}<small>${num((byKind.get(k.art) || []).length)}</small></a>`).join("")}</div>
 ${cities.map((c) => `<h2>${esc(placeName(c.metro))}</h2><div class="links">${c.pages.map((p) => `<a href="${fileFor(p.kind.art, c.metro.id)}">${esc(p.kind.search)}<small>${num(p.items.length)}</small></a>`).join("")}</div>`).join("\n")}
 </main>${pageFooter()}</body></html>`;

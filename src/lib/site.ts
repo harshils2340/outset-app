@@ -17,15 +17,15 @@ export const LEGAL_LINKS = [
 ] as const;
 
 export function listingUrl(id: string): string {
-  return SITE + "/#o=" + id;
+  return SITE + "/activities#o=" + id;
 }
 
 export function claimUrl(id: string, token: string): string {
-  return SITE + "/#claim=" + id + "&k=" + token;
+  return SITE + "/operators#claim=" + id + "&k=" + token;
 }
 
 export function removeUrl(id: string): string {
-  return SITE + "/#remove=" + id;
+  return SITE + "/activities#remove=" + id;
 }
 
 /**

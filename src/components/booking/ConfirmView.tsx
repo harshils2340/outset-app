@@ -9,6 +9,7 @@ import { Markup } from "../Markup";
 import { Fragment } from "react";
 import { tidyAddress, tidyLength, tidyName } from "../web/WebListing";
 import { bookedName, meetPlace } from "../../lib/listingDerive";
+import { GUEST_AGENT } from "../../lib/flags";
 
 export function ConfirmView() {
   const { state, openChat, openRequest, goto } = useApp();
@@ -115,10 +116,13 @@ export function ConfirmView() {
         </div>
       </div>
       <div style={{ display: "flex", gap: 10, marginTop: 18 }}>
+        {/* Messaging the operator is their agent answering, so it is behind `GUEST_AGENT` (lib/flags.ts). */}
         {l ? (
-          <button className="cta ghost" style={{ flex: 1 }} onClick={() => openChat(l.id)}>
-            Message operator
-          </button>
+          GUEST_AGENT ? (
+            <button className="cta ghost" style={{ flex: 1 }} onClick={() => openChat(l.id)}>
+              Message operator
+            </button>
+          ) : null
         ) : (
           <button className="cta ghost" style={{ flex: 1 }} onClick={() => openRequest(u!.id)}>
             View listing

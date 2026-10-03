@@ -12,6 +12,10 @@ import { readFileSync } from "node:fs";
  *
  * A renderer would be the honest way to test this and the repo has none, so this reads the two files: the
  * state a screen writes must be the state this file renders from.
+ *
+ * Since 3 October 2026 every way into Ask Outset is switched off for guests (`GUEST_AGENT` in lib/flags.ts,
+ * which `AGENT_MODE_LIVE` reads), and `guestAgentOff.test.ts` holds it off. The code stays behind the switch,
+ * so this goes on holding the wiring it comes back with: one overlay, one owner of its state.
  */
 
 const src = (rel: string) => readFileSync(new URL(rel, import.meta.url), "utf8");

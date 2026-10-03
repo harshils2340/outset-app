@@ -1,6 +1,6 @@
 services:
   # The guest site, onoutset.com. Render builds it from every push to main and serves dist from its CDN; nothing
-  # goes through GitHub Actions. Deep links (/operators, a shared listing) are rewritten to index.html so the
+  # goes through GitHub Actions. Deep links (/activities, /operators, a shared listing) are rewritten to app.html so the
   # app routes them. Backend and docs changes do not trigger a site build.
   - type: web
     name: outset-web
@@ -12,7 +12,12 @@ services:
     # build-pages.mts writes the activity-and-city pages, the per-listing pages, the sitemaps and robots.txt into
     # dist. They are not committed: about 14,500 files that every sync would rewrite. A failure there fails the
     # build on purpose, because a deploy with no sitemap drops the whole site out of the index.
-    buildCommand: npm ci && npx vite build --base=/ && npx tsx scripts/build-pages.mts && cp dist/index.html dist/404.html && rm -f dist/claim-index.json
+    # onoutset.com's home is the Otto page (public/otto.html, moved to index.html), and the marketplace app is
+    # served from app.html at /activities, /operators, /admin and /listing/* through the catch-all below. The
+    # copies run after build-pages, so its links land in the app shell, and the home forwards any old root link in
+    # the app's shapes (#o=, #remove=, #claim=, #paid=) to /activities or /operators. otto.html is moved, not
+    # copied, so the old /otto.html address falls through to its redirect below instead of serving a second copy.
+    buildCommand: npm ci && npx vite build --base=/ && npx tsx scripts/build-pages.mts && cp dist/index.html dist/404.html && cp dist/index.html dist/app.html && mv dist/otto.html dist/index.html && rm -f dist/claim-index.json
     staticPublishPath: dist
     buildFilter:
       ignoredPaths:
@@ -23,12 +28,26 @@ services:
       - key: VITE_API_URL
         value: https://outset-api.onrender.com
     routes:
-      # Clean URLs for the standalone marketing and legal pages: without these the catch-all below sends /otto,
-      # /about and the rest to the SPA, which shows the guest home instead of the page. A real static file is
-      # still served directly, so /otto.html keeps working too; these just make the extensionless URL resolve.
-      - type: rewrite
+      # Otto's page is the home now. Every outreach email before October 2026 linked /otto, so it and the old
+      # file name redirect there rather than falling into the marketplace app.
+      - type: redirect
         source: /otto
-        destination: /otto.html
+        destination: /
+      - type: redirect
+        source: /otto.html
+        destination: /
+      # Clean URLs for the standalone marketing and legal pages: without these the catch-all below sends /about
+      # and the rest to the SPA, which shows the guest marketplace instead of the page. A real static file is still
+      # served directly; these just make the extensionless URL resolve.
+      - type: rewrite
+        source: /features
+        destination: /features.html
+      - type: rewrite
+        source: /integrations
+        destination: /integrations.html
+      - type: rewrite
+        source: /pricing
+        destination: /pricing.html
       - type: rewrite
         source: /about
         destination: /about.html
@@ -42,10 +61,16 @@ services:
       # catch-all below would otherwise show the home under that URL as if it were a page of its own.
       - type: redirect
         source: /go
-        destination: /
+        destination: /activities
+      - type: redirect
+        source: /marketplace
+        destination: /activities
+      - type: rewrite
+        source: /activities
+        destination: /app.html
       - type: rewrite
         source: /*
-        destination: /index.html
+        destination: /app.html
     # The site had only x-content-type-options. These are the rest of the cheap ones.
     # SAMEORIGIN rather than DENY because the operator dashboard previews the guest page in an iframe
     # (src/components/operator/OpPreview.tsx). geolocation stays on for the app's own "how far away" line

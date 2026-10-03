@@ -213,7 +213,7 @@ const CSS =
 function page(item: Item, opts: { landingHref: string | null; landingLabel: string | null; kindPageHref: string | null }): string {
   const site = publicSite();
   const canonical = `${site}l/${item.id}.html`;
-  const hashUrl = `${site}#o=${esc(item.id)}`;
+  const hashUrl = `${site}activities#o=${esc(item.id)}`;
   // Through the same two steps both app surfaces read a blurb through, not the raw stored prose. Read raw, 977
   // of these pages printed a description the app prints differently for the same shop: the shop's own jargon
   // left short ("USCG licensed captain", "Venue is BYOB", "twin 550 HP engines"), the space the crawl left in
@@ -342,9 +342,9 @@ ${partner ? '<meta name="robots" content="noindex">\n' : ""}<link rel="canonical
 ${socialCard({ title, description, url: canonical, photo: photos[0] })}
 <script type="application/ld+json">${ldJson(ld)}</script>
 <style>${CSS}</style></head><body>
-<header><div class="wrap top"><a class="logo" href="${site}">Outset</a></div></header>
+<header><div class="wrap top"><a class="logo" href="${site}activities">Outset</a></div></header>
 <main class="wrap">
-<nav class="crumbs"><a href="${site}">Outset</a><span>›</span><a href="${site}p/index.html">By activity and city</a>${kind && opts.kindPageHref ? `<span>›</span><a href="${opts.kindPageHref}">${esc(kind.search)}</a>` : ""}</nav>
+<nav class="crumbs"><a href="${site}activities">Outset</a><span>›</span><a href="${site}p/index.html">By activity and city</a>${kind && opts.kindPageHref ? `<span>›</span><a href="${opts.kindPageHref}">${esc(kind.search)}</a>` : ""}</nav>
 <h1>${esc(item.title)}</h1>
 ${place ? `<p class="area">${esc(place)}</p>` : ""}
 ${ratingHtml}

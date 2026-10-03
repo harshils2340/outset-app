@@ -1,4 +1,5 @@
 import { useDeferredValue, useEffect, useMemo, useState, useRef } from "react";
+import { GUEST_AGENT } from "../../lib/flags";
 import type { Unclaimed } from "../../data/types";
 import { contactFor, experienceById, fromPrice, getCatalog } from "../../lib/catalog";
 import { money } from "../../lib/format";
@@ -578,7 +579,7 @@ export function OpLogin({ claimId, claimToken, compact, onEnter, onBack }: { cla
           <li><Markup html={OD_ICONS.check} /> Requests land in one feed with Accept and Decline</li>
           <li><Markup html={OD_ICONS.check} /> A calendar that fills itself, plus time off in one tap</li>
           <li><Markup html={OD_ICONS.check} /> Your prices and photos, copied from your site, editable in seconds</li>
-          <li><Markup html={OD_ICONS.check} /> A 24/7 assistant that answers guests from your info only</li>
+          {GUEST_AGENT ? <li><Markup html={OD_ICONS.check} /> A 24/7 assistant that answers guests from your info only</li> : null}
         </ul>
         <button type="button" className="odlink" onClick={onBack}>Back to the guest site</button>
       </div>

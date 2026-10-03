@@ -28,7 +28,7 @@ test("short: a question, the pain, what Otto does, one recording, an offer", () 
 
 test("the recording is the only link in the body, hyperlinked as a phrase in the html", () => {
   const c = copy();
-  const otto = "https://onoutset.com/otto";
+  const otto = "https://onoutset.com/#call";
   assert.equal(c.body.split(otto).length - 1, 1, c.body);
   assert.ok(c.html.includes('<a href="' + otto + '">give it a listen</a>'), c.html);
   assert.equal((c.html.match(/<a /g) || []).length, 3, "recording, unsubscribe, take-down and nothing else");

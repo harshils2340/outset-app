@@ -15,7 +15,7 @@ import "./styles/operator.css";
 const listingPath = /^\/listing\/([a-z0-9-]+)\/?$/i.exec(window.location.pathname);
 if (listingPath) {
   const base = import.meta.env.BASE_URL.replace(/\/?$/, "/");
-  window.history.replaceState(null, "", base + "#o=" + listingPath[1]);
+  window.history.replaceState(null, "", base + "activities#o=" + listingPath[1]);
 }
 
 createRoot(document.getElementById("root")!).render(

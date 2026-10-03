@@ -30,6 +30,7 @@ import { BAD_EMAIL_CTA, BAD_EMAIL_LINE, guestEmailOk } from "../../lib/guestEmai
 import { GUEST_EMAIL_MAX, GUEST_NAME_MAX, GUEST_PHONE_MAX } from "../../lib/guestForm";
 import { ottoActive, useWallet } from "../../lib/wallet";
 import { AGENT_MODE_LIVE } from "../../lib/concierge";
+import { GUEST_AGENT } from "../../lib/flags";
 import { shownReviews, type ShownReview } from "../../lib/reviews";
 import { seasonFact, seasonNoteLine } from "../../lib/season";
 import { listingUrl } from "../../lib/site";
@@ -2103,28 +2104,40 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
                 {affiliate ? <li><Markup html={I.ticket} /> <span>Booked on {affiliate.label}</span></li> : instant ? <li><Markup html={I.bolt} /> <span>Instant confirmation</span></li> : visit ? <li><Markup html={I.ticket} /> <span>Tickets on their own site</span></li> : <li><Markup html={I.message} /> <span>Confirms requests by email</span></li>}
               </ul>
             </div>
+            {/* A partner's product with the questions block switched off has nothing left for this column (it
+                carries no owner line either, see below), so the business card stands on its own. */}
+            {GUEST_AGENT || !affiliate ? (
             <div className="albizright">
-              <h3>Questions before you book?</h3>
-              {/* The operator's Assistant switch. Off means this shop answers guests itself, so the agent goes
-                  and the phone number, which sits under it as a second option, becomes the first one. The phone
-                  listing has honoured this switch all along; the desktop one stopped when its Otto panel became
-                  an Ask Outset button, and offered the shop's own information back to a guest either way. */}
-              {AGENT_MODE_LIVE && assistantOn(item) ? (
+              {/* "Questions before you book?" is the guest agent's block: Ask Outset while that is on, and the
+                  shop answering for itself when its owner switched the assistant off. All of it sits behind
+                  `GUEST_AGENT` (lib/flags.ts). Off, the shop's number stays where every listing already prints
+                  it, as tap-to-call under "Where you'll be", and the owner's line below is all this column holds. */}
+              {GUEST_AGENT ? (
                 <>
-                  <p className="alsecsub">Ask Outset reads {possessive(item.title)} own published information, and can check live availability while you wait.</p>
-                  <button type="button" className="aloutline" onClick={() => openAsk("What should I know about " + item.title + " before booking?")}>
-                    Ask Outset about {item.title}
-                </button>
+                  <h3>Questions before you book?</h3>
+                  {/* The operator's Assistant switch. Off means this shop answers guests itself, so the agent goes
+                      and the phone number, which sits under it as a second option, becomes the first one. The phone
+                      listing has honoured this switch all along; the desktop one stopped when its Otto panel became
+                      an Ask Outset button, and offered the shop's own information back to a guest either way. */}
+                  {AGENT_MODE_LIVE && assistantOn(item) ? (
+                    <>
+                      <p className="alsecsub">Ask Outset reads {possessive(item.title)} own published information, and can check live availability while you wait.</p>
+                      <button type="button" className="aloutline" onClick={() => openAsk("What should I know about " + item.title + " before booking?")}>
+                        Ask Outset about {item.title}
+                      </button>
+                    </>
+                  ) : affiliate ? (
+                    <p className="alsecsub">Dates, prices, questions and payment are all on {affiliate.label}. Outset earns a commission if you book there, at no extra cost to you.</p>
+                  ) : (
+                    <p className="alsecsub">{item.title} answers these themselves. {callHref ? "Give them a call, or send" : "Send"} a booking request on this page and it reaches them directly.</p>
+                  )}
+                  {callHref ? <a className="aloutline" href={callHref}>Call the business</a> : null}
                 </>
-              ) : affiliate ? (
-                <p className="alsecsub">Dates, prices, questions and payment are all on {affiliate.label}. Outset earns a commission if you book there, at no extra cost to you.</p>
-              ) : (
-                <p className="alsecsub">{item.title} answers these themselves. {callHref ? "Give them a call, or send" : "Send"} a booking request on this page and it reaches them directly.</p>
-              )}
-              {callHref ? <a className="aloutline" href={callHref}>Call the business</a> : null}
+              ) : null}
               {/* On every listing, claimed or not, and worded for an owner rather than about the page's status:
                   "Claim this listing" only appeared on unclaimed ones, which told a guest which shops had not
-                  signed up. An owner who is already signed in lands in their dashboard from the same link. */}
+                  signed up. An owner who is already signed in lands in their dashboard from the same link. This
+                  is the claim funnel, not agent UI, so it stays whatever `GUEST_AGENT` says. */}
               {/* Not on a partner's product: there is nothing here for an owner to manage. The page is the
                   partner's listing under licence, the booking is theirs, and the claim screen would send an
                   owner round a loop that ends in "we have no email on file for this business". */}
@@ -2135,6 +2148,7 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
                 </p>
               )}
               </div>
+            ) : null}
         </div>
         </section>
 

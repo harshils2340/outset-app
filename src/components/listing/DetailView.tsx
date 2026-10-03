@@ -8,6 +8,7 @@ import { useApp } from "../../state/AppProvider";
 import { Art } from "../art/Art";
 import { Markup } from "../Markup";
 import { SlotCalendar } from "../booking/SlotCalendar";
+import { GUEST_AGENT } from "../../lib/flags";
 
 export function DetailView() {
   const { state, dates, listing, back, setDate, setSlot, bumpQty, toggleAddon, openReview, openChat } = useApp();
@@ -41,15 +42,22 @@ export function DetailView() {
           <span className="meta">
             <b>{listing.op}</b>
             <small>{listing.opSince}</small>
-            <br />
-            <span className="agentpill">
-              <Markup html={ICONS.spark} />
-              Agent replies in seconds
-            </span>
+            {/* The operator's agent, behind `GUEST_AGENT` (lib/flags.ts) like every other agent surface. */}
+            {GUEST_AGENT ? (
+              <>
+                <br />
+                <span className="agentpill">
+                  <Markup html={ICONS.spark} />
+                  Agent replies in seconds
+                </span>
+              </>
+            ) : null}
           </span>
-          <button className="pill" onClick={() => openChat(listing.id)}>
-            Ask
-          </button>
+          {GUEST_AGENT ? (
+            <button className="pill" onClick={() => openChat(listing.id)}>
+              Ask
+            </button>
+          ) : null}
         </div>
         <div className="factgrid">
           {listing.facts.map((f) => (

@@ -83,7 +83,7 @@ export function draftOttoCopy(op: OttoOp, email?: string, opts?: { greet?: strin
   // that was found for it, or null for "Hi,".
   const hi = opts && "greet" in opts ? (opts.greet ? "Hi " + opts.greet + "," : "Hi,") : to ? greeting(op, to) : "Hi,";
   const SITE = "https://onoutset.com/";
-  const OTTO = SITE + "otto";
+  const OTTO = SITE + "#call";
   const subject = "Missed calls at " + op.name;
   const question = "When everyone at " + op.name + " is busy with guests or you've closed for the day, where do the calls go?";
   const pain = "For most operators it's voicemail, and the caller hangs up and books with the next place that picks up.";

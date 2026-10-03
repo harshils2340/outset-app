@@ -1,0 +1,487 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Features · Outset · Your 24/7 front desk for activity businesses</title>
+  <meta name="description" content="Everything Otto does when your team can't get to the phone: it picks up in your business's name, answers from your published prices and policies, helps callers book, and sends your team a summary of every call.">
+  <link rel="canonical" href="https://onoutset.com/features">
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+  <meta property="og:title" content="Outset features · Your 24/7 front desk">
+  <meta property="og:description" content="What Otto does when your team is busy or you're closed: answers in your business's name, from your real facts, and hands your staff the full story.">
+  <meta property="og:url" content="https://onoutset.com/features">
+  <meta property="og:type" content="website">
+  <meta property="og:image" content="https://onoutset.com/apple-touch-icon.png">
+  <meta name="theme-color" content="#F4EEE4">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&family=Figtree:wght@400;500;600;700&display=swap">
+  <link rel="stylesheet" href="/site.css">
+  <style>
+    /* Features page. Shared parts (nav, cards, zig rows, mats, ticks, summary card, closing band, footer) come from
+       site.css; only what this page adds lives here, and every colour is a site.css token. */
+    .sec[id] { scroll-margin-top: 74px; }
+    h1, h2, h3 { text-wrap: balance; }
+    p, dd, small { text-wrap: pretty; }
+    .shadow-lg { box-shadow: 0 16px 34px color-mix(in srgb, var(--ink) 15%, transparent), 0 2px 6px color-mix(in srgb, var(--ink) 7%, transparent); }
+
+    /* Hero: headline left, the pitch right, then a day of calls pinned along the band's bottom edge. */
+    .fhero { padding: 5rem 0 0; }
+    .fhero-top { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); column-gap: clamp(2.5rem, 6vw, 6rem); align-items: end; }
+    .fhero h1 { font-size: clamp(2.5rem, 4.7vw, 4.1rem); line-height: 1.08; letter-spacing: -.025em; }
+    .fhero-sub { font-size: clamp(1.08rem, 1.35vw, 1.2rem); line-height: 1.65; color: var(--ink-2); margin: 0 0 2rem; max-width: 33rem; }
+    .fhero-ctas { display: flex; gap: .8rem; flex-wrap: wrap; }
+
+    .day { list-style: none; padding: 0; margin: 4.75rem 0 -7.5rem; position: relative; z-index: 2; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: clamp(1rem, 2.6vw, 2.5rem); }
+    .snap { margin: 0; background: var(--white); padding: 10px 10px 0; transform: translateY(var(--y, 0)) rotate(var(--r, 0deg)); }
+    .snap img { width: 100%; aspect-ratio: 3 / 2; object-fit: cover; }
+    .snap figcaption { padding: .75rem .35rem .9rem; line-height: 1.35; }
+    .snap b { display: flex; align-items: center; gap: .45rem; color: var(--ink); font-size: 1rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+    .snap b .ic { width: 15px; height: 15px; color: var(--forest); }
+    .snap small { display: block; margin-top: .2rem; color: var(--ink-3); font-size: .88rem; font-weight: 500; }
+    .day li:nth-child(1) .snap { --r: -2.5deg; --y: .75rem; }
+    .day li:nth-child(2) .snap { --r: 1.75deg; --y: -.5rem; }
+    .day li:nth-child(3) .snap { --r: -1.25deg; --y: 1.25rem; }
+    .day li:nth-child(4) .snap { --r: 2.5deg; --y: 0rem; }
+
+    /* In-page index under the pinned prints. */
+    .jump { padding: 11.75rem 0 1.5rem; }
+    .jump ul { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; justify-content: center; row-gap: .75rem; }
+    .jump li + li { border-left: 1px solid var(--line); }
+    .jump a { display: inline-flex; align-items: center; gap: .55rem; padding: .3rem 1.35rem; font-weight: 600; font-size: .98rem; color: var(--ink); }
+    .jump a span { border-bottom: 1.5px solid transparent; }
+    .jump a:hover span { border-color: var(--ink); }
+    .jump .ic { width: 17px; height: 17px; color: var(--forest); }
+
+    /* Feature rows: a scene in a sand mat with a product card laid over its lower edge. */
+    .feat + .feat { padding-top: 0; }
+    .shot { position: relative; }
+    .shot .scene { aspect-ratio: 16 / 9; }
+    #facts .shot .scene { aspect-ratio: 2 / 1; }
+    .shot > .ui, .shot > .stack { position: relative; z-index: 1; margin: -3.25rem 0 0 clamp(1rem, 3.5vw, 2.75rem); }
+    .zig .ticks { margin-bottom: 0; }
+    .zig .more { margin-top: 2.25rem; }
+    .zig .stat { display: flex; align-items: center; gap: 1.4rem; margin: 2.5rem 0 0; padding-top: 1.75rem; border-top: 1px solid var(--line); }
+    .stat b { font-size: clamp(2.4rem, 3.4vw, 3rem); font-weight: 400; line-height: 1; letter-spacing: -.02em; color: var(--ink); white-space: nowrap; }
+    .stat span { font-size: .95rem; line-height: 1.55; color: var(--ink-2); max-width: 24rem; }
+    .stat a { text-decoration: underline; text-underline-offset: 2px; }
+
+    /* Product cards: the same white, ink-outlined surface as the call summary. */
+    .ui { background: var(--white); border: 1.5px solid var(--ink); border-radius: 8px; overflow: hidden; color: var(--ink); font-size: .95rem; line-height: 1.5; }
+    .ui-hd { display: flex; align-items: center; gap: .8rem; padding: 1rem 1.2rem; border-bottom: 1px solid var(--line); }
+    .ui-hd b { display: block; font-size: 1rem; line-height: 1.3; font-weight: 600; }
+    .ui-hd small { display: block; color: var(--ink-3); font-size: .84rem; line-height: 1.35; }
+    .ui-hd .logo { width: 32px; height: 32px; border-radius: 7px; flex: none; }
+    .ui .bot { width: 38px; height: 38px; border-radius: 50%; background: var(--forest); color: var(--white); display: grid; place-items: center; flex: none; }
+    .ui .bot .ic { width: 20px; height: 20px; }
+    .ui .chip { margin-left: auto; font-size: .68rem; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--ochre); background: var(--ochre-tint); padding: .2rem .5rem; border-radius: 4px; }
+    .ui-ft { display: flex; align-items: center; gap: .55rem; margin: .3rem 1.2rem 1.2rem; padding: .7rem .85rem; border-radius: 6px; background: var(--forest-tint); color: var(--ink); font-size: .92rem; font-weight: 600; line-height: 1.4; }
+    .ui-ft .ic { width: 17px; height: 17px; color: var(--forest); }
+
+    /* A day of calls: who picked up each one. */
+    .log ol { list-style: none; margin: 0; padding: .2rem 1.2rem; }
+    .log li { display: grid; grid-template-columns: 4.6rem minmax(0, 1fr) auto; gap: .9rem; align-items: center; padding: .78rem 0; border-top: 1px solid var(--line); }
+    .log li:first-child { border-top: 0; }
+    .log time { color: var(--ink-3); font-size: .85rem; font-weight: 600; font-variant-numeric: tabular-nums; }
+    .log q { font-weight: 500; }
+    .log .who { text-align: right; }
+    .who i { display: inline-flex; align-items: center; gap: .35rem; font-style: normal; font-size: .76rem; font-weight: 700; padding: .22rem .55rem; border-radius: 4px; background: var(--band-strong); color: var(--ink); white-space: nowrap; }
+    .who i .ic { width: 13px; height: 13px; }
+    .who.o i { background: var(--forest); color: var(--white); }
+    .who small { display: block; margin-top: .2rem; font-size: .76rem; color: var(--ink-3); white-space: nowrap; }
+
+    /* An example call: what Otto said and where each answer came from. */
+    .talk { font-size: .93rem; }
+    .talk .qa { padding: .8rem 1.2rem; }
+    .talk .qa + .qa { border-top: 1px solid var(--line); }
+    .say { display: grid; grid-template-columns: 3.6rem minmax(0, 1fr); gap: .8rem; margin: 0; }
+    .say + .say { margin-top: .4rem; }
+    .say > span { padding-top: .18rem; font-size: .72rem; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--ink-3); }
+    .say.o > span { color: var(--forest); }
+    .say.g q { color: var(--ink-2); }
+    .say.o > p { margin: 0; font-weight: 500; }
+    .src { display: inline-flex; align-items: center; gap: .35rem; margin-top: .5rem; padding: .2rem .5rem; border-radius: 4px; font-size: .76rem; font-weight: 700; font-style: normal; line-height: 1.4; }
+    .src .ic { width: 13px; height: 13px; }
+    .src.ok { background: var(--forest-tint); color: var(--forest); }
+    .src.ask { background: var(--ochre-tint); color: var(--ochre); }
+    .src.no { background: var(--band-strong); color: var(--ink-2); }
+
+    /* Live availability and a group inquiry. */
+    .slots .grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .6rem; padding: 1.1rem 1.2rem .4rem; }
+    .slot { border: 1.5px solid var(--ink); border-radius: 6px; padding: .5rem .4rem; text-align: center; font-weight: 600; font-size: .9rem; line-height: 1.3; font-variant-numeric: tabular-nums; }
+    .slot small { display: block; font-size: .72rem; font-weight: 600; color: var(--ink-3); }
+    .slot.pick { background: var(--forest); border-color: var(--forest); color: var(--white); }
+    .slot.pick small { color: var(--forest-tint); }
+    .slot.gone { border-style: dashed; border-color: var(--line); color: var(--ink-3); }
+    .slot.gone span { text-decoration: line-through; }
+    .slots .note { margin: 0; padding: .45rem 1.2rem .6rem; font-size: .88rem; color: var(--ink-3); }
+    .shot > .party { position: absolute; z-index: 2; margin: 0; top: -1.75rem; left: clamp(1.5rem, 5vw, 4.25rem); width: min(19rem, 62%); transform: rotate(-2deg); }
+    .party dl { margin: 0; padding: .75rem 1.1rem .9rem; display: grid; grid-template-columns: auto 1fr; gap: .25rem .9rem; font-size: .88rem; }
+    .party dt { color: var(--ink-3); }
+    .party dd { margin: 0; font-weight: 600; }
+    .party .bot { width: 32px; height: 32px; }
+    .party .bot .ic { width: 17px; height: 17px; }
+    .party .ui-hd { padding: .75rem 1.1rem; }
+
+    /* Summaries in a stack: one handled, one flagged for a callback. */
+    .stack { position: relative; padding-top: 4.7rem; }
+    .stack .back { position: absolute; top: 0; left: 1.4rem; right: 1.4rem; }
+    .stack .front { position: relative; }
+    .sum .ok { line-height: 1.4; }
+    .sum .ok.flag { background: var(--ochre-tint); }
+    .sum .ok.flag .ic { color: var(--ochre); }
+    .scene img.crop-kart { object-position: 50% 100%; }
+    .scene img.crop-wake { object-position: 50% 52%; }
+    .scene img.crop-skis { object-position: 50% 80%; }
+    .scene img.crop-faces { object-position: 50% 16%; }
+
+    /* How calls reach Otto, then the four setup steps. */
+    .flow { list-style: none; margin: 0 0 1.5rem; padding: 1.5rem 1.75rem; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 3rem; background: var(--white); border: 2px solid var(--ink); border-radius: 10px; }
+    .flow li { position: relative; display: flex; align-items: center; gap: .85rem; }
+    .flow b { display: block; color: var(--ink); font-weight: 600; font-size: 1rem; line-height: 1.35; }
+    .flow small { display: block; color: var(--ink-3); font-size: .88rem; line-height: 1.4; margin-top: .1rem; }
+    .flow .sep { position: absolute; left: -2.15rem; top: 50%; width: 18px; height: 18px; margin-top: -9px; color: var(--ink-3); }
+    .flow .tile.o { background: var(--forest); color: var(--white); }
+    .steps { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1.5rem; }
+    .steps .card { padding: 2rem 1.8rem 1.9rem; }
+    .steps .n { display: block; font-size: 2.6rem; font-weight: 400; line-height: 1; letter-spacing: -.03em; color: var(--ochre); font-variant-numeric: tabular-nums; }
+    .steps .card h3 { font-size: 1.22rem; margin: 1.5rem 0 .6rem; }
+    .steps .card p { font-size: .97rem; }
+
+
+    @media (max-width: 1200px) {
+      .jump a { padding: .3rem 1.1rem; }
+      .shot { padding: 1.75rem; }
+      .shot > .ui, .shot > .stack { margin-left: 1rem; }
+    }
+    @media (max-width: 1100px) {
+      .flow { grid-template-columns: repeat(2, minmax(0, 1fr)); row-gap: 1.5rem; }
+      .flow li:nth-child(3) .sep { display: none; }
+    }
+    @media (max-width: 1000px) {
+      .fhero { padding-top: 2.75rem; }
+      .fhero-top { grid-template-columns: minmax(0, 1fr); row-gap: 1.5rem; }
+      .day { grid-template-columns: repeat(2, minmax(0, 1fr)); margin: 3rem 0 -5rem; row-gap: 1.75rem; }
+      .jump { padding-top: 7.5rem; }
+      .jump ul { display: grid; grid-template-columns: repeat(3, auto); justify-content: center; }
+      .jump li:nth-child(3n + 1) { border-left: 0; }
+    }
+    @media (max-width: 760px) {
+      .jump { padding: 4rem 0 0; }
+      .jump ul { display: none; }
+      .flow { grid-template-columns: minmax(0, 1fr); padding: 1.4rem 1.3rem; row-gap: 2.4rem; }
+      .flow .sep, .flow li:nth-child(3) .sep { display: block; left: 8px; top: -1.75rem; margin-top: 0; transform: rotate(90deg); }
+      .steps { grid-template-columns: minmax(0, 1fr); }
+      .zig .stat { gap: 1.1rem; }
+    }
+    @media (max-width: 560px) {
+      .fhero-ctas .btn { flex: 1 1 100%; }
+      .day { gap: 1.1rem .9rem; margin-bottom: -4rem; }
+      .snap { padding: 6px 6px 0; }
+      .snap figcaption { padding: .55rem .2rem .65rem; }
+      .snap b { font-size: .88rem; gap: .35rem; }
+      .snap b .ic { width: 13px; height: 13px; }
+      .snap small { font-size: .78rem; }
+      .shot { display: flex; flex-direction: column; padding: 1rem; }
+      .shot > .ui, .shot > .stack { margin: -2.5rem .6rem 0; }
+      .shot .bot { display: none; }
+      .shot .chip { font-size: .62rem; }
+      .log li { grid-template-columns: minmax(0, 1fr) auto; gap: .2rem .8rem; }
+      .log time { grid-column: 1; }
+      .log q { grid-column: 1; grid-row: 2; }
+      .log .who { grid-column: 2; grid-row: 1 / span 2; }
+      .slots .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .shot > .party { order: 3; position: relative; top: auto; left: auto; width: auto; margin: 1rem .6rem 0; transform: none; }
+      .stack { padding-top: 0; }
+      .stack .back { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <symbol id="i-otto" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 13a8 8 0 0 1 16 0v4a2 2 0 0 1-2 2h-1v-6h3M4 13v6h3v-6H4"/><path d="M9 19.5a3 3 0 0 0 6 0"/></g></symbol>
+    <symbol id="i-phone" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.6a2 2 0 0 1-.5 2.1L8 9.7a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.8.3 1.7.5 2.6.7a2 2 0 0 1 1.7 2z"/></symbol>
+    <symbol id="i-cal" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="3"/><path d="M16 2v4M8 2v4M3 10h18M9 16l2 2 4-4"/></g></symbol>
+    <symbol id="i-swap" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 15.5-6.3L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-15.5 6.3L3 16"/><path d="M3 21v-5h5"/></g></symbol>
+    <symbol id="i-restart" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></g></symbol>
+    <symbol id="i-mail" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="M3 8l9 6 9-6"/></g></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" d="M5 12.5l4.5 4.5L19 7"/></symbol>
+    <symbol id="i-facts" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18" rx="2.5"/><path d="M8 8h8M8 12h8M8 16h5"/></g></symbol>
+    <symbol id="i-anchor" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="5" r="2.2"/><path d="M12 7.2V21M5 12H2c0 5 4.5 9 10 9s10-4 10-9h-3M8 12h8"/></g></symbol>
+    <symbol id="i-jetski" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 16h13l4-3-2-3h-6l-3 3H4z"/><path d="M11 10l3-4h2"/><path d="M2 20c2-1.5 4-1.5 6 0s4 1.5 6 0 4-1.5 6 0"/></g></symbol>
+    <symbol id="i-pontoon" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 14h18l-2 4H5z"/><path d="M6 14v-3h12v3M9 11V8h6v3"/><path d="M2 21c2-1.5 4-1.5 6 0s4 1.5 6 0 4-1.5 6 0"/></g></symbol>
+    <symbol id="i-fish" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12c3-4 7-6 11-6 3 0 5.5 2 7 6-1.5 4-4 6-7 6-4 0-8-2-11-6z"/><path d="M3 12l-1-4M3 12l-1 4"/><circle cx="16" cy="11" r="1" fill="currentColor" stroke="none"/></g></symbol>
+    <symbol id="i-kayak" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 14c4-3 16-3 20 0-4 3-16 3-20 0z"/><path d="M6 6l12 12M8 5l2 2M16 17l-2-2"/></g></symbol>
+    <symbol id="i-parasail" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10a9 5 0 0 1 18 0"/><path d="M3 10l9 9 9-9M8 10l4 9M16 10l-4 9"/></g></symbol>
+    <symbol id="i-wave" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" d="M2 12c2-3 4-3 6 0s4 3 6 0 4-3 6 0M2 17c2-3 4-3 6 0s4 3 6 0 4-3 6 0M2 7c2-3 4-3 6 0s4 3 6 0 4-3 6 0"/></symbol>
+    <symbol id="i-arrow" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M5 12h14M13 6l6 6-6 6"/></symbol>
+    <symbol id="i-play" viewBox="0 0 24 24"><path fill="currentColor" d="M8 5.6v12.8a1 1 0 0 0 1.52.86l10.4-6.4a1 1 0 0 0 0-1.72L9.52 4.74A1 1 0 0 0 8 5.6z"/></symbol>
+    <symbol id="i-users" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.2"/><path d="M3.5 19a5.5 5.5 0 0 1 11 0M16 4.8a3.2 3.2 0 0 1 0 6.4M17.5 13.6A5.5 5.5 0 0 1 21 19"/></g></symbol>
+    <symbol id="i-clock" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></g></symbol>
+  </svg>
+  <!-- Icons only this page uses. -->
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <symbol id="i-moon" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M20.5 14.6A8.6 8.6 0 1 1 9.4 3.5a7 7 0 0 0 11.1 11.1z"/></symbol>
+    <symbol id="i-voice" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" d="M4 10v4M8 6.5v11M12 3.5v17M16 7.5v9M20 10.5v3"/></symbol>
+    <symbol id="i-flag" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 21V4"/><path d="M5 4h12.5L15 8.5l2.5 4.5H5"/></g></symbol>
+    <symbol id="i-slash" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M5.7 5.7l12.6 12.6"/></g></symbol>
+    <symbol id="i-link" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13.5a4.5 4.5 0 0 0 6.4.4l3-3a4.5 4.5 0 0 0-6.4-6.4l-1.2 1.2"/><path d="M14 10.5a4.5 4.5 0 0 0-6.4-.4l-3 3a4.5 4.5 0 0 0 6.4 6.4l1.2-1.2"/></g></symbol>
+    <symbol id="i-chat" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M20.5 11.5a8 8 0 0 1-11.7 7.1L3.5 20l1.4-4.6A8 8 0 1 1 20.5 11.5z"/></symbol>
+    <symbol id="i-inbox" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 13.5h5l1.5 3h5l1.5-3h5"/><path d="M5.6 5h12.8l2.6 8.5V18a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4.5z"/></g></symbol>
+    <symbol id="i-bell" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 16.5V11a6 6 0 0 1 12 0v5.5l1.5 2h-15z"/><path d="M10 20.5a2 2 0 0 0 4 0"/></g></symbol>
+    <symbol id="i-chart" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" d="M4 20h16M7 16.5v-5M12 16.5v-10M17 16.5v-7"/></symbol>
+  </svg>
+
+  <header class="nav" id="nav">
+    <div class="wrap">
+      <a class="brand" href="/"><img src="/favicon.svg" alt=""> Outset</a>
+      <nav class="links" aria-label="Main">
+        <a href="/features" aria-current="page">Features</a>
+        <a href="/integrations">Integrations</a>
+        <a href="/pricing">Pricing</a>
+        <a href="/#how">How it works</a>
+        <a href="/#faq">FAQ</a>
+      </nav>
+      <div class="acts">
+        <a class="btn line sm" href="/#call">Hear a sample</a>
+        <a class="btn sm" href="https://cal.com/harshil-shah-7tkvs7/outset" target="_blank" rel="noopener">Book a demo</a>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <div class="fhero band">
+      <div class="wrap">
+        <div class="fhero-top">
+          <div>
+            <span class="eyebrow">Features</span>
+            <h1>Everything Your Front Desk Does, Around the Clock</h1>
+          </div>
+          <div>
+            <p class="fhero-sub">Customer service for every caller, even when your whole team is busy or you're closed. Otto, our AI front desk, picks up in your business's name, answers from your real prices and policies, helps the caller book, and hands your staff the full story.</p>
+            <div class="fhero-ctas">
+              <a class="btn" href="https://cal.com/harshil-shah-7tkvs7/outset" target="_blank" rel="noopener">Book a demo <svg class="ic"><use href="#i-arrow"/></svg></a>
+              <a class="btn line" href="/#call">Hear a sample call <svg class="ic"><use href="#i-play"/></svg></a>
+            </div>
+          </div>
+        </div>
+        <!-- A day of calls nobody on the team could take, pinned along the band's edge. -->
+        <ul class="day" aria-label="Calls that come in when nobody can pick up">
+          <li><figure class="snap shadow-lg"><img src="/photos/fishing.jpg" alt="Rods set on a charter boat heading out at sunrise"><figcaption><b><svg class="ic" aria-hidden="true"><use href="#i-phone"/></svg>6:40 AM</b><small>The captain's already offshore</small></figcaption></figure></li>
+          <li><figure class="snap shadow-lg"><img src="/photos/skydive.jpg" alt="A skydiver in freefall over the coast"><figcaption><b><svg class="ic" aria-hidden="true"><use href="#i-phone"/></svg>11:15 AM</b><small>Instructors are up in the air</small></figcaption></figure></li>
+          <li><figure class="snap shadow-lg"><img src="/photos/kayak.jpg" alt="Two rafts of paddlers on a turquoise river"><figcaption><b><svg class="ic" aria-hidden="true"><use href="#i-phone"/></svg>2:30 PM</b><small>Guides are out on the river</small></figcaption></figure></li>
+          <li><figure class="snap shadow-lg"><img src="/photos/escape.jpg" alt="A player holding a skull prop in a dim escape room"><figcaption><b><svg class="ic" aria-hidden="true"><use href="#i-phone"/></svg>10:20 PM</b><small>Closed for the night</small></figcaption></figure></li>
+        </ul>
+      </div>
+    </div>
+
+    <nav class="jump" aria-label="On this page">
+      <div class="wrap">
+        <ul>
+          <li><a href="#answer"><svg class="ic"><use href="#i-phone"/></svg><span>Every call</span></a></li>
+          <li><a href="#facts"><svg class="ic"><use href="#i-facts"/></svg><span>Real answers</span></a></li>
+          <li><a href="#book"><svg class="ic"><use href="#i-cal"/></svg><span>Booking help</span></a></li>
+          <li><a href="#summary"><svg class="ic"><use href="#i-mail"/></svg><span>Summaries</span></a></li>
+          <li><a href="#setup"><svg class="ic"><use href="#i-users"/></svg><span>Setup</span></a></li>
+        </ul>
+      </div>
+    </nav>
+
+    <section class="sec feat" id="answer" aria-labelledby="answer-h">
+      <div class="wrap zig">
+        <div class="mat strong shot" aria-hidden="true">
+          <div class="scene"><img class="crop-kart" src="/photos/kart.jpg" alt="A driver taking a corner on an indoor go-kart track" loading="lazy"></div>
+          <div class="ui log">
+            <div class="ui-hd"><span class="bot"><svg class="ic"><use href="#i-phone"/></svg></span><div><b>Saturday's calls</b><small>An indoor karting track</small></div><span class="chip">Example</span></div>
+            <ol>
+              <li><time>10:12 AM</time><q>Do you take walk-ins today?</q><span class="who"><i><svg class="ic"><use href="#i-users"/></svg>Your team</i></span></li>
+              <li><time>12:40 PM</time><q>Can we book a party for 14?</q><span class="who o"><i><svg class="ic"><use href="#i-otto"/></svg>Otto</i><small>Staff with guests</small></span></li>
+              <li><time>3:05 PM</time><q>How tall do kids need to be?</q><span class="who"><i><svg class="ic"><use href="#i-users"/></svg>Your team</i></span></li>
+              <li><time>6:55 PM</time><q>Any races open tonight?</q><span class="who o"><i><svg class="ic"><use href="#i-otto"/></svg>Otto</i><small>Race night rush</small></span></li>
+              <li><time>10:30 PM</time><q>Do we need closed-toe shoes?</q><span class="who o"><i><svg class="ic"><use href="#i-otto"/></svg>Otto</i><small>After hours</small></span></li>
+            </ol>
+            <div class="ui-ft"><svg class="ic"><use href="#i-check"/></svg> No caller reached voicemail</div>
+          </div>
+        </div>
+        <div>
+          <span class="eyebrow">Every call answered</span>
+          <h2 id="answer-h">Picks up the calls your team can't get to</h2>
+          <p>When the whole crew is out on the water, a race is on the track, or you're closed for the night, the call goes to Otto instead of voicemail. It answers in your business's name, in a natural voice, and helps the caller right then.</p>
+          <ul class="ticks">
+            <li><svg class="ic"><use href="#i-moon"/></svg><div><b>After hours</b><span>Early mornings, late nights, weekends</span></div></li>
+            <li><svg class="ic"><use href="#i-users"/></svg><div><b>When everyone's busy</b><span>Overflow while staff are with guests</span></div></li>
+            <li><svg class="ic"><use href="#i-cal"/></svg><div><b>Holidays and days off</b><span>Closed days still get answered</span></div></li>
+            <li><svg class="ic"><use href="#i-voice"/></svg><div><b>Your name, a natural voice</b><span>No phone tree, no beep</span></div></li>
+          </ul>
+          <p class="stat"><b>3 in 4</b><span>guests would book somewhere else if they couldn't get through. <a href="https://www.prnewswire.com/news-releases/roller-doubles-down-on-ai-with-new-agent-to-help-operators-grow-302783193.html" target="_blank" rel="noopener">ROLLER, 2026</a></span></p>
+        </div>
+      </div>
+    </section>
+
+    <section class="sec feat" id="facts" aria-labelledby="facts-h">
+      <div class="wrap zig flip">
+        <div class="mat strong shot" aria-hidden="true">
+          <div class="scene"><img class="crop-wake" src="/photos/charter.jpg" alt="Fishing rods over the wake of a charter boat" loading="lazy"></div>
+          <div class="ui talk">
+            <div class="ui-hd"><span class="bot"><svg class="ic"><use href="#i-otto"/></svg></span><div><b>Thursday, 8:12 PM</b><small>A fishing charter · after hours</small></div><span class="chip">Example</span></div>
+            <div class="qa">
+              <p class="say g"><span>Caller</span><q>How many people can come on the half-day trip?</q></p>
+              <div class="say o"><span>Otto</span><p>Up to six, plus the captain. Rods and bait are included.<br><em class="src ok"><svg class="ic"><use href="#i-check"/></svg>From your published facts</em></p></div>
+            </div>
+            <div class="qa">
+              <p class="say g"><span>Caller</span><q>Can we bring our own cooler?</q></p>
+              <div class="say o"><span>Otto</span><p>Let me check with the captain and have someone call you back.<br><em class="src ask"><svg class="ic"><use href="#i-flag"/></svg>Not published · callback flagged</em></p></div>
+            </div>
+            <div class="qa">
+              <p class="say g"><span>Caller</span><q>Is it going to be rough out there Saturday?</q></p>
+              <div class="say o"><span>Otto</span><p>I can't check the marine forecast. If the captain cancels for weather, you can move to another day at no charge.<br><em class="src no"><svg class="ic"><use href="#i-slash"/></svg>Forecast declined · weather policy shared</em></p></div>
+            </div>
+          </div>
+        </div>
+        <div>
+          <span class="eyebrow">Real answers</span>
+          <h2 id="facts-h">Answers from your facts, never a guess</h2>
+          <p>Otto only tells callers what your business has published: prices, packages, hours, age rules, waivers and policies. When someone asks about something you haven't covered, it says it will check with your team instead of making something up.</p>
+          <ul class="ticks">
+            <li><svg class="ic"><use href="#i-facts"/></svg><div><b>Prices and packages</b><span>Exactly as you publish them</span></div></li>
+            <li><svg class="ic"><use href="#i-check"/></svg><div><b>Hours, ages and waivers</b><span>And what to wear or bring</span></div></li>
+            <li><svg class="ic"><use href="#i-flag"/></svg><div><b>Says "let me check"</b><span>Then flags it for your team</span></div></li>
+            <li><svg class="ic"><use href="#i-slash"/></svg><div><b>Sticks to your business</b><span>No forecasts, directions or comparisons</span></div></li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section class="sec feat" id="book" aria-labelledby="book-h">
+      <div class="wrap zig">
+        <div class="mat strong shot" aria-hidden="true">
+          <div class="ui party">
+            <div class="ui-hd"><span class="bot"><svg class="ic"><use href="#i-users"/></svg></span><div><b>Group inquiry</b><small>Sent to your team</small></div><span class="chip">Example</span></div>
+            <dl><dt>Group</dt><dd>12 people, 6 skis</dd><dt>When</dt><dd>Saturday, Oct 24</dd><dt>For</dt><dd>A bachelor party</dd></dl>
+          </div>
+          <div class="scene"><img class="crop-skis" src="/photos/jetski.jpg" alt="Rental jet skis lined up on a beach" loading="lazy"></div>
+          <div class="ui slots">
+            <div class="ui-hd"><img class="logo" src="/integrations/fareharbor.png" alt="FareHarbor"><div><b>Open on Saturday</b><small>Live from your FareHarbor calendar</small></div><span class="chip">Example</span></div>
+            <div class="grid">
+              <span class="slot">9:00 AM</span>
+              <span class="slot">11:00 AM<small>2 left</small></span>
+              <span class="slot pick">1:00 PM<small>Chosen</small></span>
+              <span class="slot gone"><span>3:00 PM</span><small>Sold out</small></span>
+            </div>
+            <p class="note">Caller chose 1:00 PM for two skis</p>
+            <div class="ui-ft"><svg class="ic"><use href="#i-link"/></svg> Booking link sent · checkout on your page</div>
+          </div>
+        </div>
+        <div>
+          <span class="eyebrow">Booking help</span>
+          <h2 id="book-h">Helps callers book while they're still on the phone</h2>
+          <p>Otto helps the caller pick a time and sends them straight to your booking page, so they book at your prices. Group and party inquiries get written up with the details for your team.</p>
+          <ul class="ticks">
+            <li><svg class="ic"><use href="#i-cal"/></svg><div><b>Picks a time with them</b><span>Right there on the call</span></div></li>
+            <li><svg class="ic"><use href="#i-link"/></svg><div><b>Your own booking page</b><span>Guests check out at your prices</span></div></li>
+            <li><svg class="ic"><use href="#i-users"/></svg><div><b>Groups and parties</b><span>Headcount, date and occasion</span></div></li>
+            <li><svg class="ic"><use href="#i-check"/></svg><div><b>No made-up openings</b><span>It never offers a time it can't see</span></div></li>
+          </ul>
+          <a class="btn line more" href="/integrations">See all integrations <svg class="ic"><use href="#i-arrow"/></svg></a>
+        </div>
+      </div>
+    </section>
+
+    <section class="sec feat feat-sum" id="summary" aria-labelledby="summary-h">
+      <div class="wrap zig flip">
+        <div class="mat strong shot" aria-hidden="true">
+          <div class="scene"><img class="crop-faces" src="/photos/paintball.jpg" alt="Two friends laughing in paintball gear" loading="lazy"></div>
+          <div class="stack">
+            <div class="sum back">
+              <div class="hd"><span class="bot"><svg class="ic"><use href="#i-otto"/></svg></span><div><b>Call summary</b><small>Monday, 9:14 PM · after hours</small></div><span class="chip">Example</span></div>
+              <dl>
+                <dt>Caller</dt><dd>Chris, asking about gear</dd>
+                <dt>Otto answered</dt><dd>Masks and markers are included</dd>
+              </dl>
+              <div class="ok"><svg class="ic"><use href="#i-check"/></svg> Handled by Otto · no callback needed</div>
+            </div>
+            <div class="sum front">
+              <div class="hd"><span class="bot"><svg class="ic"><use href="#i-otto"/></svg></span><div><b>Call summary</b><small>Tuesday, 1:52 PM · staff with guests</small></div><span class="chip">Example</span></div>
+              <dl>
+                <dt>Caller</dt><dd>Dana, planning a team outing</dd>
+                <dt>Asked about</dt><dd>A private game for 20 on a Friday in November</dd>
+                <dt>Otto answered</dt><dd>Shared your group package and deposit policy</dd>
+                <dt>Next step</dt><dd>Call Dana back to hold a date</dd>
+              </dl>
+              <div class="ok flag"><svg class="ic"><use href="#i-flag"/></svg> Needs a person · callback flagged</div>
+            </div>
+          </div>
+        </div>
+        <div>
+          <span class="eyebrow">Call summaries</span>
+          <h2 id="summary-h">Every call ends with the full story</h2>
+          <p>After each call, your team gets a short summary: who called, what they asked, what Otto told them, and the next step. Anything that needs a person is flagged for a callback, so you call back already knowing what they need.</p>
+          <ul class="ticks">
+            <li><svg class="ic"><use href="#i-users"/></svg><div><b>Who called</b><span>Name and number</span></div></li>
+            <li><svg class="ic"><use href="#i-facts"/></svg><div><b>What they asked</b><span>In a few plain lines</span></div></li>
+            <li><svg class="ic"><use href="#i-otto"/></svg><div><b>What Otto said</b><span>So your answers match</span></div></li>
+            <li><svg class="ic"><use href="#i-flag"/></svg><div><b>What happens next</b><span>Callbacks flagged for a person</span></div></li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section class="sec band-soft" id="setup" aria-labelledby="setup-h">
+      <div class="wrap">
+        <div class="head">
+          <span class="eyebrow">Fits how you work</span>
+          <h2 class="h2" id="setup-h">No new phone system, no new habits</h2>
+          <p class="lead">You keep your number, your phones and your booking software. Otto only hears the calls nobody picks up.</p>
+        </div>
+        <ol class="flow">
+          <li><span class="tile tl-sage"><svg class="ic"><use href="#i-phone"/></svg></span><span><b>A guest calls you</b><small>Any time, day or night</small></span></li>
+          <li><svg class="ic sep" aria-hidden="true"><use href="#i-arrow"/></svg><span class="tile tl-sage"><svg class="ic"><use href="#i-users"/></svg></span><span><b>Your phones ring first</b><small>Same as today</small></span></li>
+          <li><svg class="ic sep" aria-hidden="true"><use href="#i-arrow"/></svg><span class="tile tl-sage"><svg class="ic"><use href="#i-moon"/></svg></span><span><b>Nobody picks up</b><small>Busy, after hours, holidays</small></span></li>
+          <li><svg class="ic sep" aria-hidden="true"><use href="#i-arrow"/></svg><span class="tile o"><svg class="ic"><use href="#i-otto"/></svg></span><span><b>Otto answers</b><small>Instead of voicemail</small></span></li>
+        </ol>
+        <ol class="steps">
+          <li class="card"><span class="n">01</span><h3>Set Up in About a Day</h3><p>We load your prices, packages, hours and policies with you, plus how you like the phone answered. There's no setup fee.</p></li>
+          <li class="card"><span class="n">02</span><h3>Call It Yourself First</h3><p>Ask it what your guests ask, and hear exactly how it answers before it takes a real call.</p></li>
+          <li class="card"><span class="n">03</span><h3>Forward the Calls You Miss</h3><p>Your phone system sends unanswered and after-hours calls to Otto. Calls your team picks up stay exactly as they are.</p></li>
+        </ol>
+      </div>
+    </section>
+
+    <section class="sec band cta" aria-labelledby="action">
+      <div class="wrap">
+        <div>
+          <h2 id="action">See Otto in action</h2>
+          <p>See how Otto would answer for your business. Book a quick walkthrough, or hear the sample call first.</p>
+          <a class="btn" href="https://cal.com/harshil-shah-7tkvs7/outset" target="_blank" rel="noopener">Become a founding business <svg class="ic"><use href="#i-arrow"/></svg></a>
+        </div>
+        <div class="doors">
+          <a class="door" href="https://cal.com/harshil-shah-7tkvs7/outset" target="_blank" rel="noopener"><b>Book a personalized demo</b><span>Talk to us <svg class="ic"><use href="#i-arrow"/></svg></span></a>
+          <a class="door" href="/#call"><b>Hear the 42-second sample call</b><span>Play the call <svg class="ic"><use href="#i-arrow"/></svg></span></a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="wrap">
+      <div class="cols">
+        <div>
+          <a class="brand" href="/"><img src="/favicon.svg" alt=""> Outset</a>
+          <p class="tag">Never send a customer to voicemail again.</p>
+          <address>339 King St N, Waterloo, ON N2J 0C5, Canada</address>
+        </div>
+        <div><h4>Product</h4><ul><li><a href="/features">Features</a></li><li><a href="/integrations">Integrations</a></li><li><a href="/pricing">Pricing</a></li><li><a href="/#how">How it works</a></li><li><a href="/#faq">FAQ</a></li><li><a href="/#call">Hear a sample call</a></li></ul></div>
+        <div><h4>Company</h4><ul><li><a href="https://cal.com/harshil-shah-7tkvs7/outset" target="_blank" rel="noopener">Book a demo</a></li><li><a href="mailto:hello@onoutset.com">hello@onoutset.com</a></li><li><a href="/activities">Browse activities</a></li><li><a href="/terms">Terms</a></li><li><a href="/privacy">Privacy</a></li></ul></div>
+      </div>
+      <div class="legal"><span>© 2026 Outset. All rights reserved.</span><span>Customer service for businesses that take bookings.</span></div>
+    </div>
+  </footer>
+
+  <a class="pill" href="https://cal.com/harshil-shah-7tkvs7/outset" target="_blank" rel="noopener">Book a demo <svg class="ic"><use href="#i-arrow"/></svg></a>
+
+  <script>
+    var n=document.getElementById("nav");addEventListener("scroll",function(){n.classList.toggle("scrolled",scrollY>8)},{passive:true});
+  </script>
+</body>
+</html>

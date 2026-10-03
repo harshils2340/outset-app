@@ -10,6 +10,7 @@ import {
   setupGuestWallet,
   type GuestWallet,
 } from "./api";
+import { GUEST_AGENT } from "./flags";
 import { loadGuest } from "./storage";
 
 /**
@@ -19,8 +20,9 @@ import { loadGuest } from "./storage";
 
 // Otto's autonomous-pay feature isn't ready for guests yet: `import.meta.env.DEV` compiles to `false` in a
 // production build, so every Otto surface (CTA copy, the wallet card, the #safe demo) disappears from what
-// a visitor downloads, while it stays visible in a local dev build to keep working on it.
-export const OTTO_LIVE = !!import.meta.env?.DEV;
+// a visitor downloads, while it stays visible in a local dev build to keep working on it. Otto paying is an
+// agent surface, so since 3 October 2026 it also sits behind `GUEST_AGENT` (`lib/flags.ts`): off in dev too.
+export const OTTO_LIVE = GUEST_AGENT && !!import.meta.env?.DEV;
 
 /** The eligibility rule alone: whether this wallet, as saved, could cover the total. Does not check OTTO_LIVE. */
 export function ottoCanPay(w: GuestWallet | null, total: number | null | undefined): boolean {

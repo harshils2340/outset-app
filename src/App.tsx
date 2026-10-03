@@ -6,6 +6,7 @@ import { WebConfirm } from "./components/web/WebConfirm";
 import { WebConcierge } from "./components/web/WebConcierge";
 import { SafeBookDemo } from "./components/web/SafeBookDemo";
 import { OTTO_LIVE } from "./lib/wallet";
+import { AGENT_MODE_LIVE } from "./lib/concierge";
 import { StatusBar } from "./components/layout/StatusBar";
 import { TabBar } from "./components/layout/TabBar";
 import { Toast } from "./components/layout/Toast";
@@ -166,12 +167,15 @@ export function App() {
       closeAsk();
       return;
     }
+    // Switched off (`GUEST_AGENT`, lib/flags.ts): nothing offers this, and if anything still called it, closing
+    // the guest's sheet and moving them into the phone frame for an agent that will not open is worse than nothing.
+    if (!AGENT_MODE_LIVE) return;
     closeSheet();
     goto("explore");
     setWeb(false);
     openAsk(seed);
   };
-  const askOnSite = web && asking != null && state.screen !== "operator" && !(state.screen === "confirm" && state.booking);
+  const askOnSite = AGENT_MODE_LIVE && web && asking != null && state.screen !== "operator" && !(state.screen === "confirm" && state.booking);
 
   if (web) {
     return (
@@ -251,7 +255,7 @@ export function App() {
       <div className="device" style={{ transform: `scale(${fit})`, transformOrigin: "center center" }}>
         <div className="screen" id="screen">
           <StatusBar />
-          <AppView onAsk={() => toggleAsk(true)} onCloseAsk={() => toggleAsk(false)} asking={asking != null} />
+          <AppView onAsk={() => toggleAsk(true)} onCloseAsk={() => toggleAsk(false)} asking={AGENT_MODE_LIVE && asking != null} />
           <TabBar />
           <Sheets />
           <Toast />
@@ -262,7 +266,7 @@ export function App() {
             takes its rounded corners rather than covering the browser and the frame with it. On a real phone
             `.screen` is the viewport, so this is the full-screen version either way.
           */}
-          {asking != null ? <WebConcierge seed={asking} framed onClose={() => toggleAsk(false)} /> : null}
+          {AGENT_MODE_LIVE && asking != null ? <WebConcierge seed={asking} framed onClose={() => toggleAsk(false)} /> : null}
         </div>
       </div>
       {safeDemo ? (

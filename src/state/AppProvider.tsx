@@ -32,6 +32,7 @@ import { applyStoredProfiles } from "../lib/operator";
 import { loadBookings, loadChats, saveBookings, saveChats } from "../lib/storage";
 import { isHttpsUrlOnHost } from "../lib/urlSafety";
 import { AGENT_MODE_LIVE, guestWords } from "../lib/concierge";
+import { GUEST_AGENT } from "../lib/flags";
 
 export type AppState = {
   hydrated: boolean;
@@ -594,7 +595,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
     if (/^#wallet\b/i.test(window.location.hash)) return { ...base, tab: "account" as const, screen: "account" as const };
     // `#ask` opens Ask Outset on load, so the answer to "what is actually free tonight" survives a refresh,
-    // can be sent to somebody as a link, and can sit behind a QR code.
+    // can be sent to somebody as a link, and can sit behind a QR code. With the agent switched off
+    // (`AGENT_MODE_LIVE` reads `GUEST_AGENT`, lib/flags.ts) the link is read as no hash at all: the home.
     const ask = AGENT_MODE_LIVE ? window.location.hash.match(/^#ask(?:=(.*))?$/i) : null;
     if (ask) {
       let seed = "";
@@ -939,6 +941,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
    */
   const asking = useRef(new Set<string>());
   useEffect(() => {
+    // With the guest agent switched off (`GUEST_AGENT`, lib/flags.ts) no thread is on screen, so a bubble left
+    // pending in a stored thread is not worth a call to the model. It settles if the switch comes back on.
+    if (!GUEST_AGENT) return;
     for (const [id, msgs] of Object.entries(state.chats)) {
       msgs.forEach((m, i) => {
         if (!m.pending || m.who !== "them") return;
@@ -992,7 +997,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     // Build operator paths on BASE_URL so a subpath deploy still works. Production is the site root.
     const base = import.meta.env.BASE_URL.replace(/\/?$/, "/");
     if (onOps && !atOps) window.history.pushState(null, "", base + "operators" + window.location.hash);
-    else if (!onOps && atOps && booted.current) window.history.pushState(null, "", base + window.location.hash.replace(/^#claim=.*$/, ""));
+    else if (!onOps && atOps && booted.current) window.history.pushState(null, "", base + "activities" + window.location.hash.replace(/^#claim=.*$/, ""));
   }, [state.screen, state.catalogReady]);
 
   // A listing opens at the top of the page, wherever the rails were scrolled to, and the rails come back to that
@@ -1233,7 +1238,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
       },
       back: () => dispatch({ type: "back" }),
       cancelCheckout: () => dispatch({ type: "checkoutDone" }),
-      openChat: (id) => dispatch({ type: "openChat", id }),
+      // An operator chat is Otto answering for the shop, so it opens only while the guest agent is switched on
+      // (`GUEST_AGENT`, lib/flags.ts). Off, nothing opens and the guest stays where they are.
+      openChat: (id) => { if (GUEST_AGENT) dispatch({ type: "openChat", id }); },
       openOperator: (id) => {
         dispatch({ type: "openOperator", id });
         loadListing(id ?? null).then((changed) => changed && dispatch({ type: "catalogLoaded", added: 1 }));

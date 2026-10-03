@@ -10,6 +10,7 @@ import { arrivalNote, tidyAddress, tidyLength, tidyName } from "./WebListing";
 import { bookedName } from "../../lib/listingDerive";
 import { fmtReviews, fmtTime, moneyIn } from "../../lib/format";
 import { countryOfArea } from "../../data/regions";
+import { GUEST_AGENT } from "../../lib/flags";
 import { Photo } from "../art/Photo";
 import { Mark } from "../layout/Mark";
 import { Markup } from "../Markup";
@@ -58,7 +59,9 @@ export function WebConfirm({ booking, onDone, onOpen }: { booking: Booking; onDo
         ? "The operator gets your request and confirms. You'll get an email the moment they answer."
         : "The operator gets your request and confirms. With no email on the booking, check back here or call them for the answer.",
     arrival,
-    "Questions? Otto on the listing answers from the operator's own info.",
+    // Points at the listing's agent, so it is said only while that is switched on (`GUEST_AGENT`, lib/flags.ts).
+    // A shop that published a number has it on this page either way, under "Running late? Call the shop".
+    GUEST_AGENT ? "Questions? Otto on the listing answers from the operator's own info." : null,
   ].filter(Boolean);
   const p = picked ? priceUnclaimed(picked, booking.qty, addonRows) : null;
   const lines = p && p.base && booking.total && Math.abs(p.total - booking.total) < 0.01 ? p : null;

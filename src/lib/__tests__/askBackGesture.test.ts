@@ -12,6 +12,10 @@ import { readFileSync } from "node:fs";
  *
  * The three cannot stack: `openAsk` clears an open sheet, and the agent closes itself before opening a
  * listing, so one entry covers whichever is up.
+ *
+ * Ask Outset and the chat screen are switched off for guests since 3 October 2026 (`GUEST_AGENT` in
+ * lib/flags.ts; `guestAgentOff.test.ts` holds that). The history handling stays, because a sheet still uses it
+ * and the agent comes back with it when the switch does.
  */
 
 const prov = readFileSync(new URL("../../state/AppProvider.tsx", import.meta.url), "utf8");

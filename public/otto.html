@@ -2,197 +2,63 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
+  <!-- This page is onoutset.com's home. The marketplace app moved to /activities and the operator side to
+       /operators; every link already sent to the root in the app's own shapes (a listing #o=, the take-it-down
+       #remove= in outreach mail, a claim #claim=, a Stripe return #paid=, a preview) is forwarded there with its
+       hash and query intact, before anything paints. Only on the root, so /otto never redirects. -->
+  <script>(function(){var p=location.pathname,s=location.search,h=location.hash;
+  if(p!=="/"&&p!=="/index.html")return;
+  if(/^#(o|remove|claim|paid|wallet|ask|safe|demo|payouts|admin)(?=$|[=&])/i.test(h)||/(^\?|&)preview=1(&|$)/.test(s))
+  location.replace((/^#(claim|demo|payouts)(?=$|[=&])/i.test(h)?"/operators":"/activities")+s+h);})();</script>
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Outset · Customer service that picks up when your team can't</title>
-  <meta name="description" content="Outset gives your customers real service when your team is busy or you're closed. Instead of going to voicemail, callers get their questions answered and help booking, and your team gets a summary to follow up. It doesn't replace your staff. It covers the calls they can't get to.">
-  <link rel="canonical" href="https://onoutset.com/otto">
+  <title>Outset · Your 24/7 front desk for activity businesses</title>
+  <meta name="description" content="Customer service that never goes to voicemail. When your team is busy or you're closed, Otto answers in your business's voice, helps callers book, and hands your staff the full story.">
+  <link rel="canonical" href="https://onoutset.com/">
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
   <link rel="apple-touch-icon" href="/apple-touch-icon.png">
-  <meta property="og:title" content="Outset · Customer service that picks up when your team can't">
+  <meta property="og:title" content="Outset · Your 24/7 front desk">
   <meta property="og:description" content="When your team is busy or you're closed, Otto helps the caller instead of sending them to voicemail. Hear a sample call.">
-  <meta property="og:url" content="https://onoutset.com/otto">
+  <meta property="og:url" content="https://onoutset.com/">
   <meta property="og:type" content="website">
   <meta property="og:image" content="https://onoutset.com/apple-touch-icon.png">
-  <meta name="theme-color" content="#495940">
+  <meta name="theme-color" content="#F4EEE4">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&family=Newsreader:wght@600&display=swap">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&family=Figtree:wght@400;500;600;700&display=swap">
+  <link rel="stylesheet" href="/site.css">
+  <link rel="stylesheet" href="/otto-call.css">
   <style>
-    /* Outset theme tokens, from src/styles/app.css */
-    :root {
-      color-scheme: light;
-      --ground: #EFECE8; --surface: #FFFFFF; --surface-2: #F7F7F7; --surface-3: #EBEBEB;
-      --ink: #222222; --ink-soft: #6A6A6A; --line: #EBEBEB; --line-strong: #DDDDDD;
-      --accent: #495940; --accent-press: #3A4733; --accent-soft: #7F956A; --accent-tint: #E8EDE4; --on-accent: #FFFFFF;
-      --open: #0E6FA8; --bezel: #1A1A1A;
-      --r-s: 8px; --r-m: 12px; --r-l: 16px; --r-xl: 24px;
+    /* Home hero: headline and the sample call side by side on the band. On a phone the order is headline, call,
+       then the rest, so the demo is on the first screen with its headline above it. */
+    .hero { padding: 5rem 0 6rem; }
+    .hero-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr); grid-template-areas: "head demo" "body demo"; column-gap: clamp(2.5rem, 6vw, 6rem); }
+    .hero-head { grid-area: head; align-self: end; }
+    .hero-body { grid-area: body; align-self: start; }
+    .hero-demo { grid-area: demo; position: relative; align-self: center; }
+    .hero h1 { font-size: clamp(2.3rem, 3.7vw, 3.4rem); line-height: 1.12; letter-spacing: -.02em; }
+    /* The second line names the kind of business, largest first by how many of them the catalog holds (spas, then
+       martial arts, campgrounds and on down to escape rooms), so the first screen says who Otto is for. Every name
+       sits in the same grid cell, so the line keeps the width of the longest and nothing reflows. */
+    .hero h1 .for { display: block; white-space: nowrap; }
+    .hero h1 .words { display: inline-grid; justify-items: start; vertical-align: top; overflow: hidden; padding-bottom: .1em; margin-bottom: -.1em; color: var(--forest); }
+    .hero h1 .words > span { grid-area: 1 / 1; white-space: nowrap; opacity: 0; transform: translateY(.45em); transition: opacity .45s ease, transform .45s ease; }
+    .hero h1 .words > span.on { opacity: 1; transform: none; }
+    .hero h1 .words > span.off { opacity: 0; transform: translateY(-.45em); }
+    @media (prefers-reduced-motion: reduce) { .hero h1 .words > span { transition: none; } }
+    .hero-sub { font-size: clamp(1.1rem, 1.5vw, 1.28rem); line-height: 1.65; color: var(--ink-2); max-width: 34rem; margin: 1.5rem 0 2.25rem; }
+    .hero-ctas { display: flex; gap: .8rem; flex-wrap: wrap; }
+    @media (max-width: 1000px) {
+      .hero { padding: 2.5rem 0 4rem; }
+      .hero h1 { font-size: clamp(2.1rem, 7.6vw, 3.4rem); }
+      .hero-grid { grid-template-columns: minmax(0, 1fr); grid-template-areas: "head" "demo" "body"; row-gap: 2rem; }
+      .hero-sub { margin-top: 0; }
     }
-    * { box-sizing: border-box; }
-    /* Without this, a non-overlay scrollbar only eats width on the right, so centered content (the wrap, the
-       hero grid) sits visibly off-center by half a scrollbar's width even though the CSS math is symmetric. */
-    html { scroll-behavior: smooth; scrollbar-gutter: stable both-edges; }
-    body { margin: 0; font-family: "Figtree", "Inter", "Helvetica Neue", Arial, sans-serif; color: var(--ink); background: var(--ground); line-height: 1.5; -webkit-font-smoothing: antialiased; }
-    a { color: inherit; text-decoration: none; }
-    .wrap { max-width: 72rem; margin: 0 auto; padding: 0 1.5rem; }
-    .btn { display: inline-flex; align-items: center; justify-content: center; gap: .5rem; background: var(--accent); color: var(--on-accent); font-weight: 600; padding: .9rem 1.45rem; border-radius: 999px; font-size: .97rem; border: none; cursor: pointer; transition: background .14s, transform .14s; }
-    .btn:hover { background: var(--accent-press); transform: translateY(-1px); }
-    .btn.soft { background: var(--surface); color: var(--ink); border: 1px solid var(--line-strong); }
-    .btn.soft:hover { background: var(--surface-2); }
-    .btn.sm { padding: .65rem 1.15rem; font-size: .9rem; }
-    .ic { width: 18px; height: 18px; flex: none; }
+    @media (max-width: 560px) { .hero-ctas .btn { flex: 1 1 100%; } }
 
-    .nav { position: sticky; top: 0; z-index: 30; background: rgba(239,236,232,.86); backdrop-filter: saturate(1.4) blur(14px); border-bottom: 1px solid transparent; transition: border-color .2s; }
-    .nav.scrolled { border-color: var(--line-strong); }
-    .nav .wrap { display: flex; align-items: center; justify-content: space-between; height: 68px; }
-    .brand { display: flex; align-items: center; gap: .6rem; font-weight: 700; font-size: 1.12rem; letter-spacing: -.01em; }
-    .brand img { width: 30px; height: 30px; border-radius: 9px; display: block; }
-    .nav .links { display: flex; align-items: center; gap: 1.5rem; font-size: .93rem; color: var(--ink-soft); }
-    .nav .links a:hover { color: var(--ink); }
-    @media (max-width: 760px) { .nav .links a.txt { display: none; } }
-
-    .hero { padding: clamp(2.5rem, 6vw, 4.5rem) 0 clamp(2rem, 4vw, 3rem); }
-    /* minmax(0, …) rather than bare fr: a bare fr track has an auto minimum, so the card column grew to fit the
-       caption's one-line "previous turn" (white-space: nowrap) whenever a long turn moved up there, and the whole
-       hero re-laid out mid-call. With a zero minimum the columns never follow the card's content. */
-    .hero .grid { display: grid; grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr); gap: clamp(2rem, 4.5vw, 4rem); align-items: start; }
-    @media (max-width: 980px) { .hero .grid { grid-template-columns: minmax(0, 1fr); } .hero .callcol { order: -1; } }
-    .niche { display: inline-block; font-weight: 700; color: var(--accent); background: var(--accent-tint); border: 1px solid rgba(73,89,64,.18); font-size: .98rem; letter-spacing: -.005em; padding: .45rem .95rem; border-radius: 999px; margin: 0 0 1rem; }
-    h1 { font-weight: 600; font-size: clamp(2.3rem, 5vw, 3.6rem); line-height: 1.06; letter-spacing: -.035em; margin: 0 0 1rem; }
-    h1 span { color: var(--accent); }
-    .lede { font-size: 1.12rem; color: var(--ink-soft); max-width: 32rem; margin: 0 0 1.6rem; }
-    .cta-row { display: flex; gap: .65rem; flex-wrap: wrap; }
-    .proof { display: flex; gap: 1.1rem; flex-wrap: wrap; margin: 1.4rem 0 0; font-size: .9rem; color: var(--ink-soft); }
-    .proof span { display: inline-flex; align-items: center; gap: .4rem; }
-    .proof .ic { width: 15px; height: 15px; color: var(--accent); }
-
-    /* call screen */
-    .call { position: relative; background: var(--bezel); color: #fff; border-radius: var(--r-xl); box-shadow: 0 30px 70px rgba(0,0,0,.30), 0 2px 6px rgba(0,0,0,.18); overflow: hidden; }
-    .call .top { display: flex; align-items: center; justify-content: space-between; padding: 1rem 1.25rem .85rem; font-size: .88rem; }
-    .call .top b { font-weight: 600; letter-spacing: -.01em; }
-    .call .top small { display: block; font-size: .76rem; color: rgba(255,255,255,.5); margin-top: .1rem; }
-    .pillst { display: inline-flex; align-items: center; gap: .45rem; padding: .35rem .7rem; border-radius: 999px; background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.1); font-size: .78rem; color: rgba(255,255,255,.75); }
-    .pillst i { width: 7px; height: 7px; border-radius: 50%; background: rgba(255,255,255,.35); }
-    .call.on .pillst { color: rgba(255,255,255,.85); }
-    .call.on .pillst i { background: #34b46a; box-shadow: 0 0 0 0 rgba(52,180,106,.5); animation: pulse 2s infinite; }
-    @keyframes pulse { 0%{box-shadow:0 0 0 0 rgba(52,180,106,.5)} 70%{box-shadow:0 0 0 7px rgba(52,180,106,0)} 100%{box-shadow:0 0 0 0 rgba(52,180,106,0)} }
-    .screen { margin: 0 .9rem; background: linear-gradient(180deg, #262626, #202020); border: 1px solid rgba(255,255,255,.07); border-radius: 18px; overflow: hidden; }
-    .lane { display: grid; grid-template-columns: 158px 1fr; align-items: center; gap: 1rem; padding: .95rem 1.1rem; border-bottom: 1px solid rgba(255,255,255,.06); transition: background .3s; }
-    .lane.speaking { background: rgba(127,149,106,.10); }
-    .lane .id { display: flex; align-items: center; gap: .7rem; min-width: 0; }
-    .lane .av { width: 42px; height: 42px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; flex: none; position: relative; transition: box-shadow .3s; overflow: hidden; }
-    .lane .av img { width: 100%; height: 100%; display: block; }
-    /* Otto's own mark, not the Outset logo: the nav and footer stay the company brand, this is the assistant persona. */
-    .lane .av.bot { background: var(--accent); color: #fff; }
-    .lane .av.bot svg { width: 22px; height: 22px; }
-    .lane.otto .av { background: var(--accent); }
-    .lane.caller .av { background: #4a4a4a; font-size: 1rem; }
-    .lane.speaking .av { box-shadow: 0 0 0 3px var(--bezel), 0 0 0 5px var(--accent-soft); }
-    .lane .nm b { display: block; font-size: .94rem; font-weight: 600; line-height: 1.15; }
-    .lane .nm small { display: inline-flex; align-items: center; gap: .35rem; font-size: .74rem; color: rgba(255,255,255,.5); margin-top: .15rem; }
-    .lane.speaking .nm small { color: #b8e6c6; }
-    .lane.speaking .nm small::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: #34b46a; }
-    .lane canvas { width: 100%; height: 56px; display: block; }
-    @media (max-width: 520px) { .lane { grid-template-columns: 120px 1fr; } .lane .nm small { display: none; } }
-    /* Fixed height, sized by fitCaption() for the longest turn at the current width, so it neither grows nor
-       clips as the call moves. 164px is the floor. */
-    .caption { padding: 1rem 1.1rem 1.05rem; height: 164px; overflow: hidden; }
-    .caption .prev { font-size: .84rem; color: rgba(255,255,255,.38); line-height: 1.4; min-height: 1.4em; margin-bottom: .45rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .caption .now { font-size: 1.02rem; line-height: 1.45; color: #fff; }
-    .caption .now.idle { color: rgba(255,255,255,.55); }
-    .caption .wd { --p: 0%; background: linear-gradient(90deg, #fff var(--p), rgba(255,255,255,.36) var(--p)); -webkit-background-clip: text; background-clip: text; color: transparent; }
-    .restart { flex: none; width: 40px; height: 40px; border-radius: 50%; background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.14); color: #fff; display: grid; place-items: center; cursor: pointer; transition: background .14s; }
-    .restart:hover { background: rgba(255,255,255,.16); }
-    .restart .ic { width: 17px; height: 17px; }
-    .caption .who { display: inline-block; font-size: .68rem; letter-spacing: .06em; text-transform: uppercase; font-weight: 700; padding: .18rem .5rem; border-radius: 6px; margin-right: .55rem; vertical-align: 2px; }
-    .caption .who.otto { background: var(--accent); }
-    .caption .who.caller { background: #4a4a4a; }
-    .callcol { display: flex; flex-direction: column; gap: .7rem; min-width: 0; }
-    .activity { display: flex; flex-direction: column; gap: .5rem; height: 132px; overflow: hidden; }
-    .act { display: flex; align-items: center; gap: .7rem; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-m); padding: .6rem .8rem; font-size: .88rem; color: var(--ink); box-shadow: 0 1px 2px rgba(0,0,0,.04), 0 8px 20px rgba(0,0,0,.06); opacity: 0; transform: translateY(6px); max-height: 0; padding-top: 0; padding-bottom: 0; margin-top: -.5rem; border-width: 0; overflow: hidden; transition: opacity .35s ease, transform .35s ease, max-height .35s ease, padding .35s ease, margin .35s ease; }
-    .act.in { opacity: 1; transform: none; max-height: 72px; padding: .6rem .8rem; margin-top: 0; border-width: 1px; }
-    /* After a seek the lanes and the activity stack take the new position in one step: nothing slides in or out. */
-    .callcol.snap .lane, .callcol.snap .lane .av, .callcol.snap .act { transition: none; }
-    .act .ico { width: 30px; height: 30px; border-radius: 9px; display: grid; place-items: center; flex: none; }
-    .act .ico.cal { background: var(--accent-tint); }
-    .act .ico.cal img { width: 18px; height: 18px; display: block; }
-    .act .ico.mail { background: #F5EFE4; color: #B5722E; }
-    .act .ico .ic { width: 17px; height: 17px; }
-    .act b { font-weight: 600; }
-    .act span small { display: block; color: var(--ink-soft); font-size: .82rem; margin-top: .05rem; }
-    .act .t { margin-left: auto; padding-left: .6rem; color: var(--ink-soft); font-size: .8rem; font-variant-numeric: tabular-nums; }
-    .lane.caller .av img { object-fit: cover; }
-    .scrub .rail { height: 6px; background: rgba(255,255,255,.16); border-radius: 3px; position: relative; }
-    .scrub .rail .scrubfill { border-radius: 3px; }
-    .scrub .tip { position: absolute; bottom: 100%; transform: translate(-50%, -6px); background: #fff; color: var(--ink); font-size: .74rem; font-weight: 600; padding: .2rem .45rem; border-radius: 6px; pointer-events: none; opacity: 0; transition: opacity .12s; white-space: nowrap; }
-    .scrub:hover .tip, .scrub.drag .tip { opacity: 1; }
-    .scrub:focus { outline: none; }
-    .scrub:focus-visible .rail { box-shadow: 0 0 0 2px rgba(255,255,255,.35); }
-    .scrub.drag .scrubfill::after { opacity: 1; transform: translateY(-50%) scale(1.25); }
-    .caption .done { display: inline-flex; align-items: center; gap: .5rem; margin-top: .65rem; background: rgba(52,180,106,.14); color: #b8e6c6; border: 1px solid rgba(52,180,106,.35); border-radius: 10px; padding: .45rem .75rem; font-size: .86rem; font-weight: 600; }
-    .bar { display: flex; align-items: center; gap: .9rem; padding: .95rem 1.25rem 1.15rem; }
-    .playbtn { flex: none; width: 50px; height: 50px; border-radius: 50%; background: #fff; color: var(--ink); border: none; display: grid; place-items: center; cursor: pointer; transition: transform .14s, box-shadow .14s; box-shadow: 0 6px 18px rgba(0,0,0,.35); }
-    .playbtn:hover { transform: scale(1.05); }
-    .tri { width: 0; height: 0; border-left: 13px solid currentColor; border-top: 8px solid transparent; border-bottom: 8px solid transparent; margin-left: 4px; }
-    .playbtn.playing .tri { display: none; }
-    .ic-pause { display: none; gap: 5px; }
-    .playbtn.playing .ic-pause { display: inline-flex; }
-    .ic-pause i { width: 4.5px; height: 17px; background: currentColor; border-radius: 2px; display: block; }
-    /* The slider box itself is unpainted: only the rail shows, so there is no lighter rectangle around it. */
-    .scrub { flex: 1; padding: 10px 0; cursor: pointer; position: relative; touch-action: none; }
-    .scrubfill { position: absolute; left: 0; top: 0; bottom: 0; width: 0; background: #fff; border-radius: 3px; }
-    .scrubfill::after { content: ""; position: absolute; right: -6px; top: 50%; transform: translateY(-50%); width: 13px; height: 13px; border-radius: 50%; background: #fff; box-shadow: 0 1px 4px rgba(0,0,0,.4); opacity: 0; transition: opacity .2s; }
-    .call.on .scrubfill::after { opacity: 1; }
-    .time { font-size: .82rem; color: rgba(255,255,255,.7); font-variant-numeric: tabular-nums; min-width: 6.4rem; text-align: right; }
-
-    section { padding: clamp(3rem, 6.5vw, 5rem) 0; }
-    .eyebrow { color: var(--accent-soft); font-weight: 700; font-size: .78rem; letter-spacing: .08em; text-transform: uppercase; margin: 0 0 .6rem; }
-    h2 { font-weight: 600; font-size: clamp(1.7rem, 3.4vw, 2.3rem); line-height: 1.12; letter-spacing: -.03em; margin: 0 0 .8rem; max-width: 22ch; }
-    .sub { color: var(--ink-soft); font-size: 1.05rem; max-width: 36rem; margin: 0 0 2rem; }
-
-    /* The booking systems sit in the hero under the buttons, so the first screen shows the calendar it plugs into. */
-    .logos { margin-top: 1.75rem; display: flex; flex-direction: column; align-items: flex-start; gap: .7rem; }
-    .logos .lbl { font-size: .74rem; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-soft); font-weight: 600; }
-    .logos .row { display: flex; flex-wrap: nowrap; gap: .5rem; }
-    .logos .v { display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; flex: none; border: 1px solid var(--line); border-radius: 50%; background: var(--surface); }
-    .logos .v img { width: 18px; height: 18px; border-radius: 4px; display: block; }
-
-    .cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; }
-    @media (max-width: 860px) { .cards { grid-template-columns: 1fr; } }
-    .card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-l); padding: 1.5rem; }
-    .card .icw { width: 40px; height: 40px; border-radius: 12px; background: var(--accent-tint); color: var(--accent); display: grid; place-items: center; margin-bottom: 1rem; }
-    .card .icw .ic { width: 20px; height: 20px; }
-    .card h3 { margin: 0 0 .35rem; font-size: 1.1rem; font-weight: 600; }
-    .card p { margin: 0; color: var(--ink-soft); font-size: .96rem; }
-
+    /* The reviews section renders exactly as it did on the old page: its own font and its own token values. */
+    .reviews { --ink: #222222; --ink-soft: #6A6A6A; --line: #EBEBEB; --surface: #FFFFFF; --accent: #495940; --accent-tint: #E8EDE4; --r-l: 16px; font-family: "Figtree", "Inter", "Helvetica Neue", Arial, sans-serif; line-height: 1.5; color: var(--ink); }
     .who { display: grid; grid-template-columns: 1fr 1.1fr; gap: 3rem; align-items: center; }
     @media (max-width: 900px) { .who { grid-template-columns: 1fr; gap: 1.5rem; } }
-    .who ul { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: 1fr 1fr; gap: .6rem; }
-    @media (max-width: 560px) { .who ul { grid-template-columns: 1fr; } }
-    .who li { display: flex; align-items: center; gap: .7rem; padding: .85rem 1rem; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-m); font-weight: 500; font-size: .95rem; }
-    .who li .ic { width: 16px; height: 16px; color: var(--accent); }
-
-    /* Three numbered steps on one line, so they read as a sequence rather than three loose tiles. */
-    .steps { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.25rem; }
-    .step { position: relative; display: flex; flex-direction: column; }
-    .step .mark { position: relative; height: 32px; margin-bottom: 1rem; }
-    .step .mark::after { content: ""; position: absolute; top: 50%; left: 44px; right: -1.25rem; height: 2px; background: var(--line-strong); transform: translateY(-50%); }
-    .step:last-child .mark::after { display: none; }
-    .step .n { position: relative; z-index: 1; display: inline-grid; place-items: center; width: 32px; height: 32px; border-radius: 50%; background: var(--accent); color: #fff; font-weight: 700; font-size: .9rem; box-shadow: 0 0 0 4px var(--ground); }
-    .step .card { flex: 1; box-shadow: 0 1px 2px rgba(0,0,0,.03), 0 10px 24px -16px rgba(0,0,0,.14); }
-    .step .card .icw { margin-bottom: 1.1rem; }
-    @media (max-width: 860px) {
-      .steps { grid-template-columns: 1fr; gap: 1rem; }
-      .step { flex-direction: row; gap: 1rem; }
-      .step .mark { height: auto; margin: 0; width: 32px; flex: none; }
-      .step .mark::after { left: 50%; right: auto; top: 44px; bottom: -1rem; width: 2px; height: auto; transform: translateX(-50%); }
-    }
-
-    .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; }
-    @media (max-width: 760px) { .stats { grid-template-columns: repeat(2, 1fr); } }
-    .stat { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-l); padding: 1.3rem; }
-    .stat b { display: block; font-weight: 600; font-size: 2rem; letter-spacing: -.03em; color: var(--accent); line-height: 1; margin-bottom: .35rem; }
-    .stat span { color: var(--ink-soft); font-size: .9rem; }
-
     .reviews { padding: 1.5rem 0 .5rem; overflow: hidden; }
     .reviews .lbl { text-align: center; font-size: .78rem; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-soft); font-weight: 600; margin-bottom: 1.5rem; }
     .reviews .rows { display: flex; flex-direction: column; gap: .9rem; -webkit-mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent); mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent); }
@@ -210,47 +76,10 @@
     .rv .stars { color: #D2924A; letter-spacing: .05em; font-size: .84rem; margin-bottom: .4rem; }
     .rv q { quotes: "\201C" "\201D"; line-height: 1.5; color: var(--ink); }
 
-    .faq { display: grid; grid-template-columns: 1.1fr .9fr; gap: 3rem; align-items: start; }
-    @media (max-width: 900px) { .faq { grid-template-columns: 1fr; } }
-    details { border-top: 1px solid var(--line-strong); padding: .95rem 0; }
-    details:last-of-type { border-bottom: 1px solid var(--line-strong); }
-    summary { list-style: none; cursor: pointer; font-weight: 600; display: flex; justify-content: space-between; gap: 1rem; }
-    summary::-webkit-details-marker { display: none; }
-    summary::after { content: "+"; color: var(--accent-soft); font-weight: 600; }
-    details[open] summary::after { content: "–"; }
-    details p { margin: .55rem 0 0; color: var(--ink-soft); font-size: .96rem; }
-    .askcard { background: var(--ground); border: 1px solid var(--line); border-radius: var(--r-l); padding: 1.6rem; }
-    .askcard h3 { margin: 0 0 .35rem; font-size: 1.2rem; font-weight: 600; }
-    .askcard p { margin: 0 0 1rem; color: var(--ink-soft); }
-
-    .final .box { background: var(--accent); color: #fff; border-radius: var(--r-xl); padding: clamp(2.25rem, 5vw, 3.5rem) 1.5rem; text-align: center; }
-    .final h2 { color: #fff; margin: 0 auto .5rem; }
-    .final p { color: rgba(255,255,255,.8); max-width: 32rem; margin: 0 auto 1.4rem; }
-    .final .btn { background: #fff; color: var(--ink); }
-    .final .btn:hover { background: var(--surface-2); }
-
-    footer { padding: 2.5rem 0 2rem; color: var(--ink-soft); font-size: .9rem; }
-    footer .cols { display: grid; grid-template-columns: 1.4fr 1fr 1fr; gap: 2rem; border-top: 1px solid var(--line-strong); padding-top: 2rem; }
-    @media (max-width: 700px) { footer .cols { grid-template-columns: 1fr; } }
-    footer h4 { margin: 0 0 .55rem; font-size: .85rem; color: var(--ink); }
-    footer ul { list-style: none; padding: 0; margin: 0; display: grid; gap: .3rem; }
-    footer a:hover { color: var(--ink); }
-    footer .copy { margin-top: 1.8rem; font-size: .82rem; }
-    address { font-style: normal; }
-      .band { background: var(--accent); color: var(--on-accent); margin-top: 4.5rem; }
-    .band .badge { width: 58px; height: 58px; border-radius: 16px; background: var(--on-accent); color: var(--accent); display: flex; align-items: center; justify-content: center; box-shadow: 0 8px 22px rgba(0,0,0,.18); }
-    .band .badge .ic { width: 30px; height: 30px; }
-    .band .wrap { display: flex; align-items: center; justify-content: space-between; gap: 2rem; flex-wrap: wrap; padding-top: 3.2rem; padding-bottom: 3.2rem; }
-    .band .num { font-family: "Newsreader", Georgia, serif; font-size: clamp(3.6rem, 9vw, 6rem); line-height: .95; font-weight: 600; letter-spacing: -.02em; }
-    .band .say { max-width: 30rem; font-size: 1.15rem; line-height: 1.45; margin: .4rem 0 0; }
-    .band .src { display: block; font-size: .82rem; opacity: .75; margin-top: .6rem; }
-    .band .src a { text-decoration: underline; }
-    .band .join { display: flex; flex-direction: column; align-items: flex-start; gap: .7rem; }
-    .band .join p { margin: 0; font-weight: 600; font-size: 1.05rem; }
-    .band .btn { background: var(--on-accent); color: var(--accent); }
-    .band .btn:hover { background: var(--accent-tint); }
-    @media (max-width: 760px) { .band { margin-top: 3rem; } .band .wrap { padding-top: 2.4rem; padding-bottom: 2.4rem; gap: 1.6rem; } .band .say { font-size: 1.05rem; } .band .join, .band .btn { width: 100%; } }
-</style>
+    .logo-mat { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .85rem; }
+    @media (max-width: 560px) { .logo-mat { grid-template-columns: 1fr; } }
+    .zig .btn { margin-top: 2rem; }
+  </style>
 </head>
 <body>
   <svg width="0" height="0" style="position:absolute" aria-hidden="true">
@@ -269,79 +98,85 @@
     <symbol id="i-kayak" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 14c4-3 16-3 20 0-4 3-16 3-20 0z"/><path d="M6 6l12 12M8 5l2 2M16 17l-2-2"/></g></symbol>
     <symbol id="i-parasail" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10a9 5 0 0 1 18 0"/><path d="M3 10l9 9 9-9M8 10l4 9M16 10l-4 9"/></g></symbol>
     <symbol id="i-wave" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" d="M2 12c2-3 4-3 6 0s4 3 6 0 4-3 6 0M2 17c2-3 4-3 6 0s4 3 6 0 4-3 6 0M2 7c2-3 4-3 6 0s4 3 6 0 4-3 6 0"/></symbol>
+    <symbol id="i-arrow" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M5 12h14M13 6l6 6-6 6"/></symbol>
+    <symbol id="i-play" viewBox="0 0 24 24"><path fill="currentColor" d="M8 5.6v12.8a1 1 0 0 0 1.52.86l10.4-6.4a1 1 0 0 0 0-1.72L9.52 4.74A1 1 0 0 0 8 5.6z"/></symbol>
+    <symbol id="i-users" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.2"/><path d="M3.5 19a5.5 5.5 0 0 1 11 0M16 4.8a3.2 3.2 0 0 1 0 6.4M17.5 13.6A5.5 5.5 0 0 1 21 19"/></g></symbol>
+    <symbol id="i-clock" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></g></symbol>
   </svg>
 
   <header class="nav" id="nav">
     <div class="wrap">
-      <a class="brand" href="https://onoutset.com/"><img src="/favicon.svg" alt=""> Outset</a>
-      <nav class="links">
-        <a class="txt" href="#who">Who it's for</a>
-        <a class="txt" href="#how">How it works</a>
-        <a class="txt" href="#faq">FAQ</a>
-        <a class="txt" href="https://onoutset.com/">Marketplace</a>
-        <a class="btn sm" href="https://cal.com/harshil-shah-7tkvs7/outset" target="_blank" rel="noopener">Book a call</a>
+      <a class="brand" href="/"><img src="/favicon.svg" alt=""> Outset</a>
+      <nav class="links" aria-label="Main">
+        <a href="/features">Features</a>
+        <a href="/integrations">Integrations</a>
+        <a href="/pricing">Pricing</a>
+        <a href="/#how">How it works</a>
+        <a href="/#faq">FAQ</a>
       </nav>
+      <div class="acts">
+        <a class="btn line sm" href="/#call">Hear a sample</a>
+        <a class="btn sm" href="https://cal.com/harshil-shah-7tkvs7/outset" target="_blank" rel="noopener">Book a demo</a>
+      </div>
     </div>
   </header>
 
-  <div class="hero">
-    <div class="wrap grid">
-      <div>
-        <p class="niche">Never send a customer to voicemail again.</p>
-        <h1>Your customers get help, <span>even when you can't pick up.</span></h1>
-        <p class="lede">Otto doesn't replace your team. It covers the calls they can't get to, when everyone's busy with
-          customers or you're closed. Instead of hearing a voicemail, the caller gets their questions answered and help
-          booking, and your team gets a summary so they can follow up.</p>
-        <div class="cta-row">
-          <a class="btn" href="https://cal.com/harshil-shah-7tkvs7/outset" target="_blank" rel="noopener">See how it fits your business</a>
-          <button class="btn soft" id="hear" type="button"><svg class="ic"><use href="#i-phone"/></svg> Hear a sample call</button>
-        </div>
-        <div class="logos">
-          <span class="lbl">Works with your booking system</span>
-          <div class="row">
-            <span class="v" title="FareHarbor"><img src="https://www.google.com/s2/favicons?domain=fareharbor.com&sz=64" alt="FareHarbor"></span>
-            <span class="v" title="Peek"><img src="https://www.google.com/s2/favicons?domain=peek.com&sz=64" alt="Peek"></span>
-            <span class="v" title="Xola"><img src="https://www.google.com/s2/favicons?domain=xola.com&sz=64" alt="Xola"></span>
-            <span class="v" title="Checkfront"><img src="https://www.google.com/s2/favicons?domain=checkfront.com&sz=64" alt="Checkfront"></span>
-            <span class="v" title="Rezdy"><img src="https://www.google.com/s2/favicons?domain=rezdy.com&sz=64" alt="Rezdy"></span>
-            <span class="v" title="Square"><img src="https://www.google.com/s2/favicons?domain=squareup.com&sz=64" alt="Square"></span>
-            <span class="v" title="Acuity"><img src="https://www.google.com/s2/favicons?domain=acuityscheduling.com&sz=64" alt="Acuity"></span>
-          </div>
+  <div class="hero band">
+    <div class="wrap hero-grid">
+      <div class="hero-head">
+        <h1>Your 24/7 Front Desk <span class="for">for <span class="sr">businesses that take bookings</span><span class="words" aria-hidden="true"><span class="on">Spas</span><span>Martial Arts</span><span>Campgrounds</span><span>Dance Studios</span><span>Museums</span><span>Yoga Studios</span><span>Golf Courses</span><span>Breweries</span><span>Trail Rides</span><span>Event Venues</span><span>Wineries</span><span>Theaters</span><span>Art Classes</span><span>Fitness Studios</span><span>Fishing Charters</span><span>Shooting Ranges</span><span>Arcades</span><span>Gymnastics</span><span>Theme Parks</span><span>Bowling Alleys</span><span>Boat Tours</span><span>Off-Road Tours</span><span>Boat Rentals</span><span>Tour Operators</span><span>Pickleball</span><span>Ice Rinks</span><span>Kayak Rentals</span><span>Escape Rooms</span></span></span></h1>
+      </div>
+      <div class="hero-body">
+        <p class="hero-sub">Customer service that never goes to voicemail. When your crew is out on the water, running a game or closed for the night, Otto answers in your business's voice, helps callers book, and hands your team the full story.</p>
+        <div class="hero-ctas">
+          <a class="btn" href="https://cal.com/harshil-shah-7tkvs7/outset" target="_blank" rel="noopener">Book a demo <svg class="ic"><use href="#i-arrow"/></svg></a>
+          <button class="btn line" id="hear" type="button">Hear a sample call <svg class="ic"><use href="#i-play"/></svg></button>
         </div>
       </div>
-
+      <div class="hero-demo">
+<!-- CALL CARD START: markup for the sample-call player. Styles in otto-call.css, behaviour in otto-call.js. -->
       <div class="callcol" id="callcol">
-      <div class="call" id="call">
-        <div class="top">
-          <div><b></b><small>Bayside Marina · jet ski rental</small></div>
-          <span class="pillst"><i></i><span id="st">Ready</span></span>
-        </div>
-        <div class="screen">
-          <div class="lane otto" id="laneOtto">
-            <div class="id"><span class="av bot"><svg class="ic"><use href="#i-otto"/></svg></span><span class="nm"><b>Otto</b><small id="sOtto">AI front desk</small></span></div>
-            <canvas id="vizOtto" aria-label="Otto's voice"></canvas>
+        <section class="oc" id="call" aria-labelledby="ocTitle">
+          <div class="oc-hd">
+            <b class="oc-title" id="ocTitle">Sample call</b>
+            <span class="oc-chip" id="st" aria-live="polite">Ready</span>
+            <small class="oc-sub">Bayside Marina · jet ski rental</small>
           </div>
-          <div class="lane caller" id="laneCaller">
-            <div class="id"><span class="av"><img src="https://randomuser.me/api/portraits/men/32.jpg" alt="" loading="lazy"></span><span class="nm"><b>Marcus</b><small id="sCaller">Caller</small></span></div>
-            <canvas id="vizCaller" aria-label="The caller's voice"></canvas>
+          <div class="oc-cap">
+            <div class="oc-prev" id="prev">Press play and read along.</div>
+            <div class="oc-now idle" id="now">Press play to hear Otto take a booking call.</div>
+            <div class="oc-did" id="did" aria-live="polite"></div>
           </div>
-          <div class="caption">
-            <div class="prev" id="prev">The transcript follows along as it plays.</div>
-            <div class="now idle" id="now">Press play to hear Otto take a booking call.</div>
+          <div class="oc-bar">
+            <button class="oc-play" id="play" type="button" aria-label="Play the call"><svg class="ic" aria-hidden="true"><use href="#i-play"/></svg><span class="oc-pause" aria-hidden="true"><i></i><i></i></span></button>
+            <button class="oc-restart" id="restart" type="button" aria-label="Restart the call" title="Restart"><svg viewBox="0 0 24 24" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></g></svg></button>
+            <div class="oc-scrub" id="scrub" role="slider" tabindex="0" aria-label="Call position" aria-valuemin="0" aria-valuemax="42" aria-valuenow="0" aria-valuetext="0:00 of 0:42"><div class="oc-rail"><span class="oc-fill"></span><span class="oc-knob"></span><span class="oc-tip" id="tip">0:00</span></div></div>
+            <span class="oc-time"><span id="cur">0:00</span> / <span id="dur">0:42</span></span>
           </div>
-        </div>
-        <div class="bar">
-          <button class="playbtn" id="play" type="button" aria-label="Play the call"><span class="tri"></span><span class="ic-pause"><i></i><i></i></span></button>
-          <button class="restart" id="restart" type="button" aria-label="Restart the call" title="Restart"><svg class="ic"><use href="#i-restart"/></svg></button>
-          <div class="scrub" id="scrub" role="slider" tabindex="0" aria-label="Call position" aria-valuemin="0" aria-valuemax="42" aria-valuenow="0"><div class="rail"><div class="scrubfill" id="scrubfill"></div><span class="tip" id="tip">0:00</span></div></div>
-          <span class="time"><span id="cur">0:00</span> / <span id="dur">0:42</span></span>
-        </div>
-        <audio id="audio" preload="metadata" src="/otto-call.mp3"></audio>
+          <audio id="audio" preload="metadata" src="/otto-call.mp3"></audio>
+        </section>
       </div>
-      <div class="activity" id="actions" aria-live="polite"></div>
+<!-- CALL CARD END -->
       </div>
     </div>
   </div>
+
+  <section class="strip" aria-label="Booking software">
+    <div class="wrap">
+      <p>Works with the booking software activity businesses already use</p>
+      <ul>
+        <li><img src="/integrations/fareharbor.png" alt="">FareHarbor</li>
+        <li><img src="/integrations/peek.png" alt="">Peek</li>
+        <li><img src="/integrations/xola.png" alt="">Xola</li>
+        <li><img src="/integrations/resova.png" alt="">Resova</li>
+        <li><img src="/integrations/bookeo.png" alt="">Bookeo</li>
+        <li><img src="/integrations/checkfront.png" alt="">Checkfront</li>
+        <li><img src="/integrations/rezdy.png" alt="">Rezdy</li>
+        <li><img src="/integrations/roller.png" alt="">ROLLER</li>
+      </ul>
+      <a class="arrow-link more" href="/integrations">See all integrations <svg class="ic"><use href="#i-arrow"/></svg></a>
+    </div>
+  </section>
 
   <div class="reviews" id="reviews" hidden>
     <p class="lbl">What operators say</p>
@@ -350,113 +185,123 @@
     </div>
   </div>
 
-  <section class="band" aria-label="Why it matters">
+  <section class="sec band-soft" aria-labelledby="kinds">
     <div class="wrap">
-      <div>
-        <div class="num">3 in 4</div>
-        <p class="say">guests say they'd book somewhere else if they couldn't get through to ask a question or make a booking.</p>
-        <span class="src">From <a href="https://www.prnewswire.com/news-releases/roller-doubles-down-on-ai-with-new-agent-to-help-operators-grow-302783193.html" target="_blank" rel="noopener">ROLLER's 2026 survey</a> of 1,500 attraction guests.</span>
-      </div>
-      <div class="join">
-        <span class="badge" aria-hidden="true"><svg class="ic"><use href="#i-otto"/></svg></span>
-        <p>Be one of our founding businesses.<br>We set it up with you, free.</p>
-        <a class="btn" href="https://cal.com/harshil-shah-7tkvs7/outset" target="_blank" rel="noopener">Become a founding business</a>
+      <div class="head"><span class="eyebrow">Made for activities</span><h2 class="h2" id="kinds">Built for businesses where the phone rings mid-adventure</h2></div>
+      <div class="scenes">
+        <figure><div class="scene"><img src="/photos/escape.jpg" alt="An escape room set lit in orange" loading="lazy"></div><figcaption>Escape rooms<small>Calls come in while a game is running</small></figcaption></figure>
+        <figure><div class="scene"><img src="/photos/jetski.jpg" alt="Rental jet skis lined up on a beach" loading="lazy"></div><figcaption>Jet ski and boat rentals<small>Nobody can grab the phone on the water</small></figcaption></figure>
+        <figure><div class="scene"><img src="/photos/fishing.jpg" alt="Fishing rods racked on the back of a charter boat" loading="lazy"></div><figcaption>Fishing charters<small>The captain is offshore all morning</small></figcaption></figure>
+        <figure><div class="scene"><img src="/photos/kayak.jpg" alt="Two groups paddling down a clear river" loading="lazy"></div><figcaption>Kayak and rafting tours<small>Guides are out on the river</small></figcaption></figure>
+        <figure><div class="scene"><img src="/photos/kart.jpg" alt="A go-kart racing round an indoor track" loading="lazy"></div><figcaption>Karting<small>Race nights fill up by phone</small></figcaption></figure>
+        <figure><div class="scene"><img src="/photos/skydive.jpg" alt="A skydiver in freefall over the coast" loading="lazy"></div><figcaption>Skydiving<small>Instructors are in the air, not by the phone</small></figcaption></figure>
+        <figure><div class="scene"><img src="/photos/paintball.jpg" alt="Two friends laughing in paintball gear" loading="lazy"></div><figcaption>Paintball<small>Staff are out on the field with a group</small></figcaption></figure>
+        <figure><div class="scene"><img src="/photos/horse.jpg" alt="A rider on a white horse in the hills" loading="lazy"></div><figcaption>Trail rides<small>Guides are out on the trail</small></figcaption></figure>
       </div>
     </div>
   </section>
 
-  <section id="what">
+  <section class="sec" id="what">
     <div class="wrap">
-      <p class="eyebrow">What it handles</p>
-      <h2>Real customer service, not a voicemail box.</h2>
-      <p class="sub">Most callers who reach voicemail just hang up and try somewhere else. Otto answers their question, helps them book, and passes anything else to your team with the full story.</p>
+      <div class="head"><h2 class="h2">What Otto does for your business</h2></div>
       <div class="cards">
-        <div class="card"><div class="icw"><svg class="ic"><use href="#i-phone"/></svg></div><h3>Picks up when you can't</h3><p>When your team is busy or it's after hours, it answers calls and texts in a natural voice, so callers get help instead of a voicemail.</p></div>
-        <div class="card"><div class="icw"><svg class="ic"><use href="#i-swap"/></svg></div><h3>Changes and cancels</h3><p>Looks up the booking, reads your real cancellation policy, and moves or cancels it without a callback.</p></div>
-        <div class="card"><div class="icw"><svg class="ic"><use href="#i-cal"/></svg></div><h3>Books what's open</h3><p>Checks your live calendar and takes the reservation on the call, into the same system you run today.</p></div>
+        <article class="card"><span class="tile tl-lime"><svg class="ic"><use href="#i-phone"/></svg></span><h3>Picks Up When Your Team Can't</h3><p>Mid-game, out on the water or after close, the call gets answered in your business's name instead of ringing out to voicemail.</p></article>
+        <article class="card"><span class="tile tl-lilac"><svg class="ic"><use href="#i-facts"/></svg></span><h3>Answers From Your Own Facts</h3><p>Prices, hours, age rules and policies come from your business. When Otto doesn't know something, it says so and takes a message.</p></article>
+        <article class="card"><span class="tile tl-sage"><svg class="ic"><use href="#i-cal"/></svg></span><h3>Helps Callers Book</h3><p>Otto helps callers find a time that works and sends them straight to your booking page.</p></article>
+        <article class="card"><span class="tile tl-blush"><svg class="ic"><use href="#i-users"/></svg></span><h3>Staff Stay With Guests</h3><p>Nobody has to leave a group mid-briefing to run for the phone. Otto takes the calls your team can't get to.</p></article>
+        <article class="card"><span class="tile tl-khaki"><svg class="ic"><use href="#i-mail"/></svg></span><h3>A Summary After Every Call</h3><p>Anything that needs a person lands with your team as a short summary, so the callback starts with the answer.</p></article>
+        <article class="card"><span class="tile tl-blue"><svg class="ic"><use href="#i-clock"/></svg></span><h3>Live in About a Day</h3><p>We load your prices, policies and booking software, and you call it yourself before it takes a real call.</p></article>
       </div>
     </div>
   </section>
 
-  <section id="who" style="background:var(--surface);border-top:1px solid var(--line);border-bottom:1px solid var(--line)">
-    <div class="wrap who">
+  <section class="sec" id="how">
+    <div class="wrap">
+      <div class="zig">
+        <div class="mat strong" aria-hidden="true">
+          <div class="sum">
+            <div class="hd"><span class="bot"><svg class="ic"><use href="#i-otto"/></svg></span><div><b>Call summary</b><small>Saturday, 9:47 PM · after hours</small></div><span class="chip">Example</span></div>
+            <dl>
+              <dt>Caller</dt><dd>Sarah, booking for her son</dd>
+              <dt>Asked about</dt><dd>A birthday party for 12 kids next Saturday</dd>
+              <dt>Otto answered</dt><dd>Party package, ages 8 and up, 3:00 PM is open</dd>
+              <dt>Next step</dt><dd>Booking link sent to her phone</dd>
+            </dl>
+            <div class="ok"><svg class="ic"><use href="#i-check"/></svg> Handled by Otto · no callback needed</div>
+          </div>
+        </div>
+        <div>
+          <span class="eyebrow">How it works</span>
+          <h2>What happens when you can't pick up</h2>
+          <p>Calls ring your phones like always. When nobody picks up, or you're closed, the caller reaches Otto instead of voicemail, and your team gets a summary of every call.</p>
+          <a class="btn line" href="/features">See all features <svg class="ic"><use href="#i-arrow"/></svg></a>
+        </div>
+      </div>
+
+      <div class="zig flip">
+        <div class="mat" aria-hidden="true">
+          <div class="logo-mat">
+            <div class="logo-tile"><img src="/integrations/fareharbor.png" alt=""><span><b>FareHarbor</b><small>Tours and activities</small></span></div>
+            <div class="logo-tile"><img src="/integrations/resova.png" alt=""><span><b>Resova</b><small>Escape rooms and attractions</small></span></div>
+            <div class="logo-tile"><img src="/integrations/xola.png" alt=""><span><b>Xola</b><small>Tours and rentals</small></span></div>
+            <div class="logo-tile"><img src="/integrations/bookeo.png" alt=""><span><b>Bookeo</b><small>Escape rooms and tours</small></span></div>
+            <div class="logo-tile"><img src="/integrations/peek.png" alt=""><span><b>Peek</b><small>Activities</small></span></div>
+            <div class="logo-tile"><img src="/integrations/roller.png" alt=""><span><b>ROLLER</b><small>Attractions and parks</small></span></div>
+          </div>
+        </div>
+        <div>
+          <span class="eyebrow">Integrations</span>
+          <h2>Works with the booking software you already run</h2>
+          <p>Keep your booking system exactly as it is. Otto works with all the major ones, and every booking stays in your system.</p>
+          <a class="btn line" href="/integrations">See all integrations <svg class="ic"><use href="#i-arrow"/></svg></a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec band-soft" aria-labelledby="why">
+    <div class="wrap story">
       <div>
-        <p class="eyebrow">Built for any booking-based business</p>
-        <h2>Made for businesses where the phone rings while you're busy running it.</h2>
-        <p class="sub" style="margin-bottom:0">Not a generic receptionist. It knows how bookings actually work: party sizes, cancellation policies, deposits, time slots, and the calendar behind all of it, whatever you run.</p>
+        <span class="eyebrow">From the founder</span>
+        <h2 class="h2" id="why">Why we built Otto</h2>
+        <blockquote>We didn't build Otto to replace anyone. When someone on your team can pick up, a person is still the best answer a caller can get. Otto is customer service for the moments nobody can: your crew is out on the water, running a game, or the doors are closed for the night. Today those callers hear voicemail, and most of them won't wait for a call back. They book the next place on the list. With Otto they get a real answer and help booking, and your team gets the full story. A call to your business should almost never end in voicemail.</blockquote>
+        <div class="by"><img class="av" src="/photos/harshil.jpg" alt="Harshil Shah" width="112" height="112"><span><b>Harshil Shah</b><small>Founder, Outset · Toronto, Canada</small></span></div>
       </div>
-      <ul>
-        <li><svg class="ic"><use href="#i-anchor"/></svg> Rentals and charter operators</li>
-        <li><svg class="ic"><use href="#i-cal"/></svg> Tours and experience providers</li>
-        <li><svg class="ic"><use href="#i-facts"/></svg> Appointment and class-based businesses</li>
-        <li><svg class="ic"><use href="#i-check"/></svg> Any business that takes bookings over the phone</li>
-      </ul>
-    </div>
-  </section>
-
-  <section id="how">
-    <div class="wrap">
-      <p class="eyebrow">How it works</p>
-      <h2>Live in a day. Your team still answers first.</h2>
-      <p class="sub">You keep your number, your calendar and your booking system. Otto only steps in when nobody picks up, or after you close.</p>
-      <ol class="steps">
-        <li class="step">
-          <div class="mark"><span class="n">1</span></div>
-          <div class="card"><div class="icw"><svg class="ic"><use href="#i-phone"/></svg></div><h3>Otto covers the calls you miss</h3><p>Calls ring your team first, like always. If nobody picks up, or you're closed, they go to Otto instead of voicemail. We set it up with you, by hand.</p></div>
-        </li>
-        <li class="step">
-          <div class="mark"><span class="n">2</span></div>
-          <div class="card"><div class="icw"><svg class="ic"><use href="#i-facts"/></svg></div><h3>It learns your business</h3><p>Your prices, hours, age rules, policies and your real calendar. It answers only from your own facts and never makes anything up.</p></div>
-        </li>
-        <li class="step">
-          <div class="mark"><span class="n">3</span></div>
-          <div class="card"><div class="icw"><svg class="ic"><use href="#i-cal"/></svg></div><h3>It helps, then hands off</h3><p>It answers questions and helps the caller book. Anything that needs a person comes to your team with a summary, so they can call back knowing exactly what the customer wanted.</p></div>
-        </li>
-      </ol>
-    </div>
-  </section>
-
-  <section style="background:var(--surface);border-top:1px solid var(--line);border-bottom:1px solid var(--line)">
-    <div class="wrap">
-      <p class="eyebrow">Built on real booking infrastructure</p>
-      <h2>From the team behind the Outset marketplace.</h2>
-      <p class="sub">The same live-availability engine that powers Outset's booking platform for local activities across the United States and Canada.</p>
       <div class="stats">
-        <div class="stat"><b>50,000+</b><span>local activity businesses in the Outset catalog</span></div>
-        <div class="stat"><b>US &amp; CA</b><span>coast to coast, every major metro</span></div>
-        <div class="stat"><b>24/7</b><span>every call answered, nights and weekends</span></div>
-        <div class="stat"><b>1 day</b><span>from our first call to it answering yours</span></div>
+        <div><b>3 in 4</b><span>guests would book somewhere else if they couldn't get through. <a href="https://www.prnewswire.com/news-releases/roller-doubles-down-on-ai-with-new-agent-to-help-operators-grow-302783193.html" target="_blank" rel="noopener">ROLLER, 2026</a></span></div>
+        <div><b>24/7</b><span>nights, weekends and holidays</span></div>
       </div>
     </div>
   </section>
 
-  <section id="faq">
+  <section class="sec" id="faq">
     <div class="wrap faq">
       <div>
-        <p class="eyebrow">Questions</p>
-        <h2>What operators ask first.</h2>
-        <details open><summary>Does it replace my staff?</summary><p>No. Your team still answers first. Otto only picks up the calls they can't get to, when they're busy with customers or you're closed, so those callers get help instead of a voicemail. Anything that needs a person comes to you with a summary.</p></details>
-        <details><summary>Does it actually book, or just take a message?</summary><p>It books. It reads your live calendar, offers times that are really open, and confirms the reservation on the call. Anything outside what you've published, it takes a name and number instead of guessing.</p></details>
-        <details><summary>Will it make something up?</summary><p>No. It answers only from your published prices, hours, age rules and policies. If it doesn't know, it says so and takes a message. It also declines weather, directions and anything not about your business.</p></details>
-        <details><summary>What booking systems does it work with?</summary><p>The ones operators already use: FareHarbor, Peek, Xola, Checkfront, Rezdy, Square, Acuity and more. Not connected yet? It still answers every call from your published facts and takes the booking details for you.</p></details>
-        <details><summary>How long does setup take?</summary><p>About a day. You forward your calls or use a new number, we load your business, you test it. We do it with you.</p></details>
-        <details><summary>What does it cost?</summary><p>A simple monthly price per location, no long contract, cancel anytime. It pays for itself the first time it catches a booking you'd have missed.</p></details>
+        <span class="eyebrow">Questions</span>
+        <h2 class="h2">What operators ask first</h2>
+        <p class="lead">Still have one? <a class="arrow-link" href="https://cal.com/harshil-shah-7tkvs7/outset" target="_blank" rel="noopener">Talk to us <svg class="ic"><use href="#i-arrow"/></svg></a></p>
       </div>
-      <div class="askcard">
-        <h3>Still have questions?</h3>
-        <p>Talk to a person, not a form. Book a 15-minute call and we'll walk through how it would answer your phone.</p>
-        <a class="btn" href="https://cal.com/harshil-shah-7tkvs7/outset" target="_blank" rel="noopener">Book a 15-min call</a>
-        <p style="margin:.9rem 0 0;font-size:.9rem">or email <a href="mailto:hello@onoutset.com" style="color:var(--accent);font-weight:600">hello@onoutset.com</a></p>
+      <div>
+        <details open><summary>Does it replace my staff?</summary><p>No. Your staff keep answering the phone the way they do now. Otto only picks up the calls they can't get to, when they're busy with customers or you're closed, so those callers get help instead of a voicemail. Anything that needs a person comes to you with a summary.</p></details>
+        <details><summary>Does it book, or just take a message?</summary><p>It helps the caller book. It finds a time that works and sends them straight to your booking page. Anything outside what you've published goes to your team as a message instead of a guess.</p></details>
+        <details><summary>Will it make something up?</summary><p>No. It answers only from your published prices, hours, age rules and policies. If it doesn't know, it says so and takes a message. It also declines weather, directions and anything not about your business.</p></details>
+        <details><summary>What booking systems does it work with?</summary><p>It works alongside whatever you use today, including FareHarbor, Peek, Xola, Resova, Bookeo, Checkfront, Rezdy, ROLLER and Square. <a class="arrow-link" href="/integrations">See the full list</a></p></details>
+        <details><summary>How long does setup take?</summary><p>About a day. Your missed calls forward to Otto, or you use a new number, we load your business, and you test it yourself. We do it with you.</p></details>
+        <details><summary>What does it cost?</summary><p>Setup is free. After that it's a simple monthly price per location, with no long contract and you can cancel anytime. It pays for itself the first time it catches a booking you'd have missed. <a class="arrow-link" href="/pricing">See plans <svg class="ic"><use href="#i-arrow"/></svg></a></p></details>
       </div>
     </div>
   </section>
 
-  <section class="final">
+  <section class="sec band cta" aria-labelledby="action">
     <div class="wrap">
-      <div class="box">
-        <h2>Stop sending customers to voicemail.</h2>
-        <p>Give your customers real service, even when your team can't pick up.</p>
-        <a class="btn" href="https://cal.com/harshil-shah-7tkvs7/outset" target="_blank" rel="noopener">Book a 15-min call</a>
+      <div>
+        <h2 id="action">See Otto in action</h2>
+        <p>Book a quick walkthrough, or hear the sample call first.</p>
+        <a class="btn" href="https://cal.com/harshil-shah-7tkvs7/outset" target="_blank" rel="noopener">Become a founding business <svg class="ic"><use href="#i-arrow"/></svg></a>
+      </div>
+      <div class="doors">
+        <a class="door" href="https://cal.com/harshil-shah-7tkvs7/outset" target="_blank" rel="noopener"><b>Book a personalized demo</b><span>Talk to us <svg class="ic"><use href="#i-arrow"/></svg></span></a>
+        <a class="door" href="/#call"><b>Hear the 42-second sample call</b><span>Play the call <svg class="ic"><use href="#i-arrow"/></svg></span></a>
       </div>
     </div>
   </section>
@@ -465,16 +310,18 @@
     <div class="wrap">
       <div class="cols">
         <div>
-          <a class="brand" href="https://onoutset.com/"><img src="/favicon.svg" alt=""> Outset</a>
-          <p style="margin:.7rem 0 0;max-width:22rem">Every call answered. Every booking handled.</p>
-          <address style="margin-top:.5rem">339 King St N, Waterloo, ON N2J 0C5, Canada</address>
+          <a class="brand" href="/"><img src="/favicon.svg" alt=""> Outset</a>
+          <p class="tag">Never send a customer to voicemail again.</p>
+          <address>339 King St N, Waterloo, ON N2J 0C5, Canada</address>
         </div>
-        <div><h4>Explore</h4><ul><li><a href="#what">What it handles</a></li><li><a href="#who">Who it's for</a></li><li><a href="#how">How it works</a></li><li><a href="#faq">FAQ</a></li></ul></div>
-        <div><h4>Company</h4><ul><li><a href="https://cal.com/harshil-shah-7tkvs7/outset" target="_blank" rel="noopener">Book a call</a></li><li><a href="mailto:hello@onoutset.com">hello@onoutset.com</a></li><li><a href="https://onoutset.com/">Outset marketplace</a></li><li><a href="/privacy.html">Privacy</a></li></ul></div>
+        <div><h4>Product</h4><ul><li><a href="/features">Features</a></li><li><a href="/integrations">Integrations</a></li><li><a href="/pricing">Pricing</a></li><li><a href="/#how">How it works</a></li><li><a href="/#faq">FAQ</a></li><li><a href="/#call">Hear a sample call</a></li></ul></div>
+        <div><h4>Company</h4><ul><li><a href="https://cal.com/harshil-shah-7tkvs7/outset" target="_blank" rel="noopener">Book a demo</a></li><li><a href="mailto:hello@onoutset.com">hello@onoutset.com</a></li><li><a href="/activities">Browse activities</a></li><li><a href="/terms">Terms</a></li><li><a href="/privacy">Privacy</a></li></ul></div>
       </div>
-      <p class="copy">© 2026 Outset. All rights reserved.</p>
+      <div class="legal"><span>© 2026 Outset. All rights reserved.</span><span>Customer service for businesses that take bookings.</span></div>
     </div>
   </footer>
+
+  <a class="pill" href="https://cal.com/harshil-shah-7tkvs7/outset" target="_blank" rel="noopener">Book a demo <svg class="ic"><use href="#i-arrow"/></svg></a>
 
   <script>
     (function () {
@@ -518,189 +365,23 @@
         fill(t1, list);
         wrap.hidden = false;
       })();
-
-      /* Every word of the recording with its start and end, from a Whisper pass over the MP3 itself, grouped into
-         the eleven turns. The caption is what was actually said, each line starts at its first word, and each word
-         fills left to right across the time it is being spoken. */
-      var W = [[0.00,0.22,"Thanks",0],[0.22,0.38,"for",0],[0.38,0.62,"calling",0],[0.62,1.04,"Bayside",0],[1.04,1.30,"Marina.",0],[1.70,1.84,"This",0],[1.84,1.96,"is",0],[1.96,2.20,"Otto.",0],[2.56,2.72,"What",0],[2.72,2.84,"can",0],[2.84,2.92,"I",0],[2.90,3.04,"do",0],[3.04,3.26,"for",0],[3.26,3.42,"you?",0],[4.02,4.16,"Hey,",1],[4.26,4.40,"I've",1],[4.40,4.48,"got",1],[4.48,4.56,"a",1],[4.56,4.70,"couple",1],[4.70,4.94,"jet",1],[4.94,5.14,"skis",1],[5.14,5.36,"booked",1],[5.36,5.56,"for",1],[5.56,5.78,"four",1],[5.78,6.04,"o'clock",1],[6.04,6.30,"today.",1],[6.58,6.82,"Something",1],[6.82,7.02,"came",1],[7.02,7.26,"up.",1],[7.42,7.50,"Can",1],[7.50,7.60,"I",1],[7.60,7.82,"cancel?",1],[8.60,8.90,"No",2],[8.90,9.24,"problem.",2],[9.38,9.46,"Let",2],[9.40,9.48,"me",2],[9.48,9.72,"pull",2],[9.72,9.82,"it",2],[9.82,10.00,"up.",2],[10.72,10.96,"Okay,",2],[11.08,11.22,"I've",2],[11.22,11.38,"got",2],[11.38,11.66,"two",2],[11.66,11.88,"jet",2],[11.88,12.14,"skis",2],[12.14,12.34,"at",2],[12.34,12.60,"4",2],[12.60,13.00,"PM",2],[13.02,13.24,"under",2],[13.24,13.52,"Marcus.",2],[13.74,13.86,"That",2],[13.86,14.04,"sound",2],[14.04,14.24,"correct?",2],[14.58,14.80,"Yep,",3],[14.88,15.18,"that's",3],[15.18,15.34,"me.",3],[15.74,15.90,"Just",4],[15.90,16.04,"so",4],[16.04,16.12,"you",4],[16.12,16.22,"know,",4],[16.40,16.50,"since",4],[16.50,16.76,"it's",4],[16.76,16.96,"less",4],[16.96,17.16,"than",4],[17.16,17.60,"24",4],[17.60,17.84,"hours",4],[17.84,18.28,"out,",4],[18.76,18.90,"the",4],[18.90,19.14,"marina",4],[19.14,19.74,"can't",4],[19.74,19.92,"refund",4],[19.92,20.12,"a",4],[20.12,20.64,"cancellation.",4],[21.26,21.58,"But",4],[21.58,21.76,"I",4],[21.76,22.06,"can",4],[22.06,22.30,"move",4],[22.30,22.40,"it",4],[22.40,22.54,"to",4],[22.54,22.74,"another",4],[22.74,23.08,"day",4],[23.08,23.24,"at",4],[23.24,23.38,"no",4],[23.38,23.76,"charge",4],[23.76,24.26,"if",4],[24.26,24.52,"that",4],[24.52,24.72,"works",4],[24.72,24.98,"better.",4],[25.38,25.62,"Um,",5],[25.80,26.04,"yeah,",5],[26.10,26.30,"that",5],[26.30,26.40,"would",5],[26.40,26.72,"actually",5],[26.72,26.88,"be",5],[26.88,27.18,"perfect.",5],[27.18,27.76,"Let",6],[27.76,27.90,"me",6],[27.90,28.14,"check.",6],[28.26,28.50,"Tomorrow",6],[28.50,28.86,"I've",6],[28.86,29.04,"got",6],[29.04,29.30,"two",6],[29.30,29.64,"skis",6],[29.64,29.94,"open",6],[29.94,30.14,"at",6],[30.14,30.38,"9",6],[30.38,30.86,"AM",6],[30.94,31.08,"or",6],[31.08,31.38,"11",6],[31.38,31.84,"AM.",6],[32.16,32.30,"Which",6],[32.30,32.50,"one",6],[32.50,32.82,"works?",6],[33.56,33.86,"Nine's",7],[33.86,34.08,"perfect.",7],[34.48,34.82,"Done.",8],[35.12,35.20,"You're",8],[35.20,35.34,"moved",8],[35.34,35.50,"to",8],[35.50,35.66,"9",8],[35.66,35.94,"AM",8],[36.14,36.22,"tomorrow.",8],[36.82,36.90,"I'll",8],[36.90,37.06,"text",8],[37.06,37.24,"the",8],[37.24,37.32,"new",8],[37.32,37.68,"confirmation",8],[37.68,37.98,"to",8],[37.98,38.10,"this",8],[38.10,38.36,"number.",8],[38.78,38.98,"Anything",8],[38.98,39.26,"else?",8],[39.64,39.84,"Nope,",9],[39.96,40.12,"that's",9],[40.12,40.22,"it.",9],[40.48,40.62,"Thanks.",9],[41.28,41.52,"You",10],[41.52,41.72,"got",10],[41.72,41.86,"it.",10],[42.02,42.10,"See",10],[42.10,42.18,"you",10],[42.18,42.34,"tomorrow.",10]];
-      var SPK = ["otto","caller","otto","caller","otto","caller","otto","caller","otto","caller","otto"];
-      var turns = SPK.map(function (who, ti) { return { who: who, words: W.filter(function (x) { return x[3] === ti; }) }; });
-      turns.forEach(function (t) { t.text = t.words.map(function (x) { return x[2]; }).join(" "); });
-
-      var audio = document.getElementById("audio"), play = document.getElementById("play"), hear = document.getElementById("hear"),
-          scrub = document.getElementById("scrub"), fill = document.getElementById("scrubfill"), cur = document.getElementById("cur"),
-          durEl = document.getElementById("dur"), st = document.getElementById("st"), call = document.getElementById("call"),
-          now = document.getElementById("now"), prev = document.getElementById("prev"), doneWrap = document.getElementById("doneWrap"),
-          laneOtto = document.getElementById("laneOtto"), laneCaller = document.getElementById("laneCaller"),
-          sOtto = document.getElementById("sOtto"), sCaller = document.getElementById("sCaller");
-      function fmt(s) { s = Math.max(0, Math.floor(s || 0)); return Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0"); }
-
-      /* line timing, weighted by length across the file's real duration */
-      /* Cue points measured from the recording itself (the silence between speaker turns), so the caption flips
-         exactly when the voice changes. If the file is ever replaced by one of a different length, fall back to a
-         length-weighted estimate rather than show wrong cues. */
-      var CUE_DUR = 42.6, LEAD = 0.06;
-      /* What Otto does behind the call, revealed at the moment it does it. The calendar actions carry the real
-         FareHarbor mark, the sample marina's system; the email uses a plain icon rather than a vendor mark, since
-         no partner is implied there. The summary email goes out as the caller says that's it, so it is on screen
-         while the call is still going rather than after the recording has already stopped. */
-      var CAL = '<span class="ico cal"><img src="https://www.google.com/s2/favicons?domain=fareharbor.com&sz=64" alt=""></span>';
-      var MAIL = '<span class="ico mail"><svg class="ic"><use href="#i-mail"/></svg></span>';
-      var HOLD = 4.6;
-      var ACTS = [
-        { at: 11.7, html: CAL + '<span><b>Booking found</b><small>2 jet skis · today 4:00 PM · Marcus</small></span>' },
-        { at: 28.2, html: CAL + '<span><b>Calendar checked</b><small>Tomorrow: 9 AM and 11 AM open</small></span>' },
-        { at: 34.9, html: CAL + '<span><b>Booking moved</b><small>Tomorrow 9:00 AM · no charge</small></span>' },
-        { at: 40.2, html: MAIL + '<span><b>Email sent</b><small>Call summary to Bayside Marina</small></span>' }
-      ];
-      var actions = document.getElementById("actions"), actEls = ACTS.map(function (a) {
-        var d = document.createElement("div"); d.className = "act"; d.innerHTML = a.html + '<span class="t">' + fmt(a.at) + '</span>'; actions.appendChild(d); return d;
-      });
-      /* A toast appears the moment Otto does the thing, stays a few seconds, then fades out. */
-      function showActs(ct) { for (var k = 0; k < ACTS.length; k++) { var a = ACTS[k].at; actEls[k].classList.toggle("in", ct + 0.02 >= a && ct < a + HOLD); } }
-      var starts = [], active = -1, spans = [], laneWho = null, scrubbing = false;
-      function computeStarts() {
-        var dur = audio.duration && isFinite(audio.duration) ? audio.duration : CUE_DUR;
-        starts = turns.map(function (t) { return Math.max(0, t.words[0][0] - 0.08); });
-        durEl.textContent = fmt(dur);
-      }
-      /* The caption: the turn on screen and its words. */
-      function setActive(i) {
-        if (i === active) return; active = i;
-        var t = turns[i];
-        now.classList.remove("idle"); now.innerHTML = '<span class="who ' + t.who + '">' + (t.who === "otto" ? "Otto" : "Marcus") + '</span>';
-        spans = t.words.map(function (x) { var el = document.createElement("span"); el.className = "wd"; el.dataset.s = x[0]; el.dataset.e = x[1]; el.textContent = x[2] + " "; now.appendChild(el); return el; });
-        prev.textContent = i > 0 ? turns[i - 1].text : "";
-      }
-      /* The lanes: who is lit as speaking. Kept apart from the caption so a scrub can move the transcript through
-         every turn without the lanes flashing on and off behind it. */
-      function setLanes(who) {
-        if (who === laneWho) return; laneWho = who;
-        laneOtto.classList.toggle("speaking", who === "otto"); laneCaller.classList.toggle("speaking", who === "caller");
-        sOtto.textContent = who === "otto" ? "Speaking" : "AI front desk"; sCaller.textContent = who === "caller" ? "Speaking" : "Caller";
-      }
-      /* Each word fills across its own spoken duration, a touch ahead of the voice so it never trails. */
-      function lightWords(ct) {
-        for (var k = 0; k < spans.length; k++) {
-          var el = spans[k], s0 = +el.dataset.s, e0 = +el.dataset.e, pct = Math.max(0, Math.min(1, (ct + LEAD - s0) / (e0 - s0)));
-          el.style.setProperty("--p", (pct * 100).toFixed(1) + "%");
-        }
-      }
-
-      /* two lanes, one per speaker: the one talking reacts to the real audio, the other rests */
-      var actx = null, analyser = null, freq = null;
-      function ensureAnalyser() {
-        if (actx) { if (actx.state === "suspended") actx.resume(); return; }
-        try {
-          actx = new (window.AudioContext || window.webkitAudioContext)();
-          var src = actx.createMediaElementSource(audio); analyser = actx.createAnalyser(); analyser.fftSize = 256; analyser.smoothingTimeConstant = .72;
-          src.connect(analyser); analyser.connect(actx.destination); freq = new Uint8Array(analyser.frequencyBinCount);
-        } catch (e) { actx = null; analyser = null; }
-      }
-      function Lane(canvas, colorA, colorB) {
-        var ctx = canvas.getContext("2d"), N = 40, BW = 3, GAP = 4, MINH = 3, MAXH = 26, size = { w: 0, h: 0, d: 1 }, hs = [], ph = [];
-        for (var i = 0; i < N; i++) { hs.push(MINH); ph.push(Math.random() * 6.28); }
-        function resize() { var r = canvas.getBoundingClientRect(), d = Math.min(devicePixelRatio || 1, 2); canvas.width = Math.max(1, r.width * d | 0); canvas.height = Math.max(1, r.height * d | 0); size = { w: r.width, h: r.height, d: d }; }
-        resize(); new ResizeObserver(resize).observe(canvas);
-        this.draw = function (t, live, dtF) {
-          var w = size.w, h = size.h, d = size.d; if (!w || !h) return;
-          ctx.setTransform(d, 0, 0, d, 0, 0); ctx.clearRect(0, 0, w, h);
-          var total = N * BW + (N - 1) * GAP, x0 = (w - total) / 2, cy = h / 2, a = 1 - Math.pow(.78, dtF);
-          for (var i = 0; i < N; i++) {
-            var n = i / (N - 1), dist = Math.abs(n - .5) * 2, env = 1 - Math.pow(dist, 1.5) * .6, target;
-            if (live && freq) { var bin = Math.floor(2 + dist * 24), v = Math.pow(freq[bin] / 255, 1.3); target = MINH + v * env * MAXH * 1.15; }
-            else { var p = ph[i]; var e = (Math.sin(t * 1.1 + n * 7.5 + p * .3) * .28 + (Math.sin(t * 2.2 - n * 13 + p) * .5 + .5) * .35 + (Math.sin(t * 3.7 + p * 1.4 + n * 19) * .5 + .5) * .22) * (live ? .55 : .24); target = MINH + Math.max(0, e) * env * MAXH; }
-            hs[i] += (target - hs[i]) * a;
-            var x = x0 + i * (BW + GAP), hh = hs[i], g = ctx.createLinearGradient(0, cy - hh, 0, cy + hh);
-            g.addColorStop(0, colorA); g.addColorStop(.5, colorB); g.addColorStop(1, colorA);
-            ctx.fillStyle = g; ctx.globalAlpha = live ? 1 : .5; ctx.beginPath(); ctx.roundRect(x, cy - hh, BW, hh * 2, BW / 2); ctx.fill();
-          }
-          ctx.globalAlpha = 1;
-        };
-      }
-      var lOtto = new Lane(document.getElementById("vizOtto"), "#ffffff", "#a9bd95");
-      var lCaller = new Lane(document.getElementById("vizCaller"), "#ffffff", "#bfbfbf");
-      var tRef = 0, last = performance.now();
-      function frame(nowT) {
-        var dt = Math.min(40, nowT - last); last = nowT; var dtF = dt / 16.67; tRef += dt / 1000;
-        var playing = !audio.paused && !audio.ended; if (analyser && playing) analyser.getByteFrequencyData(freq);
-        if (playing) syncNow();
-        lOtto.draw(tRef * 2.2, playing && laneWho === "otto", dtF);
-        lCaller.draw(tRef * 2.2 + 1.7, playing && laneWho === "caller", dtF);
-        requestAnimationFrame(frame);
-      }
-      requestAnimationFrame(frame);
-
-      /* playback */
-      function togglePlay() { ensureAnalyser(); if (audio.paused) audio.play(); else audio.pause(); }
-      play.addEventListener("click", togglePlay);
-      document.getElementById("restart").addEventListener("click", function () { ensureAnalyser(); audio.currentTime = 0; settle(); audio.play(); });
-      hear.addEventListener("click", function () { call.scrollIntoView({ block: "center", behavior: "smooth" }); ensureAnalyser(); audio.currentTime = 0; settle(); audio.play(); });
-      /* Scrubbing: press anywhere and drag, the position follows the pointer live; a tooltip shows the time. While
-         the pointer is down only the transcript moves. The lanes and the activity stack wait, then take the final
-         position in one step when it lifts, so dragging across the call never flashes them on and off. */
-      var tip = document.getElementById("tip"), callcol = document.getElementById("callcol");
-      function posOf(e) { var r = scrub.getBoundingClientRect(); return Math.max(0, Math.min(1, (e.clientX - r.left) / r.width)); }
-      function seekTo(f) { audio.currentTime = f * (audio.duration || CUE_DUR); syncNow(); }
-      function settle() { scrubbing = false; pendingSeek = -1; callcol.classList.add("snap"); syncNow(); void callcol.offsetWidth; callcol.classList.remove("snap"); }
-      /* A real seek decodes from the new position, so firing one on every pointermove (a trackpad can send dozens
-         a second) resets the decoder that often and the audio/visualizer visibly stutters. The scrub bar and
-         tooltip still track the pointer on every event; the actual seek is capped to once per animation frame. */
-      var pendingSeek = -1, seekLoopRunning = false;
-      function seekLoop() {
-        seekLoopRunning = false;
-        if (pendingSeek < 0) return;
-        var f = pendingSeek; pendingSeek = -1;
-        seekTo(f);
-      }
-      function queueSeek(f) {
-        pendingSeek = f;
-        if (seekLoopRunning) return;
-        seekLoopRunning = true;
-        requestAnimationFrame(seekLoop);
-      }
-      scrub.addEventListener("pointerdown", function (e) { scrubbing = true; scrub.setPointerCapture(e.pointerId); scrub.classList.add("drag"); seekTo(posOf(e)); });
-      scrub.addEventListener("pointermove", function (e) { var f = posOf(e); tip.style.left = (f * 100) + "%"; tip.textContent = fmt(f * (audio.duration || CUE_DUR)); if (scrubbing) queueSeek(f); });
-      scrub.addEventListener("pointerup", function (e) { scrub.classList.remove("drag"); scrub.releasePointerCapture(e.pointerId); if (pendingSeek >= 0) seekTo(pendingSeek); settle(); });
-      scrub.addEventListener("pointercancel", function () { scrub.classList.remove("drag"); if (pendingSeek >= 0) seekTo(pendingSeek); settle(); });
-      scrub.addEventListener("keydown", function (e) { var d = e.key === "ArrowRight" ? 2 : e.key === "ArrowLeft" ? -2 : 0; if (d) { e.preventDefault(); audio.currentTime = Math.max(0, Math.min(audio.duration || CUE_DUR, audio.currentTime + d)); settle(); } });
-      audio.addEventListener("loadedmetadata", computeStarts); computeStarts();
-      /* The caption is sized once for the longest turn at the current width (a hidden probe renders every turn
-         the way the live line is rendered), so it never grows, shrinks or clips as the call moves. Re-measured
-         only when the width changes; turn changes alter the height and must not re-run it. */
-      var capEl = now.parentNode, fitW = -1;
-      function fitCaption() {
-        var w = now.clientWidth; if (!w || w === fitW) return; fitW = w;
-        var probe = document.createElement("div"); probe.className = "now"; probe.style.cssText = "position:absolute;visibility:hidden;pointer-events:none;width:" + w + "px";
-        capEl.appendChild(probe); var max = 0;
-        turns.forEach(function (t) { probe.innerHTML = '<span class="who ' + t.who + '">Marcus</span>' + t.text; max = Math.max(max, probe.offsetHeight); });
-        probe.remove();
-        var cs = getComputedStyle(capEl), ps = getComputedStyle(prev);
-        var h = max + prev.offsetHeight + parseFloat(ps.marginBottom) + parseFloat(cs.paddingTop) + parseFloat(cs.paddingBottom);
-        capEl.style.height = Math.max(164, Math.ceil(h)) + "px";
-      }
-      fitCaption(); if (document.fonts && document.fonts.ready) document.fonts.ready.then(fitCaption);
-      new ResizeObserver(fitCaption).observe(capEl);
-      audio.addEventListener("play", function () { play.classList.add("playing"); call.classList.add("on"); st.textContent = "Live"; });
-      audio.addEventListener("pause", function () { play.classList.remove("playing"); st.textContent = "Paused"; });
-      /* The caption is checked against the audio clock every frame, not on timeupdate (which fires only about
-         four times a second and can leave a boundary up to a quarter-second late). timeupdate stays for seeks. */
-      var lastSec = -1;
-      function syncNow() {
-        var ct = audio.currentTime, idx = 0; for (var i = 0; i < starts.length; i++) if (starts[i] <= ct) idx = i;
-        setActive(idx); lightWords(ct);
-        if (!scrubbing) { setLanes(turns[idx].who); showActs(ct); }
-        var pct = (audio.duration ? (ct / audio.duration) * 100 : 0) + "%"; fill.style.width = pct; scrub.setAttribute("aria-valuenow", Math.round(ct));
-        var sec = Math.floor(ct); if (sec !== lastSec) { lastSec = sec; cur.textContent = fmt(ct); }
-      }
-      audio.addEventListener("timeupdate", syncNow);
-      audio.addEventListener("seeked", function () { syncNow(); if (audio.paused && !audio.ended && st.textContent === "Call ended") st.textContent = "Paused"; });
-      audio.addEventListener("ended", function () {
-        play.classList.remove("playing"); call.classList.remove("on"); st.textContent = "Call ended";
-        setLanes(null); showActs(CUE_DUR);
-      });
-      audio.addEventListener("error", function () { st.textContent = "Recording unavailable"; play.disabled = true; });
     })();
   </script>
+  <script>
+    /* Step the headline through the business types every 2.2s. Reduced motion keeps the first one still. */
+    (function () {
+      var ws = [].slice.call(document.querySelectorAll(".hero h1 .words > span"));
+      if (ws.length < 2 || (window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches)) return;
+      var i = 0;
+      setInterval(function () {
+        if (document.hidden) return;
+        var a = ws[i], b = ws[i = (i + 1) % ws.length];
+        a.classList.remove("on"); a.classList.add("off");
+        b.classList.remove("off"); void b.offsetWidth; b.classList.add("on");
+        setTimeout(function () { a.classList.remove("off"); }, 480);
+      }, 2200);
+    })();
+  </script>
+  <script src="/otto-call.js"></script>
 </body>
 </html>

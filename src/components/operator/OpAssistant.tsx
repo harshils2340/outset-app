@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { GUEST_AGENT } from "../../lib/flags";
 import { fetchAvailability, type LiveAvailability } from "../../lib/api";
 import { contactFor, listingFacts } from "../../lib/catalog";
 import { BOOKING_WINDOW_DAYS, dateKey, startOfToday } from "../../lib/dates";
@@ -61,13 +62,24 @@ export function OpAssistant() {
     <div className="odpage">
       <div className="odrow odpublish">
         <span className="meta">
-          <b><Markup html={OD_ICONS.spark} /> {ASSISTANT_NAME} answers guests on your listing, day and night</b>
-          <small>Prices, hours, what's included, age rules, how to reach you. Nothing you haven't published. Anything else, it hands to you.</small>
+          {GUEST_AGENT ? (
+            <>
+              <b><Markup html={OD_ICONS.spark} /> {ASSISTANT_NAME} answers guests on your listing, day and night</b>
+              <small>Prices, hours, what's included, age rules, how to reach you. Nothing you haven't published. Anything else, it hands to you.</small>
+            </>
+          ) : (
+            <>
+              <b><Markup html={OD_ICONS.spark} /> What {ASSISTANT_NAME} knows about your business</b>
+              <small>Guest chat on your listing is off for now. You can still test how it would answer below; nothing here shows to guests.</small>
+            </>
+          )}
         </span>
-        <button type="button" className={"optoggle" + (p.assistant ? " on" : "")} onClick={() => set({ assistant: !p.assistant })} aria-pressed={p.assistant}>
-          <span className="knob" />
-          <span className="lbl">{p.assistant ? "On" : "Off"}</span>
-        </button>
+        {GUEST_AGENT ? (
+          <button type="button" className={"optoggle" + (p.assistant ? " on" : "")} onClick={() => set({ assistant: !p.assistant })} aria-pressed={p.assistant}>
+            <span className="knob" />
+            <span className="lbl">{p.assistant ? "On" : "Off"}</span>
+          </button>
+        ) : null}
       </div>
 
       <div className="odcols">

@@ -441,6 +441,9 @@ a.alwhererow:hover b{text-decoration:underline;}
 .alclaim > span:first-child{flex:none;width:24px;height:24px;}
 .alclaim svg{width:24px;height:24px;color:var(--ink);}
 .alclaim .alunder{font-size:14px;}
+/* With the questions block switched off (GUEST_AGENT, src/lib/flags.ts) the owner's line is the column's only
+   child, and a rule drawn above nothing reads as a divider left behind. */
+.albizright > .alclaim:first-child{margin-top:0;padding-top:0;border-top:none;}
 
 /* 12. things to know */
 .alknow{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:24px;}

@@ -52,7 +52,7 @@ if (!dry && blockers.length) {
 }
 
 const SITE = "https://onoutset.com/";
-const OTTO = SITE + "otto";
+const OTTO = SITE + "#call";
 
 function esc(s: string): string {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");

@@ -40,7 +40,7 @@ test("a city page links to /l/ only for a listing that actually gets a page, and
     const city = readFileSync(join(r.dir, "p", "cooking-in-toronto.html"), "utf8");
     assert.match(city, /href="https:\/\/onoutset\.com\/l\/o-priced\.html"/);
     assert.match(city, /href="https:\/\/onoutset\.com\/l\/o-reviewed\.html"/);
-    assert.match(city, /href="https:\/\/onoutset\.com\/#o=o-photo-only"/);
+    assert.match(city, /href="https:\/\/onoutset\.com\/activities#o=o-photo-only"/);
     assert.doesNotMatch(city, /l\/o-photo-only\.html/);
     for (const l of [...city.matchAll(/href="https:\/\/onoutset\.com\/l\/([^"]+)"/g)].map((m) => m[1])) assert.ok(r.files.includes(l), `${l} linked but not written`);
     for (const html of [city, r.read("o-priced.html")]) {
@@ -188,7 +188,7 @@ test("links to the app view, the activity-and-city landing page when one exists,
   const r = run(items);
   try {
     const html1 = r.read("o-1.html");
-    assert.match(html1, /href="https:\/\/onoutset\.com\/#o=o-1"/);
+    assert.match(html1, /href="https:\/\/onoutset\.com\/activities#o=o-1"/);
     assert.match(html1, /href="https:\/\/onoutset\.com\/p\/cooking-in-toronto\.html"/);
     assert.match(html1, /href="https:\/\/onoutset\.com\/p\/index\.html"/);
     const html4 = r.read("o-4.html");
