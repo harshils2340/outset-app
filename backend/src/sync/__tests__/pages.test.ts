@@ -785,3 +785,24 @@ test("by default the marketplace pages stay out of search: each is noindex and t
     r.cleanup();
   }
 });
+
+/**
+ * Since 3 October 2026 the site root is the Otto page, the AI front desk sold to operators, and the
+ * marketplace lives at /activities. Every link out of a generated page that means "back to Outset" has to
+ * name that path: the logo, the "Open Outset" button and a card's hash link were moved, and the first crumb
+ * on all 3,004 landing pages was not, so one page offered two "Outset" links to two different places and the
+ * crumb trail's root step took a guest off the marketplace onto a sales page.
+ */
+test("no generated page links a guest to the site root, which is the operator's page now", () => {
+  const r = run(fixture);
+  try {
+    const site = publicSite();
+    for (const f of [...r.files, "index.html"]) {
+      const html = r.read(f);
+      assert.ok(!html.includes(`href="${site}"`), `${f} links to the site root rather than the marketplace`);
+      assert.ok(html.includes(`href="${site}activities"`), `${f} has no way back to the marketplace`);
+    }
+  } finally {
+    r.cleanup();
+  }
+});

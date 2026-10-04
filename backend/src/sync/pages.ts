@@ -673,7 +673,7 @@ ${socialCard({ title: `${title} · Outset`, description, url: canonical, photo: 
 <style>${CSS}</style></head><body>
 <header><div class="wrap top"><a class="logo" href="${publicSite()}activities">Outset</a><a class="cta" href="${publicSite()}activities">Open Outset</a></div></header>
 <main class="wrap">
-<nav class="crumbs"><a href="${publicSite()}">Outset</a><span>›</span><a href="index.html">By activity and city</a>${metro ? `<span>›</span><a href="${fileFor(kind.art, null)}">${esc(kind.search)}</a>${extra.upLink ? `<span>›</span><a href="${extra.upLink.file}">${esc(extra.upLink.label)}</a>` : ""}<span>›</span>${esc(metro.name)}` : `<span>›</span>${esc(kind.search)}`}</nav>
+<nav class="crumbs"><a href="${publicSite()}activities">Outset</a><span>›</span><a href="index.html">By activity and city</a>${metro ? `<span>›</span><a href="${fileFor(kind.art, null)}">${esc(kind.search)}</a>${extra.upLink ? `<span>›</span><a href="${extra.upLink.file}">${esc(extra.upLink.label)}</a>` : ""}<span>›</span>${esc(metro.name)}` : `<span>›</span>${esc(kind.search)}`}</nav>
 <h1>${esc(title)}</h1>
 <p class="lede">${lede}</p>
 <div class="grid">${cards}</div>
