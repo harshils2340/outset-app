@@ -5,9 +5,9 @@
  * decide what an unanswered listing is, because the search filter promises the guest "Only places whose
  * published rules allow younger kids".
  *
- * Both sides read this one rule. The browse catalog ships lite records, whose `specs`, `gap` and `extraNote`
- * are all emptied on purpose so the file stays small, and those three fields are the whole of what the rule
- * reads. So `npm run sync` runs it over the full record and carries the verdict forward as `kid`.
+ * Both sides read this one rule. The browse catalog ships lite records, whose `specs`, `gap`, `extraNote` and
+ * `requirements` are all emptied or absent on purpose so the file stays small, and those are the fields the
+ * rule reads. So `npm run sync` runs it over the full record and carries the verdict forward as `kid`.
  */
 
 /**
