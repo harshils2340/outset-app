@@ -64,7 +64,15 @@ app.use("*", async (c, next) => {
   c.header("permissions-policy", "geolocation=(), camera=(), microphone=(), payment=()");
   // Everything the API answers is per-operator or per-booking, except an uploaded photo, whose name is a hash
   // of its own bytes and which the browser should keep.
-  if (!c.req.path.startsWith("/uploads/") || c.req.method !== "GET") c.header("cache-control", "no-store");
+  //
+  // A handler that chose its own cache-control keeps it. This block runs after the handler, so setting the
+  // header unconditionally overwrote whatever the handler had asked for: `/where` and `/nearby` both set
+  // `private, max-age=...` on purpose, and both answered `no-store` on the composed app. The ten minutes in
+  // the guest's own browser that `/where` is written for never happened, and `/nearby`, which is a paid
+  // Places call, was re-asked on every mount. Each has a test of its own and neither saw it, because both
+  // read the source rather than a response. An uploaded photo keeps its year through the same rule; the 404
+  // beside it now says no-store, where before it said nothing at all.
+  if (!c.res.headers.get("cache-control")) c.header("cache-control", "no-store");
   // A booking carries a name, a phone number and an email, so never let a browser try this over plain HTTP.
   c.header("strict-transport-security", "max-age=31536000");
 });
