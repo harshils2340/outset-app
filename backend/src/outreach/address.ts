@@ -21,9 +21,11 @@ const FREE_MAIL = /^(gmail|yahoo|hotmail|outlook|icloud|aol|me|live|msn|comcast|
 const ROLE = /^(info|hello|hi|contact|contactus|book|booknow|booking|bookings|reservation|reservations|res|sales|tours|tour|office|admin|support|help|team|staff|mail|email|enquiries|enquiry|inquiries|inquiry|customerservice|service|services|guest|guests|guestservices|groups|events|parties|media|press|marketing|jobs|careers|hr|billing|accounts|accounting|noreply|no-reply|donotreply|webmaster|privacy|legal|tickets|ticketing|charters|charter|cruises|cruise|rentals|rental|rent|frontdesk|reception|welcome|questions|feedback|newsletter|weddings|catering|dispatch|crew|hq|main|home|web|website|online|marina|waivers|programs|registrar|director|buyers|warehouse|orders)@/;
 /**
  * A word that makes a mailbox a desk rather than a person wherever it sits in the local part: paddlinginfo@,
- * mikescharters@, captainsteve@ are the business, not someone's own inbox.
+ * mikescharters@, captainsteve@ are the business, not someone's own inbox. So are a vendor's and an events
+ * desk's: on 4 October 2026 the owners lookup moved an escape room's pitch to farskymediacompany@gmail.com, the
+ * web designer named in its footer, and another's to corporate@.
  */
-const DESK_WORD = /(info|book|reserv|sales|office|admin|support|contact|hello|tour|charter|rental|cruise|order|event|team|staff|service|mail|marina|waiver|program|registrar|director|buyer|warehouse|frontdesk|reception|dispatch|crew|captain|pilot|instructor|guide|school|lesson|class|shop|store|fish|dive|kayak|boat|sail|parasail|jetski|rent|ski|surf|charters)/;
+const DESK_WORD = /(info|book|reserv|sales|office|admin|support|contact|hello|tour|charter|rental|cruise|order|event|team|staff|service|mail|marina|waiver|program|registrar|director|buyer|warehouse|frontdesk|reception|dispatch|crew|captain|pilot|instructor|guide|school|lesson|class|shop|store|fish|dive|kayak|boat|sail|parasail|jetski|rent|ski|surf|charters|corporate|media|design|digital|marketing|agency|creative|consult|solutions|graphic|photo|productions)/;
 
 /**
  * The inbox of whoever runs the place rather than of a desk: owner@, manager@, gm@. Harshil, 4 October 2026: find the

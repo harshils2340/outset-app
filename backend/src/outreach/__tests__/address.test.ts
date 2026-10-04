@@ -85,6 +85,9 @@ test("a crawl candidate that is junk or a stranger's never displaces the front d
   assert.equal(outreachAddress(op, ["director@yatespast.org", "info@legoland.com"]), "hello@capitolboatclub.com", "somebody else's inbox");
   assert.equal(outreachAddress(op, ["waivers@capitolboatclub.com"]), "hello@capitolboatclub.com", "one desk does not beat another");
   assert.equal(outreachAddress(op, ["paddlinginfo@capitolboatclub.com"]), "hello@capitolboatclub.com", "a desk word anywhere in the mailbox is a desk");
+  assert.equal(outreachAddress({ email: "info@elusiveescaperooms.com", domain: "elusiveescaperooms.com" }, ["farskymediacompany@gmail.com"]), "info@elusiveescaperooms.com", "the web designer in the footer is not the owner");
+  assert.equal(outreachAddress({ email: "info@escapethehouse.ca", domain: "escapethehouse.ca" }, ["corporate@escapethehouse.ca"]), "info@escapethehouse.ca", "an events desk is another desk");
+  assert.equal(outreachAddress({ email: "info@shop.com", domain: "shop.com" }, ["jessphotography@gmail.com", "vincent@shop.com"]), "vincent@shop.com");
   assert.equal(outreachAddress(op, ["emailhello@capitolboatclub.com", "emailron@capitolboatclub.com", "ron@capitolboatclub.com"]), "ron@capitolboatclub.com", "a label the markup glued onto an address is dropped, not mailed");
   assert.equal(outreachAddress({ email: "info@shop.com", domain: "shop.com" }, ["emailinfo@shop.com"]), "info@shop.com");
   assert.equal(outreachAddress({ email: null, domain: "capitolboatclub.com" }, ["ron@capitolboatclub.com"]), "ron@capitolboatclub.com", "no front desk at all, the owner still counts");
