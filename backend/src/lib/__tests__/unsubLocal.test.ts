@@ -51,7 +51,7 @@ test("the outreach list filters by hash and links a listing where one actually o
   // A where-clause line, not the comment above the file that explains why there is no longer one.
   assert.ok(!/^\s*and .*mail_unsub/im.test(src), "no SQL clause may join the list by address");
   assert.match(src, /suppressed\.has\(emailHash\(/);
-  // /listing/<slug> is not a page this site serves; the app opens a listing at /#o=<catalog id>.
+  // /listing/<slug> is not a page this site serves; the app opens a listing at /activities#o=<catalog id>.
   assert.ok(!src.includes("onoutset.com/listing/"));
-  assert.match(src, /onoutset\.com\/#o=" \+ catalogId\(/);
+  assert.match(src, /onoutset\.com\/activities#o=" \+ catalogId\(/);
 });

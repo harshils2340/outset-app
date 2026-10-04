@@ -133,7 +133,7 @@ for (const r of rows) {
     otto_url: OTTO,
     cal_url: CALL_LINK,
     unsubscribe_url: unsubPageUrl(email),
-    remove_url: SITE + "#remove=" + catalogId(r.domain),
+    remove_url: SITE + "activities#remove=" + catalogId(r.domain),
     draftId: r.id,
   });
 }

@@ -152,7 +152,7 @@ export function draftCopy(op: Op, sc: ReturnType<typeof scale>, f: PageFacts, em
   // Discovery still writes a record for every business it finds, same as it always did; this email just never
   // links or names it. A recipient who goes looking (or already has a page from before this changed) still
   // gets an instant, obvious way out, which backend/src/outreach/AGENTS.md requires regardless.
-  const remove = SITE + "#remove=" + id;
+  const remove = SITE + "activities#remove=" + id;
   const vendor = vendorLine(op.calendar_vendor, f.menuFromWidget);
   const subject = "Can I build " + op.name + " a free booking page?";
   // No count and no "with prices" claim: a scrape can miscount or miss a price, and a wrong specific number

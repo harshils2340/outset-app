@@ -90,7 +90,7 @@ const created = await stripe<{ id: string }>("accounts", {
   country: wanted,
   email: "connect-e2e@onoutset.com",
   "business_profile[name]": "Connect E2E (not a real shop)",
-  "business_profile[url]": SITE + "#o=" + LISTING,
+  "business_profile[url]": SITE + "activities#o=" + LISTING,
   "capabilities[transfers][requested]": "true",
   // Stripe refuses transfers on its own for a US account, so the API asks for both. See src/api/payouts.ts.
   "capabilities[card_payments][requested]": "true",

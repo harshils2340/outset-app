@@ -259,7 +259,7 @@ payouts.post("/payouts/:id/connect", rateLimit(20, 60 * 60 * 1000), async (c) =>
         country: currencyForArea(detail?.area, "usd") === "cad" ? "CA" : "US",
         email: rec.owner.email || undefined,
         "business_profile[name]": String((rec.patch as { title?: string }).title || id).slice(0, 100),
-        "business_profile[url]": SITE + "#o=" + id,
+        "business_profile[url]": SITE + "activities#o=" + id,
         // Stripe refuses `transfers` on its own for a US account ("You cannot request the transfers capability
         // without the card_payments capability for accounts in US"), so the Payouts button used to fail with a
         // 502 for every US shop, which is most of the catalog. Both capabilities are valid in the US and Canada.

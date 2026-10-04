@@ -188,7 +188,7 @@ voice.get("/voice/:operatorId", rateLimit(120, 60 * 60 * 1000), async (c) => {
       // while the owner has the listing hidden or has paused bookings, because the booking API refuses both,
       // so a caller sent to that link is turned away at the end of it.
       takingBookings,
-      bookingUrl: takingBookings ? `${SITE}#o=${encodeURIComponent(shop.id)}` : null,
+      bookingUrl: takingBookings ? `${SITE}activities#o=${encodeURIComponent(shop.id)}` : null,
       bookingNote: takingBookings ? null : "This business is not taking bookings through Outset right now. Take a name and number instead of sending the caller to a booking page.",
     },
     speak: {

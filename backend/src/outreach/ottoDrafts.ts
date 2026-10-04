@@ -94,7 +94,7 @@ export function draftOttoCopy(op: OttoOp, email?: string, opts?: { greet?: strin
   const offer = "I'll set it up on your line for free, and you only keep it if it books you a guest. Worth a quick reply?";
   // Every operator this goes to already has an unclaimed page in the Outset catalog, so the way off it is in
   // here, as the outreach folder requires: a one-click take-down beside the unsubscribe.
-  const remove = SITE + "#remove=" + catalogId(op.domain);
+  const remove = SITE + "activities#remove=" + catalogId(op.domain);
   const stop = to ? unsubPageUrl(to) : SITE + "unsubscribe.html";
   const postal = mailPostal();
   const lines = [

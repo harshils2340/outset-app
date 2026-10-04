@@ -737,7 +737,7 @@ if (process.env.E2E_COPY_TO) {
 
 if (KEEP) {
   console.log("\nLeft running for you (--keep). Nothing here touches production:");
-  console.log("  Guest listing:   " + SITE_URL + "/#o=" + LISTING_ID);
+  console.log("  Guest listing:   " + SITE_URL + "/activities#o=" + LISTING_ID);
   console.log("  Operator claim:  " + SITE_URL + "/operators#claim=" + LISTING_ID + "   (use " + OWNER_EMAIL + ", then \"Open the dashboard now\")");
   console.log("  API:             " + API_URL + "/health");
   console.log("  Admin key:       " + ADMIN_KEY + "   (x-admin-key for POST " + API_URL + "/admin/payouts/run)");

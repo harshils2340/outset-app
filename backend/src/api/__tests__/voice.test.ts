@@ -78,7 +78,7 @@ test("GET /voice/:id returns the listing's own facts, prices and rules, and noth
   assert.deepEqual(business.requirements, ["Bring a hat and sunscreen."]);
   assert.equal(business.cancellation, "Refundable up to 48 hours before.");
   assert.equal(business.phone, "+17275551212");
-  assert.equal(business.bookingUrl, "https://onoutset.com/#o=o-reeltime-com");
+  assert.equal(business.bookingUrl, "https://onoutset.com/activities#o=o-reeltime-com");
   assert.equal(speak.onlyPublishedFacts, true);
 });
 
@@ -131,7 +131,7 @@ test("a hidden or paused listing is not a booking link", async () => {
   const res = await voice.request("http://localhost/voice/o-reeltime-com");
   const { business } = (await res.json()) as { business: { takingBookings: boolean; bookingUrl: string | null; bookingNote: string | null } };
   assert.equal(business.takingBookings, true, "an unclaimed shop with no row is unchanged");
-  assert.equal(business.bookingUrl, "https://onoutset.com/#o=o-reeltime-com");
+  assert.equal(business.bookingUrl, "https://onoutset.com/activities#o=o-reeltime-com");
   assert.equal(business.bookingNote, null);
 });
 

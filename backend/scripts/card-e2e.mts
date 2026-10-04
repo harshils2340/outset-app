@@ -107,8 +107,8 @@ try {
     amount: priced!.total,
     currency: "usd",
     email: "card-e2e@onoutset.com",
-    successUrl: "https://onoutset.com/#paid=" + code + "&o=o-card-e2e-not-a-real-shop",
-    cancelUrl: "https://onoutset.com/#o=o-card-e2e-not-a-real-shop",
+    successUrl: "https://onoutset.com/activities#paid=" + code + "&o=o-card-e2e-not-a-real-shop",
+    cancelUrl: "https://onoutset.com/activities#o=o-card-e2e-not-a-real-shop",
   });
   check("createCheckout returns a hosted page", !!session.url && session.url.startsWith("https://checkout.stripe.com/"), session.url.split("/").slice(0, 3).join("/"));
 } catch (e) {

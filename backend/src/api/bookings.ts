@@ -104,8 +104,14 @@ const STATUSES = ["new", "accepted", "declined", "completed", "noshow", "cancell
  * `invalid byte sequence for encoding "UTF8"`: a 500 for what is only a bad link.
  */
 const CODE = /^[A-Z0-9-]{4,16}$/;
-const SUCCESS = (code: string, listing: string) => `${SITE}#paid=${code}&o=${listing}`;
-const CANCEL = (listing: string) => `${SITE}#o=${listing}`;
+/**
+ * Where Stripe sends a guest back to. The marketplace moved off the site root on 3 October 2026: the root is
+ * the Otto page now, and it forwards an old root hash to /activities with a script of its own. Naming the
+ * path here means the guest's return from paying is one page load into the app, not a marketing page that
+ * then replaces itself, and it does not rest on that page's JavaScript running at all.
+ */
+const SUCCESS = (code: string, listing: string) => `${SITE}activities#paid=${code}&o=${listing}`;
+const CANCEL = (listing: string) => `${SITE}activities#o=${listing}`;
 /**
  * A real day on the calendar. "2027-02-30" parses and rolls forward to March 2, so without this the record
  * kept 2027-02-30 while every email said Tuesday, March 2: one booking, two days.

@@ -72,7 +72,9 @@ claims.post("/claims/:id/request", rateLimit(10, 60 * 60 * 1000), async (c) => {
   const item = await readJson<{ title?: string }>(`o/${id}.json`).catch(() => null);
   const title = item?.title || "your business";
   const owner = Buffer.from(JSON.stringify({ n: name, e: email, p: phone })).toString("base64url");
-  const link = `${SITE}#claim=${id}&k=${claimTokenV2(id)}&o=${owner}`;
+  // /operators, not the root: the root is the Otto page since 3 October 2026 and only forwards a claim hash
+  // with a script. An owner whose mail client or browser strips that would land on a sales page with no way in.
+  const link = `${SITE}operators#claim=${id}&k=${claimTokenV2(id)}&o=${owner}`;
   const mail = renderEmail({
     eyebrow: "Your listing on Outset",
     heading: `Open the dashboard for ${title}`,

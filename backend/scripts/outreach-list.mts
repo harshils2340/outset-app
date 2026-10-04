@@ -70,7 +70,7 @@ for (const o of ops) {
   const reviews = Number(o.review_count) || 0;
   const good = o.has_cover === 1 && Number(o.photos) >= 3 && Number(o.priced_lines) >= 1 && (reviews >= 5 || Number(o.written_reviews) >= 1);
   const score = (o.has_cover as number) * 3 + Math.min(Number(o.priced_lines), 5) + (Number(o.widget_lines) > 0 ? 3 : 0) + Math.min(Number(o.photos), 6) / 2 + (reviews >= 5 ? 2 : 0) + (Number(o.written_reviews) > 0 ? 2 : 0) + (o.has_cancellation as number) + (o.has_hours as number);
-  out.push({ ...o, booking_software: vendor || "", booking_software_name: vendorLabel(vendor) || "", vendor_line: vendorLine(vendor, Number(o.widget_lines) > 0) || "", quality: good ? "good" : "", listing_url: "https://onoutset.com/#o=" + catalogId(String(o.domain)), score: Math.round(score * 10) / 10 });
+  out.push({ ...o, booking_software: vendor || "", booking_software_name: vendorLabel(vendor) || "", vendor_line: vendorLine(vendor, Number(o.widget_lines) > 0) || "", quality: good ? "good" : "", listing_url: "https://onoutset.com/activities#o=" + catalogId(String(o.domain)), score: Math.round(score * 10) / 10 });
 }
 out.sort((a, b) => (b.quality === "good" ? 1 : 0) - (a.quality === "good" ? 1 : 0) || Number(b.score) - Number(a.score) || (Number(b.review_count) || 0) - (Number(a.review_count) || 0));
 const cols = ["quality","score","name","email","booking_software","booking_software_name","vendor_line","priced_services","priced_lines","widget_lines","photos","has_cover","review_count","rating","written_reviews","has_cancellation","has_hours","city","region","country","family","category_id","phone","website","domain","listing_url","id"];

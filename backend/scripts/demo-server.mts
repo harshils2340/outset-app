@@ -152,8 +152,8 @@ app.post("/bookings", async (c) => {
         amount: total,
         currency: "cad",
         email: (b?.guest?.email || "").trim() || undefined,
-        successUrl: `${SITE}#paid=${code}&o=${encodeURIComponent(listing)}`,
-        cancelUrl: `${SITE}#ask`,
+        successUrl: `${SITE}activities#paid=${code}&o=${encodeURIComponent(listing)}`,
+        cancelUrl: `${SITE}activities#ask`,
       });
       if (co.url && co.url.startsWith("https://checkout.stripe.com/")) {
         holds.set(code, { listing, session: co.id, sent: false, service: b?.service, date, slot, qty, guest: { name, email } });

@@ -99,6 +99,6 @@ f("promo", JSON.stringify({ text: "Half-price snorkel trips every Tuesday. Test 
 db.exec("COMMIT");
 
 console.log(`Test listing ready: ${CATALOG_ID}`);
-console.log(`  After the next catalog sync and deploy it opens at https://onoutset.com/#o=${CATALOG_ID}`);
+console.log(`  After the next catalog sync and deploy it opens at https://onoutset.com/activities#o=${CATALOG_ID}`);
 console.log(`  Claim it at https://onoutset.com/operators#claim=${CATALOG_ID} with ${OWNER}`);
 console.log("  It is listed like any real shop (browse, search, rails, landing pages); only outreach skips it.");

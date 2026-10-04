@@ -81,7 +81,7 @@ export async function bookingContext(rec: StoredBooking, profile: StoredProfile 
   // pay sheet's Where row and Otto all read the same field. A row labelled "Meet at" drops a whole state rather
   // than printing it; this one is a locator on a receipt whose only other pointer is a link, so it keeps it.
   const where = clean([street, shop?.city].filter(Boolean).join(", "), 160) || clean(placeName(clean(detail?.area, 80)), 80);
-  return { title, currency, where, shopPhone: phoneLine(shop?.phone) || phoneLine(detail?.contact?.phone), ownerEmail: profile?.owner.email || "", listingUrl: `${SITE}#o=${rec.listing}`, arrival: arrivalLine(patch, detail) };
+  return { title, currency, where, shopPhone: phoneLine(shop?.phone) || phoneLine(detail?.contact?.phone), ownerEmail: profile?.owner.email || "", listingUrl: `${SITE}activities#o=${rec.listing}`, arrival: arrivalLine(patch, detail) };
 }
 
 /** What the guest pays and what the operator gets, in dollars. */
