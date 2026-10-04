@@ -23,9 +23,9 @@ const ROLE = /^(info|hello|hi|contact|contactus|book|booknow|booking|bookings|re
  * A word that makes a mailbox a desk rather than a person wherever it sits in the local part: paddlinginfo@,
  * mikescharters@, captainsteve@ are the business, not someone's own inbox. So are a vendor's and an events
  * desk's: on 4 October 2026 the owners lookup moved an escape room's pitch to farskymediacompany@gmail.com, the
- * web designer named in its footer, and another's to corporate@.
+ * web designer named in its footer, and others to corporate@, donations@, hiring@, birthdays@ and coaches@.
  */
-const DESK_WORD = /(info|book|reserv|sales|office|admin|support|contact|hello|tour|charter|rental|cruise|order|event|team|staff|service|mail|marina|waiver|program|registrar|director|buyer|warehouse|frontdesk|reception|dispatch|crew|captain|pilot|instructor|guide|school|lesson|class|shop|store|fish|dive|kayak|boat|sail|parasail|jetski|rent|ski|surf|charters|corporate|media|design|digital|marketing|agency|creative|consult|solutions|graphic|photo|productions)/;
+const DESK_WORD = /(info|book|reserv|sales|office|admin|support|contact|hello|tour|charter|rental|cruise|order|event|team|staff|service|mail|marina|waiver|program|registrar|director|buyer|warehouse|frontdesk|reception|dispatch|crew|captain|pilot|instructor|guide|school|lesson|class|shop|store|fish|dive|kayak|boat|sail|parasail|jetski|rent|ski|surf|charters|corporate|media|design|digital|marketing|agency|creative|consult|solutions|graphic|photo|productions|member|youth|coach|donation|hiring|retail|birthday|party|parties|yoga|communication|facilit|payroll|invoice|volunteer|league)/;
 
 /**
  * The inbox of whoever runs the place rather than of a desk: owner@, manager@, gm@. Harshil, 4 October 2026: find the
@@ -51,8 +51,30 @@ export function looksPersonal(email: string, domain: string): boolean {
   if (DESK_WORD.test(local)) return false;
   const stem = (domain || "").toLowerCase().replace(/^www\./, "").split(".")[0].replace(/[^a-z]/g, "");
   const flat = local.replace(/[._-]/g, "");
-  if (stem.length >= 5 && flat.length >= 6 && (flat.includes(stem) || stem.includes(flat))) return false;
+  // The business's own name in the mailbox, whole or in part: coyoteyouth@ at coyoterockgym.ca, a site's typo
+  // rockfischlimbing@ beside rockfishclimbing.com, escaperoomaltoona@ at escapealtoona.com. Five letters in a row.
+  if (stem.length >= 5 && flat.length >= 6 && sharedRun(flat, stem) >= 5) return false;
   return true;
+}
+
+/** The longest run of letters two strings share. */
+function sharedRun(a: string, b: string): number {
+  let best = 0;
+  for (let i = 0; i < a.length; i++)
+    for (let j = 0; j < b.length; j++) {
+      let k = 0;
+      while (i + k < a.length && j + k < b.length && a[i + k] === b[j + k]) k++;
+      if (k > best) best = k;
+    }
+  return best;
+}
+
+/** Gmail takes no mailbox under six characters, dots aside: rg@gmail.com, read off a site, is nobody's. */
+export function impossibleGmail(email: string): boolean {
+  const [local, host] = email.toLowerCase().split("@");
+  if (host !== "gmail.com" && host !== "googlemail.com") return false;
+  const name = (local || "").split("+")[0].replace(/\./g, "");
+  return name.length < 6 || name.length > 30;
 }
 
 /**
@@ -89,6 +111,27 @@ function dropGlued(candidates: string[]): string[] {
   });
 }
 
+/** Edits between two strings, a swapped neighbouring pair counting as one (optimal string alignment). */
+function edits(a: string, b: string): number {
+  const d: number[][] = Array.from({ length: a.length + 1 }, (_, i) => Array.from({ length: b.length + 1 }, (_, j) => (i === 0 ? j : j === 0 ? i : 0)));
+  for (let i = 1; i <= a.length; i++)
+    for (let j = 1; j <= b.length; j++) {
+      d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+      if (i > 1 && j > 1 && a[i - 1] === b[j - 2] && a[i - 2] === b[j - 1]) d[i][j] = Math.min(d[i][j], d[i - 2][j - 2] + 1);
+    }
+  return d[a.length][b.length];
+}
+
+/**
+ * The address on file misspelt: same host, a long mailbox, two edits or fewer. RockFish Climbing's site printed
+ * rockfischlimbing@gmail.com beside rockfishclimbing@gmail.com; a typo is a bounce, so the one on file stays.
+ */
+function misspelt(candidate: string, front: string): boolean {
+  const [cl, ch] = candidate.split("@");
+  const [fl, fh] = front.split("@");
+  return !!front && ch === fh && cl !== fl && Math.min(cl.length, fl.length) >= 6 && edits(cl, fl) <= 2;
+}
+
 /**
  * The address a pitch goes to. `ownerEmails` are the mailboxes the owners crawl read off the operator's own
  * site (facts owner_email); with none, this is exactly the old rule over the front-desk column. A crawl
@@ -102,7 +145,7 @@ export function outreachAddress(op: { email: string | null; domain: string }, ow
   if (front) candidates.push(front);
   for (const raw of ownerEmails) {
     const e = (contactEmail(raw) || "").toLowerCase();
-    if (!e || candidates.includes(e) || /\d/.test(localPart(e))) continue;
+    if (!e || candidates.includes(e) || /\d/.test(localPart(e)) || impossibleGmail(e) || misspelt(e, front)) continue;
     candidates.push(e);
   }
   let best: string | null = null;

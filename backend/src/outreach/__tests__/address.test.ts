@@ -88,6 +88,14 @@ test("a crawl candidate that is junk or a stranger's never displaces the front d
   assert.equal(outreachAddress({ email: "info@elusiveescaperooms.com", domain: "elusiveescaperooms.com" }, ["farskymediacompany@gmail.com"]), "info@elusiveescaperooms.com", "the web designer in the footer is not the owner");
   assert.equal(outreachAddress({ email: "info@escapethehouse.ca", domain: "escapethehouse.ca" }, ["corporate@escapethehouse.ca"]), "info@escapethehouse.ca", "an events desk is another desk");
   assert.equal(outreachAddress({ email: "info@shop.com", domain: "shop.com" }, ["jessphotography@gmail.com", "vincent@shop.com"]), "vincent@shop.com");
+  for (const desk of ["donations@adventusclimbing.com", "hiring@adventusclimbing.com", "retail@adventusclimbing.com", "birthdays@adventusclimbing.com", "membership@adventusclimbing.com", "coaches@adventusclimbing.com", "youth@adventusclimbing.com", "yoga@adventusclimbing.com"])
+    assert.equal(outreachAddress({ email: "info@adventusclimbing.com", domain: "adventusclimbing.com" }, [desk]), "info@adventusclimbing.com", desk);
+  assert.equal(outreachAddress({ email: "rockfishclimbing@gmail.com", domain: "rockfishclimbing.com" }, ["rockfischlimbing@gmail.com"]), "rockfishclimbing@gmail.com", "the site's typo of its own gmail");
+  assert.equal(outreachAddress({ email: "coyoterockgym@sympatico.ca", domain: "coyoterockgym.ca" }, ["coyoteyouth@gmail.com"]), "coyoterockgym@sympatico.ca", "the youth program's gmail is the business's, not a person's");
+  assert.equal(outreachAddress({ email: "bwaaorangeburg@gmail.com", domain: "blackwateraxesandales.com" }, ["rg@gmail.com"]), "bwaaorangeburg@gmail.com", "Gmail has no two-letter mailboxes");
+  assert.equal(outreachAddress({ email: "info@ascentstudio.com", domain: "ascentstudio.com" }, ["managerjon.lachelt@ascentstudio.com"]), "managerjon.lachelt@ascentstudio.com");
+  assert.equal(outreachAddress({ email: "info@hiveclimbing.com", domain: "hiveclimbing.com" }, ["gm.poco@hiveclimbing.com"]), "gm.poco@hiveclimbing.com");
+  assert.equal(outreachAddress({ email: "crisisescaperooms.info@gmail.com", domain: "crisisrooms.com" }, ["stevecrisisrooms@gmail.com"]), "stevecrisisrooms@gmail.com", "still beats a desk");
   assert.equal(outreachAddress(op, ["emailhello@capitolboatclub.com", "emailron@capitolboatclub.com", "ron@capitolboatclub.com"]), "ron@capitolboatclub.com", "a label the markup glued onto an address is dropped, not mailed");
   assert.equal(outreachAddress({ email: "info@shop.com", domain: "shop.com" }, ["emailinfo@shop.com"]), "info@shop.com");
   assert.equal(outreachAddress({ email: null, domain: "capitolboatclub.com" }, ["ron@capitolboatclub.com"]), "ron@capitolboatclub.com", "no front desk at all, the owner still counts");
