@@ -2419,6 +2419,7 @@ export function syncCatalogToApp(): { path: string; count: number } {
       kid:
         kidVerdict(
           kidRuleText(item as { specs?: string[]; gap?: string; extraNote?: string; tags?: string[] }),
+          (item.requirements as string[] | undefined) || [],
         ) ?? undefined,
       // Compact week from the published hours, so the home page can say "open now" without a detail file.
       hrs: (() => {

@@ -103,3 +103,32 @@ test('"an adult only" is an escort, not a door', () => {
   assert.equal(kidVerdict("Adults only"), false, "the plural, standing on its own, is still the door");
   assert.equal(kidVerdict("This is an adults only experience"), false);
 });
+
+/**
+ * The floor a listing states in its "Who can go" lines. `requirements` is where a crawled shop and a partner's
+ * API both put an age rule, and the rule never read it: 102 shipped partner products, among them bar crawls,
+ * brew tours and adult walking tours, were offered to a guest filtering for younger kids because nothing in
+ * their other fields says who may come.
+ */
+test("a floor stated in the listing's own requirements refuses", () => {
+  assert.equal(kidVerdict("Walking tour of the old town", ["Minimum age is 21 years"]), false);
+  assert.equal(kidVerdict("Bar crawl", ["Minimum age is 18 (no exceptions)"]), false);
+  assert.equal(kidVerdict("Bike tour", ["Minimum age is 16 years, following the rules of the highway code."]), false);
+  assert.equal(kidVerdict("Rafting trips on the river", ["Minimum age is 10 years"]), null, "ten is a child");
+  assert.equal(kidVerdict("Swamp tour", ["No minimum age required"]), null);
+});
+
+test("a floor stated for one thing on the menu is not the booking's floor", () => {
+  // Each of these is a shop saying a younger child can come, and naming what the number is for.
+  assert.equal(kidVerdict("Diving", ["Minimum age 15 for Advanced Open Water Diver (12 for Junior)"]), null);
+  assert.equal(kidVerdict("Kayak rental", ["Minimum age 12 to paddle own kayak; under 12 must share tandem kayak with adult 18+"]), null);
+  assert.equal(kidVerdict("Escape rooms", ["Minimum age 18 recommended; under 18 allowed with parental consent"]), null);
+  assert.equal(kidVerdict("Rafting", ["Minimum age 13 years and maximum weight 250 lbs / 113 kg for paddleboard"]), null);
+});
+
+test("the kid filter reads the requirements of a record that carries them", () => {
+  const partner = lite({ lite: false, requirements: ["Minimum age is 21 years"], art: "tour" });
+  assert.equal(kidFriendly(partner), false);
+  // A lite record carries no requirements, so the verdict the sync wrote is what answers.
+  assert.equal(kidFriendly(lite({ kid: false })), false);
+});

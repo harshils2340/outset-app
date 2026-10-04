@@ -604,7 +604,7 @@ export function parseIntent(q: string): Intent {
  * A shop that says nothing at all is still judged by its kind, which is the only thing left to judge it by.
  */
 export function kidFriendly(u: Unclaimed): boolean {
-  return kidVerdict(kidRuleText(u)) ?? u.kid ?? !["skydive", "paintball", "axe"].includes(u.art);
+  return kidVerdict(kidRuleText(u), u.requirements || []) ?? u.kid ?? !["skydive", "paintball", "axe"].includes(u.art);
 }
 
 const FILLER = new Set(["rental", "rentals", "rent", "near", "me", "in", "the", "a", "an", "and", "for", "with", "best", "cheap", "tour", "tours", "ideas", "idea", "stuff", "things", "to", "do", "of", "on", "at", "good", "great", "top", "nearby", "around", "here", "my", "our", "we", "i", "some", "any", "night", "nights", "day", "tonight", "today", "tomorrow", "now", "this", "weekend", "evening", "evenings", "morning", "afternoon", "late", "nightlife", "open", "place", "places", "spot", "spots", "options", "local", "close", "closest", "nearest", "budget", "affordable", "inexpensive", "something", "somewhere", "anything", "anywhere", "want", "looking", "find", "go", "get", "book"]);

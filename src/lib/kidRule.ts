@@ -51,10 +51,38 @@ const ESCORT_AGE = new RegExp(
   "g",
 );
 
-/** true: children are welcome. false: the shop states an adult floor. null: their site does not say. */
-export function kidVerdict(text: string): boolean | null {
+/**
+ * The floor a listing states in its own "Who can go" lines, which is the field the rule never read.
+ *
+ * `requirements` is where both a crawled shop and a partner's API put an age rule, and it cannot simply join
+ * the fields above: those are read for a yes as well as a no, and a requirement line says "Not recommended for
+ * children under 8" as often as it welcomes one, so reading them for a yes would turn a refusal into an
+ * invitation. Only the one sentence that states the booking's own floor is read, and only as a no.
+ *
+ * It has to be the floor for the whole booking, not for one thing on the menu: "Minimum age 15 for Advanced
+ * Open Water Diver (12 for Junior)", "Minimum age 12 to paddle your own kayak" and "Minimum age 18
+ * recommended; under 18 allowed with parental consent" are each a shop saying a younger child can come, and
+ * all three name what the number is for. So a qualified clause is left alone and a bare one is believed:
+ * 113 shipped partner products state a bare floor of 12 or more, among them bar crawls and adult walking
+ * tours that a guest filtering for younger kids was being shown.
+ */
+const STATED_FLOOR = /\bmin(?:imum)?\.? ?age(?: is|:)? ?(1[2-9]|2\d)\b([^.;|]*)/i;
+const QUALIFIED = /\b(?:for|to|unless|except|recommended)\b/i;
+export function statesAnAdultFloor(lines: string[]): boolean {
+  return lines.some((l) => {
+    const m = STATED_FLOOR.exec(l);
+    return !!m && !QUALIFIED.test(m[2]);
+  });
+}
+
+/**
+ * true: children are welcome. false: the shop states an adult floor. null: their site does not say.
+ *
+ * `floor` is the listing's own "Who can go" lines, read for a floor and nothing else.
+ */
+export function kidVerdict(text: string, floor: string[] = []): boolean | null {
   const t = text.toLowerCase().replace(ESCORT_AGE, " ");
-  if (ADULTS_ONLY.test(t)) return false;
+  if (ADULTS_ONLY.test(t) || statesAnAdultFloor(floor)) return false;
   if (AGE_RANGE.test(t) || FAMILY_WORD.test(t)) return true;
   return null;
 }
