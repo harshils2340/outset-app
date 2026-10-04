@@ -3,15 +3,16 @@ import { sendMail, smtpIdentities } from "../src/lib/mail.ts";
 import { emailHash, loadSuppression, mailPostal, unsubPageUrl } from "../src/lib/unsub.ts";
 import { outreachBlockers, UNREADABLE_ADDRESS } from "../src/outreach/guards.ts";
 import { isDeliverable, siteResolves } from "../src/outreach/deliverable.ts";
-import { COPY_VERSION, draftOttoCopy } from "../src/outreach/ottoDrafts.ts";
+import { COPY_VERSION, draftOttoBump, draftOttoCopy } from "../src/outreach/ottoDrafts.ts";
 import { recordSend } from "../src/lib/outreachLog.ts";
 import { recordRun, rungFor, type RampState } from "../src/outreach/ramp.ts";
 import { MAILBOX_ERROR, NETWORK_ERROR, dayStartIso, pickIdentity } from "../src/outreach/mailboxes.ts";
 import { collectBounces, collectReplies, markRedirect, markReplied, suppressBounce } from "../src/outreach/bounceSweep.ts";
 import { placementTest, placementVerdict } from "../src/outreach/placement.ts";
 import {
-  RESEND_KIND, handedOffOperators, loadRamp, mailedIndex, poolCandidates, recordTouch, repliedOperators, resendCandidates, saveRamp, sentTodayByMailbox, type PoolRow,
+  BUMP_KIND, RESEND_KIND, bumpCandidates, handedOffOperators, loadRamp, mailedIndex, poolCandidates, recordTouch, repliedOperators, resendCandidates, saveRamp, sentTodayByMailbox, type PoolRow,
 } from "../src/outreach/touches.ts";
+import { SentThreads } from "../src/outreach/thread.ts";
 import { todayIn } from "../src/lib/zone.ts";
 
 /**
@@ -122,8 +123,17 @@ if (state.ranDays.includes(today) && !dry && !resume) {
   process.exit(0);
 }
 
+// Saturday and Sunday are an activity business's busiest days: a pitch that lands then is read on Monday under the
+// weekend's pile, if at all (the first two batches in Primary went out on 3 and 4 October, a Saturday and a Sunday,
+// and drew nothing). The bounce and reply sweeps above still run every day. --weekend sends anyway.
+const weekday = new Intl.DateTimeFormat("en-US", { timeZone: TZ, weekday: "short" }).format(new Date());
+if (!dry && (weekday === "Sat" || weekday === "Sun") && !process.argv.includes("--weekend")) {
+  console.log(`otto-cloud: ${weekday} in ${TZ}, no pitches on a weekend; replies and bounces were read above`);
+  process.exit(0);
+}
+
 const asCopy = (r: PoolRow) => draftOttoCopy(
-  { id: r.operator_id, domain: r.domain, name: r.name, email: r.email, phone: r.phone, city: r.city, region: r.region, calendar_vendor: r.calendar_vendor },
+  { id: r.operator_id, domain: r.domain, name: r.name, email: r.email, phone: r.phone, city: r.city, region: r.region, calendar_vendor: r.calendar_vendor, family: r.family },
   r.email, { greet: r.greet });
 
 // Inbox placement: is today's copy still landing in Gmail's Primary tab? Checked every other day and
@@ -175,25 +185,39 @@ async function planToday(): Promise<{ limit: number; quota: Record<string, numbe
   return { limit, quota };
 }
 
-async function sendBatch(limit: number, quota: Record<string, number>): Promise<{ sent: number; resent: number; skipped: number; failed: number; retired: { mailbox: string; error: string }[] }> {
-  const out = { sent: 0, skipped: 0, failed: 0, resent: 0, retired: [] as { mailbox: string; error: string }[] };
-  // Half of today's allowance goes to the resend (most recently mailed first) while it lasts, the rest to
-  // businesses never mailed; alternating so a cut-short day still does some of each. Same daily cap.
-  const resends = (await resendCandidates(Math.ceil(limit / 2) * 2)).map((r) => ({ ...r, kind: RESEND_KIND }));
-  const fresh = (await poolCandidates(limit * 2)).map((r) => ({ ...r, kind: "otto" }));
-  const resendBudget = Math.min(Math.ceil(limit / 2), resends.length);
-  const rows: (PoolRow & { kind: string })[] = [];
-  for (let i = 0; i < Math.max(resends.length, fresh.length); i++) {
-    if (i < resends.length && rows.filter((x) => x.kind === RESEND_KIND).length < resendBudget * 2) rows.push(resends[i]);
+type Row = PoolRow & { kind: string; sent_to?: string; sent_from?: string | null; last_at?: string };
+
+async function sendBatch(limit: number, quota: Record<string, number>): Promise<{ sent: number; resent: number; bumped: number; skipped: number; failed: number; retired: { mailbox: string; error: string }[] }> {
+  const out = { sent: 0, skipped: 0, failed: 0, resent: 0, bumped: 0, retired: [] as { mailbox: string; error: string }[] };
+  // Up to 40% of today's allowance to the follow-up (businesses that already saw a first email in Primary, so
+  // the likeliest to answer), up to 20% to the resend (whose first email went to Promotions; mostly water, out of
+  // season), and the rest to businesses never mailed; taking turns so a cut-short day still does some of each.
+  const bumps: Row[] = (await bumpCandidates(Math.ceil(limit * 0.4) * 2)).map((r) => ({ ...r, kind: BUMP_KIND }));
+  const resends: Row[] = (await resendCandidates(Math.ceil(limit * 0.2) * 2)).map((r) => ({ ...r, kind: RESEND_KIND }));
+  const fresh: Row[] = (await poolCandidates(limit * 2)).map((r) => ({ ...r, kind: "otto" }));
+  const budget: Record<string, number> = {
+    [BUMP_KIND]: Math.min(Math.ceil(limit * 0.4), bumps.length),
+    [RESEND_KIND]: Math.min(Math.ceil(limit * 0.2), resends.length),
+    otto: limit,
+  };
+  const rows: Row[] = [];
+  for (let i = 0; i < Math.max(bumps.length, resends.length, fresh.length); i++) {
+    if (i < bumps.length) rows.push(bumps[i]);
+    if (i < resends.length) rows.push(resends[i]);
     if (i < fresh.length) rows.push(fresh[i]);
   }
-  console.log(`otto-cloud: ${resends.length} resend candidate(s) (newest first), ${fresh.length} new; up to ${resendBudget} resends today`);
+  console.log(`otto-cloud: ${bumps.length} follow-up(s) due, ${resends.length} resend candidate(s), ${fresh.length} new; up to ${budget[BUMP_KIND]} follow-ups and ${budget[RESEND_KIND]} resends today`);
   const seen = new Set<string>();
-  let resentToday = 0;
+  const done: Record<string, number> = { [BUMP_KIND]: 0, [RESEND_KIND]: 0, otto: 0 };
+  const threads = new SentThreads();
   for (const r of rows) {
-    if (r.kind === RESEND_KIND && resentToday >= resendBudget) continue;
+    if (done[r.kind] >= budget[r.kind]) continue;
     if (out.sent >= limit) break;
-    const to = r.email.trim().toLowerCase();
+    const bump = r.kind === BUMP_KIND;
+    // A follow-up answers the first email: same address, same mailbox, even if the pool has a better door now.
+    const to = (bump ? r.sent_to || r.email : r.email).trim().toLowerCase();
+    const from = bump ? r.sent_from || smtpIdentities()[0]?.user || "" : "";
+    if (bump && !dry && !(quota[from] > 0)) continue;
     if (seen.has(to) || UNREADABLE_ADDRESS.test(to) || blocked.has(emailHash(to))) {
       out.skipped++;
       continue;
@@ -212,20 +236,28 @@ async function sendBatch(limit: number, quota: Record<string, number>): Promise<
       out.skipped++;
       continue;
     }
-    const op = { id: r.operator_id, domain: r.domain, name: r.name, email: r.email, phone: r.phone, city: r.city, region: r.region, calendar_vendor: r.calendar_vendor };
-    const copy = draftOttoCopy(op, to, { greet: r.greet });
+    const op = { id: r.operator_id, domain: r.domain, name: r.name, email: r.email, phone: r.phone, city: r.city, region: r.region, calendar_vendor: r.calendar_vendor, family: r.family };
+    // The greeting belongs to the pool's address; a follow-up to an older address opens plainly.
+    const greet = !bump || to === r.email.trim().toLowerCase() ? r.greet : null;
+    const thread = bump && !dry ? await threads.find(from, to, new Date(r.last_at || Date.now())) : null;
+    const copy = bump
+      ? draftOttoBump(op, to, { greet, subject: thread?.subject || draftOttoCopy(op, to).subject })
+      : draftOttoCopy(op, to, { greet });
     if (dry) {
-      console.log("would " + (r.kind === RESEND_KIND ? "RESEND to " : "send to ") + to + (r.greet ? " (Hi " + r.greet + ")" : "") + " [variant " + copy.variant + "]: " + copy.subject);
+      console.log("would " + (bump ? "FOLLOW UP with " : r.kind === RESEND_KIND ? "RESEND to " : "send to ") + to + (greet ? " (Hi " + greet + ")" : "") + " [variant " + copy.variant + "]: " + copy.subject);
       out.sent++;
-      if (r.kind === RESEND_KIND) { out.resent++; resentToday++; }
+      done[r.kind]++;
+      if (r.kind === RESEND_KIND) out.resent++;
+      if (bump) out.bumped++;
       continue;
     }
-    const via = pickIdentity(quota);
+    const via = bump ? from : pickIdentity(quota);
     if (!via) {
       console.log("every mailbox has used its allowance for today");
       break;
     }
-    const msg = { to, subject: copy.subject, text: copy.body, html: copy.html, replyTo: process.env.MAIL_REPLY_TO || undefined, commercial: true, via };
+    if (bump && !thread) console.log("follow-up to " + to + ": first email not found in " + via + "'s Sent, sending as a Re: without the thread");
+    const msg = { to, subject: copy.subject, text: copy.body, html: copy.html, replyTo: process.env.MAIL_REPLY_TO || undefined, commercial: true, via, inReplyTo: thread?.messageId };
     let res = await sendMail(msg);
     for (let tries = 1; !res.sent && NETWORK_ERROR.test(res.error || "") && tries <= 3; tries++) {
       console.error(via + ": network error, waiting 60 seconds and trying again (" + tries + " of 3): " + res.error);
@@ -237,7 +269,9 @@ async function sendBatch(limit: number, quota: Record<string, number>): Promise<
       await recordTouch({ operatorId: r.operator_id, email: to, status: "sent", mailbox: res.via ?? via, variant: copy.variant, at, kind: r.kind });
       await recordSend({ email: to, listing: r.catalog_id, at });
       out.sent++;
-      if (r.kind === RESEND_KIND) { out.resent++; resentToday++; }
+      done[r.kind]++;
+      if (r.kind === RESEND_KIND) out.resent++;
+      if (bump) out.bumped++;
       quota[via] -= 1;
     } else if (MAILBOX_ERROR.test(res.error || "")) {
       console.error(via + " retired for this run: " + res.error);
@@ -253,6 +287,7 @@ async function sendBatch(limit: number, quota: Record<string, number>): Promise<
     const active = Object.values(quota).filter((n) => n > 0).length || 1;
     await new Promise((x) => setTimeout(x, (90_000 + Math.random() * 210_000) / active));
   }
+  await threads.close();
   return out;
 }
 
@@ -265,7 +300,7 @@ for (let round = 1; round <= 4; round++) {
   }
   const result = await sendBatch(limit, quota);
   sent += result.sent;
-  console.log(`otto-cloud: round ${round}: ${JSON.stringify({ sent: result.sent, resent: result.resent, skipped: result.skipped, failed: result.failed, retired: result.retired.map((r) => r.mailbox) })}`);
+  console.log(`otto-cloud: round ${round}: ${JSON.stringify({ sent: result.sent, resent: result.resent, followups: result.bumped, skipped: result.skipped, failed: result.failed, retired: result.retired.map((r) => r.mailbox) })}`);
   if (dry || result.sent >= limit || !result.retired.some((r) => NETWORK_ERROR.test(r.error))) break;
   console.log("otto-cloud: network trouble, waiting 10 minutes before the next round");
   await new Promise((x) => setTimeout(x, 10 * 60_000));

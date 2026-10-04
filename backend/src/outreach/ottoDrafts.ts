@@ -19,6 +19,8 @@ export type OttoOp = {
   city: string | null;
   region: string | null;
   calendar_vendor: string | null;
+  /** outreach_pool.family: what the first line says the team is busy with. */
+  family?: string | null;
 };
 
 function esc(s: string): string {
@@ -51,8 +53,30 @@ function whatOttoDoes(id: string | null): string {
   // Harshil, 2 October 2026: say it answers only from the business's own info, booking system and terms, so
   // an owner knows it never makes things up. "Booking system" is said only where Otto really reads one.
   if (id && LIVE_CALENDAR.has(id) && name)
-    return "It picks up those calls and answers only from your own company info, " + name + " booking system and terms, so it never makes anything up. It tells the caller what's actually open and sends them the link to book that exact slot.";
-  return "It picks up those calls and answers only from your own company info, prices and terms, so it never makes anything up, then takes the booking down for you.";
+    return "It answers only from your own info, prices and policies, so it never makes anything up, checks what's actually open in " + name + " and sends the caller the link to book that exact slot.";
+  return "It answers only from your own info, prices and policies, so it never makes anything up, and takes the booking down for you.";
+}
+
+/** An escape room, by its name or its site: the queue leads with them (touches.ts), so they get their own words. */
+function isEscapeRoom(op: Pick<OttoOp, "name" | "domain">): boolean {
+  return /escape|escaperoom/i.test(op.name + " " + op.domain);
+}
+
+/**
+ * What the team is doing when the phone rings, in the owner's own day rather than a generic "busy with guests":
+ * an escape room's game masters are running rooms, a karting crew is on the track. By outreach_pool.family.
+ */
+export function busyLine(op: Pick<OttoOp, "name" | "domain" | "family">): string {
+  if (isEscapeRoom(op)) return "your game masters are running rooms";
+  switch (op.family) {
+    case "indoor": return "your team is out on the floor";
+    case "motorsport": return "your crew is out on the track";
+    case "water": return "your crew is out on the water";
+    case "air": return "your pilots are up flying";
+    case "outdoor": return "your guides are out with a group";
+    case "wellness": return "you're with a client";
+    default: return "your team is busy with guests";
+  }
 }
 
 /**
@@ -60,7 +84,12 @@ function whatOttoDoes(id: string | null): string {
  * version that earned them. Bump it whenever the body changes.
  */
 // 2026-10-03: the product is named Outset in the body ("I built Outset"); Otto stays the assistant's name on calls.
-export const COPY_VERSION = "2026-10-03";
+// 2026-10-05: the first line is the owner's own day by kind of business (game masters running rooms, a crew out on
+// the track), the ask is "Can I set one up for {name}?", the shape of the 23 September subject ("Can I build
+// Area 53 Laser Tag a free booking page?") that drew a "What is the cost for this?", and the take-down line is
+// plain words instead of "Don't want your free Outset page?", which read as a page built without asking: the
+// complaint both angry replies (Sandbox VR, Capt. Dave's) made. Two links in the footer, not three lines of them.
+export const COPY_VERSION = "2026-10-05";
 
 /**
  * The 2 October 2026 pitch. 596 sends of the 1 October copy earned one human reply, and a placement test
@@ -85,39 +114,71 @@ export function draftOttoCopy(op: OttoOp, email?: string, opts?: { greet?: strin
   const hi = opts && "greet" in opts ? (opts.greet ? "Hi " + opts.greet + "," : "Hi,") : to ? greeting(op, to) : "Hi,";
   const SITE = "https://onoutset.com/";
   const OTTO = SITE + "#call";
+  const escape = isEscapeRoom(op);
   const subject = "Missed calls at " + op.name;
-  const question = "When everyone at " + op.name + " is busy with guests or you've closed for the day, where do the calls go?";
-  const pain = "For most operators it's voicemail, and the caller hangs up and books with the next place that picks up.";
-  const what = "I built Outset, a 24/7 customer service line for your phone. " + whatOttoDoes(op.calendar_vendor) + " You get a summary of every call.";
-  const hearText = "Here's a 40-second recording of it on a real call: " + OTTO;
-  const hearHtml = "Here's a 40-second recording of it on a real call: " + link(OTTO, "give it a listen") + ".";
-  const offer = "I'll set it up on your line for free, and you only keep it if it books you a guest. Worth a quick reply?";
-  // Every operator this goes to already has an unclaimed page in the Outset catalog, so the way off it is in
-  // here, as the outreach folder requires: a one-click take-down beside the unsubscribe.
-  const remove = SITE + "activities#remove=" + catalogId(op.domain);
-  const stop = to ? unsubPageUrl(to) : SITE + "unsubscribe.html";
-  const postal = mailPostal();
-  const lines = [
-    hi, "", question, "", pain, "", what, "", hearText, "", offer, "",
-    "Harshil",
-    ...(postal ? ["Outset, " + postal.replace(/^Outset,\s*/i, "")] : []),
-    'Not a fit? Reply "no" and I won\'t email again, or unsubscribe: ' + stop,
-    "Don't want your free Outset page? Take it down: " + remove,
-  ];
-  const small = '<p style="color:#777">';
+  const question = "When " + busyLine(op) + " or after you close, who picks up " + possessive(op.name) + " phone?";
+  const pain = escape
+    ? "For most escape rooms it's voicemail, and the caller books the next room on their list."
+    : "For most places it's voicemail, and the caller books with the next one that picks up.";
+  const what = "I built Outset to pick up those calls. " + whatOttoDoes(op.calendar_vendor) + " You get a summary of every call.";
+  const hearText = "Here's a 40-second recording of a real call: " + OTTO;
+  const hearHtml = "Here's a 40-second recording of a real call: " + link(OTTO, "give it a listen") + ".";
+  const offer = "Can I set one up for " + op.name + "? I'll build it from your own info so you can call it and test it yourself. It's free, and you only keep it if it books you guests.";
+  const lines = [hi, "", question, "", pain, "", what + " " + hearText, "", offer, "", ...signOff(op, to).lines];
   const html = '<div dir="ltr">' + [
     "<p>" + esc(hi) + "</p>",
     "<p>" + esc(question) + "</p>",
     "<p>" + esc(pain) + "</p>",
-    "<p>" + esc(what) + "</p>",
-    "<p>" + hearHtml + "</p>",
+    "<p>" + esc(what) + " " + hearHtml + "</p>",
     "<p>" + esc(offer) + "</p>",
-    small + "Harshil" +
-      (postal ? "<br>" + esc("Outset, " + postal.replace(/^Outset,\s*/i, "")) : "") +
-      "<br>Not a fit? Reply \"no\" and I won't email again, or " + link(stop, "unsubscribe") + "." +
-      "<br>Don't want your free Outset page? " + link(remove, "Take it down") + ".</p>",
+    signOff(op, to).html,
   ].join("") + "</div>";
   return { subject, body: lines.join("\n"), html, variant };
+}
+
+/**
+ * The sign-off every Otto mail ends with: who wrote it, the postal address CAN-SPAM and CASL require, a way to
+ * stop, and the one-click way off the business's Outset listing that backend/src/outreach/AGENTS.md requires,
+ * said plainly rather than as "Don't want your free Outset page?".
+ */
+function signOff(op: OttoOp, to: string): { lines: string[]; html: string } {
+  const SITE = "https://onoutset.com/";
+  const remove = SITE + "activities#remove=" + catalogId(op.domain);
+  const stop = to ? unsubPageUrl(to) : SITE + "unsubscribe.html";
+  const postal = mailPostal();
+  const where = postal ? postal.replace(/^Outset,\s*/i, "") : "";
+  return {
+    lines: [
+      "Harshil",
+      "Founder, Outset",
+      ...(where ? [where] : []),
+      'Not a fit? Reply "no" and I won\'t email again, or unsubscribe: ' + stop,
+      "Remove " + op.name + " from Outset's listings: " + remove,
+    ],
+    html: '<p style="color:#777">Harshil<br>Founder, Outset' + (where ? "<br>" + esc(where) : "") +
+      "<br>Not a fit? Reply \"no\" and I won't email again, or " + link(stop, "unsubscribe") + "." +
+      "<br>" + link(remove, "Remove " + op.name + " from Outset's listings") + ".</p>",
+  };
+}
+
+/** The follow-up's copy version, stored on outreach_sends.variant like COPY_VERSION. */
+export const BUMP_VERSION = "bump-2026-10-05";
+
+/**
+ * The one follow-up, a few days after a first email that landed in Primary and drew no answer: two lines in the
+ * same thread ("Re:" the first subject, sent as a reply to it from the same mailbox), the offer made concrete.
+ * Most cold-email replies come from the follow-up, not the first note.
+ */
+export function draftOttoBump(op: OttoOp, email: string, opts: { greet?: string | null; subject: string }): { subject: string; body: string; html: string; variant: string } {
+  const to = (email || "").trim().toLowerCase();
+  const hi = opts.greet ? "Hi " + opts.greet + "," : "Hi,";
+  const subject = /^re:/i.test(opts.subject) ? opts.subject : "Re: " + opts.subject;
+  const ask = "Following up in case this got buried. Would it help if I set up a free test line for " + op.name +
+    ", built from your own info, so you can call it and hear how it handles your callers?";
+  const off = signOff(op, to);
+  const body = [hi, "", ask, "", ...off.lines].join("\n");
+  const html = '<div dir="ltr"><p>' + esc(hi) + "</p><p>" + esc(ask) + "</p>" + off.html + "</div>";
+  return { subject, body, html, variant: BUMP_VERSION };
 }
 
 /**

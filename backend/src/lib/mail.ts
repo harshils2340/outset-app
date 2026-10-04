@@ -74,6 +74,8 @@ export async function sendMail(msg: {
   attachments?: MailAttachment[];
   /** Which sending mailbox (its address) a commercial mail goes from; the first configured one when unset. */
   via?: string;
+  /** The Message-ID this mail answers, so a follow-up sits in the same thread as the first email. */
+  inReplyTo?: string;
 }): Promise<{ sent: boolean; id?: string; error?: string; via?: string }> {
   const to = sanitizeHeaderText(msg.to);
   if (!BARE_EMAIL.test(to)) return { sent: false, error: "bad address" };
@@ -81,7 +83,9 @@ export async function sendMail(msg: {
   // mail over: dropped silently, same as if the caller had never set one.
   const replyToRaw = msg.replyTo ? sanitizeHeaderText(msg.replyTo) : undefined;
   const replyTo = replyToRaw && BARE_EMAIL.test(replyToRaw) ? replyToRaw : undefined;
-  const clean = { ...msg, subject: sanitizeHeaderText(msg.subject).slice(0, 300), replyTo };
+  // A Message-ID is one <token>, nothing else: anything wider could carry a second header.
+  const inReplyTo = msg.inReplyTo && /^<[^\s<>]+@[^\s<>]+>$/.test(msg.inReplyTo.trim()) ? msg.inReplyTo.trim() : undefined;
+  const clean = { ...msg, subject: sanitizeHeaderText(msg.subject).slice(0, 300), replyTo, inReplyTo };
   if (msg.commercial) {
     const ids = smtpIdentities();
     const id = msg.via ? ids.find((i) => i.user === msg.via) : ids[0];
@@ -95,7 +99,7 @@ export type MailAttachment = { filename: string; content: Buffer | string; conte
 
 async function sendSmtp(
   to: string,
-  msg: { subject: string; text: string; html?: string; replyTo?: string; attachments?: MailAttachment[] },
+  msg: { subject: string; text: string; html?: string; replyTo?: string; attachments?: MailAttachment[]; inReplyTo?: string },
   id: SmtpIdentity = smtpIdentities()[0],
 ): Promise<{ sent: boolean; id?: string; error?: string; via?: string }> {
   if (!id) return { sent: false, error: "no sending mailbox configured" };
@@ -119,7 +123,7 @@ async function sendSmtp(
 
 async function smtpOnce(
   to: string,
-  msg: { subject: string; text: string; html?: string; replyTo?: string; attachments?: MailAttachment[] },
+  msg: { subject: string; text: string; html?: string; replyTo?: string; attachments?: MailAttachment[]; inReplyTo?: string },
   id: SmtpIdentity,
   port: number,
   secure: boolean,
@@ -140,6 +144,7 @@ async function smtpOnce(
       ...(msg.html ? { html: msg.html } : {}),
       ...(msg.attachments?.length ? { attachments: msg.attachments } : {}),
       replyTo: msg.replyTo || process.env.MAIL_REPLY_TO || "hello@onoutset.com",
+      ...(msg.inReplyTo ? { inReplyTo: msg.inReplyTo, references: msg.inReplyTo } : {}),
     });
     return { sent: true, id: String(info.messageId || "smtp"), via: id.user };
   }

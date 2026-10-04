@@ -250,6 +250,39 @@ export const RESEND_KIND = "otto_resend";
 export const RESEND_BEFORE = "2026-10-02";
 
 /**
+ * The follow-up: one short note in the same thread, a few days after a first email that landed in Primary
+ * (RESEND_BEFORE on, the hand-written follow-ups of 1 October aside) and drew nothing back. Its own kind, so it
+ * never counts as a first touch and goes once.
+ */
+export const BUMP_KIND = "otto_bump";
+
+/**
+ * Who is due the follow-up, oldest first: the address and mailbox the first email went from, so it can answer
+ * that email in its thread. 66 hours, so whatever went out at any hour three days ago is due by today's batch.
+ * Skips a business that replied, bounced, was handed off or already got one, and an address that ever bounced,
+ * failed or replied.
+ */
+export async function bumpCandidates(limit: number): Promise<(PoolRow & { sent_to: string; sent_from: string | null; last_at: string })[]> {
+  await ensureTouchTables();
+  return query<PoolRow & { sent_to: string; sent_from: string | null; last_at: string }>(
+    `with firsts as (
+       select distinct on (operator_id) operator_id, lower(email) as sent_to, mailbox as sent_from, at as last_at
+         from outreach_sends
+        where kind in ('otto', $2) and status = 'sent' and variant >= $3 and variant not like 'followup-%'
+        order by operator_id, at desc
+     )
+     select p.*, f.sent_to, f.sent_from, f.last_at::text as last_at
+       from firsts f join outreach_pool p on p.operator_id = f.operator_id
+      where f.last_at < now() - interval '66 hours'
+        and not exists (select 1 from outreach_sends s where s.operator_id = f.operator_id and (s.kind = $4 or s.status in ('replied', 'bounce', 'handoff')))
+        and not exists (select 1 from outreach_sends s where s.email = f.sent_to and s.status in ('bounce', 'failed', 'replied'))
+      order by f.last_at, p.operator_id
+      limit $1`,
+    [limit, RESEND_KIND, RESEND_BEFORE, BUMP_KIND],
+  );
+}
+
+/**
  * Who should get the resend, newest first. Skips any business that replied, bounced, was handed to a friend
  * to send, or already got a resend; skips an address that ever bounced, failed or replied (the pool may hold
  * a better address than the one first mailed, which is then the one used); and skips anyone who already got a
@@ -292,18 +325,22 @@ export async function repliedOperators(): Promise<Set<string>> {
 }
 
 /** Every address and domain mailed so far, mapped back to its businesses, for matching replies. */
-export async function mailedIndex(): Promise<{ byEmail: Map<string, Set<string>>; byDomain: Map<string, Set<string>> }> {
+export async function mailedIndex(): Promise<{ byEmail: Map<string, Set<string>>; byDomain: Map<string, Set<string>>; byName: Map<string, Set<string>> }> {
   await ensureTouchTables();
-  const rows = await query<{ operator_id: string; email: string }>(
-    "select distinct operator_id, lower(email) as email from outreach_sends where kind in ('otto', $1) and status = 'sent'", [RESEND_KIND]);
-  const byEmail = new Map<string, Set<string>>(), byDomain = new Map<string, Set<string>>();
+  const rows = await query<{ operator_id: string; email: string; name: string | null }>(
+    `select distinct s.operator_id, lower(s.email) as email, lower(p.name) as name
+       from outreach_sends s left join outreach_pool p on p.operator_id = s.operator_id
+      where s.kind in ('otto', $1, $2) and s.status = 'sent'`, [RESEND_KIND, BUMP_KIND]);
+  const byEmail = new Map<string, Set<string>>(), byDomain = new Map<string, Set<string>>(), byName = new Map<string, Set<string>>();
+  // The business by name, for a reply whose subject names it but whose sender we never wrote to (bounceSweep.ts).
+  for (const r of rows) if (r.name) (byName.get(r.name.trim()) || byName.set(r.name.trim(), new Set()).get(r.name.trim())!).add(r.operator_id);
   const FREE = /^(gmail|googlemail|yahoo|hotmail|outlook|live|icloud|me|aol|msn|comcast|proton|protonmail|shaw|rogers|sympatico|bell)\./;
   for (const r of rows) {
     (byEmail.get(r.email) || byEmail.set(r.email, new Set()).get(r.email)!).add(r.operator_id);
     const d = r.email.split("@")[1] || "";
     if (d && !FREE.test(d)) (byDomain.get(d) || byDomain.set(d, new Set()).get(d)!).add(r.operator_id);
   }
-  return { byEmail, byDomain };
+  return { byEmail, byDomain, byName };
 }
 
 /** Suppression-list key for an address, the same one unsub.ts and outreachLog.ts use. */

@@ -1,6 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { bodyText, classifyReply } from "../bounceSweep.ts";
+import { bodyText, classifyReply, subjectBusinesses } from "../bounceSweep.ts";
+import { newestThread } from "../thread.ts";
 
 const own = new Set(["harshils2340@gmail.com", "outset.founder@gmail.com", "hs20041230@gmail.com"]);
 const ORIGINAL = "\n\n-------- Original Message --------\nHi, I'm Harshil. I built Otto, the AI front desk for local businesses like yours.";
@@ -91,4 +92,26 @@ test("an out of office with no punctuation and nothing quoted still counts as au
 test("a body that really is base64 is still decoded", () => {
   const text = "This is an automated reply, the inbox is not monitored.";
   assert.equal(bodyText(Buffer.from(text).toString("base64")), text);
+});
+
+test("a reply is matched to its business by subject when it comes from an address we never wrote to", () => {
+  assert.deepEqual(subjectBusinesses("Re: Missed calls at Escape 618"), ["escape 618"]);
+  assert.deepEqual(subjectBusinesses("RE: Fwd: Missed calls at Puzzle Vault Rooms"), ["puzzle vault rooms"]);
+  assert.deepEqual(subjectBusinesses("Re: Who answers Dixie Belle's phone after you close?"), ["dixie belle's", "dixie belle"]);
+  assert.deepEqual(subjectBusinesses("Re: Who answers Capt Andy's phone after you close?"), ["capt andy's", "capt andy"], "a name already possessive is tried whole");
+  assert.deepEqual(subjectBusinesses("Re: For Bane: Otto for Lock Chicago"), ["lock chicago"]);
+  assert.deepEqual(subjectBusinesses("Re: [External] Missed calls at Escape 618"), ["escape 618"]);
+  assert.deepEqual(subjectBusinesses("RE[2]: Missed calls at Escape 618"), ["escape 618"]);
+  assert.deepEqual(subjectBusinesses("Your order has shipped"), []);
+  assert.deepEqual(subjectBusinesses(""), []);
+});
+
+test("the follow-up answers the newest email sent to that address", () => {
+  const t = newestThread([
+    { messageId: "<old@gmail.com>", subject: "Who answers X's phone after you close?", date: new Date("2026-09-27T14:00:00Z") },
+    { messageId: "<new@gmail.com>", subject: "Missed calls at X", date: new Date("2026-10-03T14:00:00Z") },
+    { subject: "no id", date: new Date("2026-10-04T14:00:00Z") },
+  ]);
+  assert.deepEqual(t, { messageId: "<new@gmail.com>", subject: "Missed calls at X" });
+  assert.equal(newestThread([]), null);
 });

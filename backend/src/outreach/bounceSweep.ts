@@ -136,7 +136,31 @@ export function classifyReply(m: { from: string; subject: string; headers: strin
   return { auto, redirect, text };
 }
 
-export async function collectReplies(days: number, index: { byEmail: Map<string, Set<string>>; byDomain: Map<string, Set<string>> }): Promise<Reply[]> {
+/**
+ * The business a reply is about, by its subject: "Re: Missed calls at Escape 618" names Escape 618 whoever sends
+ * it. An owner often answers from an address we never wrote to (info@ forwards to their own gmail, or a manager
+ * passes it on), and matching on the address alone dropped those replies without a word: they were never
+ * counted, Harshil was never told, and the follow-up would have gone out to someone who had already answered.
+ */
+export function subjectBusinesses(subject: string): string[] {
+  let s = (subject || "").trim();
+  // "Re:", "RE[2]:", "Fwd:", and the "[External]" tag a company's mail system puts in front.
+  for (let i = 0; i < 6; i++) s = s.replace(/^(re|fw|fwd|aw|sv|antw|tr|wg)\s*(\[\d+\])?\s*:\s*/i, "").replace(/^\[[^\]]{1,24}\]\s*/, "").trim();
+  const out: string[] = [];
+  let m = s.match(/^missed calls at (.+?)\s*$/i);
+  if (m) out.push(m[1]);
+  m = s.match(/^who answers (.+?) phone after you close\??\s*$/i);
+  if (m) {
+    const whole = m[1];
+    out.push(whole);
+    out.push(whole.replace(/['’]s$/i, ""));
+  }
+  m = s.match(/\botto for (.+?)\s*$/i);
+  if (m) out.push(m[1]);
+  return [...new Set(out.map((n) => n.trim().toLowerCase()).filter(Boolean))];
+}
+
+export async function collectReplies(days: number, index: { byEmail: Map<string, Set<string>>; byDomain: Map<string, Set<string>>; byName?: Map<string, Set<string>> }): Promise<Reply[]> {
   const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
   const ids = smtpIdentities();
   const own = new Set(ids.map((i) => i.user.toLowerCase()));
@@ -146,14 +170,22 @@ export async function collectReplies(days: number, index: { byEmail: Map<string,
     const client = new ImapFlow({ host, port: 993, secure: true, auth: { user: id.user, pass: id.pass }, logger: false });
     try {
       await client.connect();
-      const lock = await client.getMailboxLock("INBOX");
+      // Spam too: a reply forwarded through hello@onoutset.com can be filed there, and nobody reads it.
+      for (const folder of ["INBOX", "[Gmail]/Spam"]) {
+      let lock;
+      try {
+        lock = await client.getMailboxLock(folder);
+      } catch {
+        continue;
+      }
       try {
         const uids = (await client.search({ since }, { uid: true })) || [];
         for await (const msg of client.fetch(uids, { uid: true, envelope: true, headers: ["auto-submitted", "x-autoreply", "x-autorespond", "precedence"], bodyParts: ["1"] }, { uid: true })) {
           const from = (msg.envelope?.from?.[0]?.address || "").toLowerCase();
           if (!from || own.has(from) || /mailer-daemon|postmaster/.test(from)) continue;
           const domain = from.split("@")[1] || "";
-          const ops = index.byEmail.get(from) || index.byDomain.get(domain);
+          const byName = subjectBusinesses(msg.envelope?.subject || "").map((n) => index.byName?.get(n)).find(Boolean);
+          const ops = index.byEmail.get(from) || index.byDomain.get(domain) || byName;
           if (!ops) continue;
           const subject = msg.envelope?.subject || "";
           const c = classifyReply({ from, subject, headers: msg.headers?.toString("utf8") || "", body: msg.bodyParts?.get("1")?.toString("utf8") || "", own });
@@ -161,6 +193,7 @@ export async function collectReplies(days: number, index: { byEmail: Map<string,
         }
       } finally {
         lock.release();
+      }
       }
     } catch (e) {
       console.error(`${id.user}: could not read replies: ${(e as Error).message.slice(0, 120)}`);
