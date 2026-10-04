@@ -24,9 +24,60 @@ type Index = Record<string, Entry>;
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-/** Hosts an operator publishes on but does not own. An address there proves nothing. */
-const SHARED_HOSTS =
-  /(^|\.)(wixsite\.com|wix\.com|squarespace\.com|weebly\.com|godaddysites\.com|wordpress\.com|webflow\.io|myshopify\.com|square\.site|business\.site|blogspot\.com|carrd\.co|strikingly\.com|sites\.google\.com|google\.com|facebook\.com|instagram\.com|linktr\.ee|gmail\.com|googlemail\.com|yahoo\.com|yahoo\.ca|outlook\.com|hotmail\.com|hotmail\.ca|icloud\.com|aol\.com|me\.com|live\.com|live\.ca|msn\.com|protonmail\.com|proton\.me|comcast\.net|att\.net|verizon\.net|sbcglobal\.net|bellsouth\.net|cox\.net|shaw\.ca|rogers\.com|bell\.net|sympatico\.ca|telus\.net)$/i;
+/**
+ * Hosts an operator publishes on but does not own. An address there proves nothing, so a listing whose only
+ * "domain" is one of these is claimable from its on-file address and from nowhere else.
+ *
+ * Every family below was found on real crawled rows of the shipped catalog, where the business's own site is
+ * a page on somebody else's host and the crawl keyed the row by that host. The cost of a missing entry is a
+ * listing handed to a stranger: 801 shipped listings named one of these as a domain the business owns, and
+ * the nine keyed by a consumer mail provider (`o-aim-com`, `o-usa-com`, `o-earthlink-net`, `o-126-com`,
+ * `o-rr-com`, `o-roadrunner-com` among them) publish no on-file address at all, so anybody who could sign up
+ * for a mailbox there could have a working claim link mailed to them and trade it for an operator session.
+ *
+ * Keep it to hosts that are plainly nobody's own business. A domain missing from here costs a takeover; a
+ * domain wrongly on it costs one owner the domain route, who can still claim from the address on their site.
+ */
+const SHARED_HOST_LIST = [
+  // Site builders, blogs and page hosting anyone can put a site on.
+  "wixsite.com", "wix.com", "wixstudio.com", "editorx.io", "squarespace.com", "weebly.com", "godaddysites.com",
+  "godaddy.com", "wordpress.com", "wpcomstaging.com", "webflow.io", "myshopify.com", "square.site",
+  "business.site", "blogspot.com", "blogger.com", "carrd.co", "strikingly.com", "mystrikingly.com",
+  "sites.google.com", "google.com", "yolasite.com", "tripod.com", "angelfire.com", "webnode.com",
+  "webnode.page", "jimdosite.com", "jimdofree.com", "simplesite.com", "myfreesites.net", "bravesites.com",
+  "dudaone.com", "duda.co", "site123.me", "ucraft.site", "tumblr.com", "substack.com", "medium.com",
+  "notion.site", "neocities.org",
+  // Application hosting a page can be deployed to in a minute.
+  "netlify.app", "vercel.app", "web.app", "firebaseapp.com", "github.io", "gitlab.io", "pages.dev",
+  "herokuapp.com", "azurewebsites.net", "amazonaws.com", "appspot.com", "glitch.me", "repl.co",
+  // Booking systems. The shop's calendar lives there; the host is the vendor's.
+  "booksy.com", "setmore.com", "acuityscheduling.com", "vagaro.com", "schedulicity.com", "mindbodyonline.com",
+  "mindbody.io", "bookeo.com", "fareharbor.com", "peek.com", "xola.com", "checkfront.com", "resova.us",
+  "rezdy.com", "tripworks.com", "youcanbook.me", "calendly.com", "squareup.com", "square.com",
+  // Marketplaces, directories and ticket sellers. A product of ours is never claimed through one of these.
+  "yelp.com", "yelp.ca", "tripadvisor.com", "tripadvisor.ca", "viator.com", "getyourguide.com", "groupon.com",
+  "airbnb.com", "booking.com", "expedia.com", "classpass.com", "eventbrite.com", "eventbrite.ca", "meetup.com",
+  "nextdoor.com", "patch.com", "facebook.com", "instagram.com",
+  // Link pages, shorteners and mail blasts, which are an address and not a site.
+  "linktr.ee", "linktree.com", "bio.link", "beacons.ai", "msha.ke", "t.co", "goo.gl", "g.page", "bit.ly",
+  "tinyurl.com", "mailchi.mp", "campaign-archive.com",
+  // Consumer mail. Anyone can hold an address at one, so one proves nothing about the business.
+  "gmail.com", "googlemail.com", "yahoo.com", "yahoo.ca", "yahoo.co.uk", "yahoo.com.au", "yahoo.fr",
+  "ymail.com", "outlook.com", "outlook.es", "hotmail.com", "hotmail.ca", "hotmail.co.uk", "hotmail.fr",
+  "hotmail.es", "icloud.com", "aol.com", "aim.com", "me.com", "mac.com", "live.com", "live.ca", "live.fr",
+  "msn.com", "protonmail.com", "proton.me", "mail.com", "email.com", "usa.com", "post.com", "consultant.com",
+  "gmx.com", "gmx.net", "zoho.com", "yandex.com", "mail.ru", "fastmail.com", "hushmail.com", "inbox.com",
+  "web.de", "t-online.de", "libero.it", "orange.fr", "wanadoo.fr", "free.fr", "laposte.net", "qq.com",
+  "163.com", "126.com", "sina.com", "naver.com", "daum.net", "hanmail.net", "rediffmail.com",
+  // Internet providers' own mail, which is the same thing one street further back.
+  "comcast.net", "att.net", "verizon.net", "sbcglobal.net", "bellsouth.net", "cox.net", "earthlink.net",
+  "rr.com", "roadrunner.com", "twc.com", "charter.net", "centurylink.net", "embarqmail.com", "frontier.com",
+  "frontiernet.net", "windstream.net", "suddenlink.net", "optonline.net", "mediacombb.net", "wowway.com",
+  "cableone.net", "juno.com", "netzero.net", "pacbell.net", "swbell.net", "ameritech.net", "prodigy.net",
+  "btinternet.com", "shaw.ca", "rogers.com", "bell.net", "sympatico.ca", "telus.net", "telusplanet.net",
+  "cogeco.ca", "videotron.ca", "eastlink.ca",
+];
+const SHARED_HOSTS = new RegExp("(^|\\.)(" + SHARED_HOST_LIST.map((h) => h.replace(/\./g, "\\.")).join("|") + ")$", "i");
 
 const emailKey = (email: string) => createHash("sha256").update(email.trim().toLowerCase()).digest("hex").slice(0, 24);
 
@@ -51,13 +102,23 @@ export function ownDomain(host: string | null | undefined): string | null {
   return h;
 }
 
+/** The domains on one row that the business really owns, in the order the row listed them, without repeats. */
+export function ownDomains(domains: readonly string[] | null | undefined): string[] {
+  const out: string[] = [];
+  for (const d of domains || []) {
+    const own = ownDomain(d);
+    if (own && !out.includes(own)) out.push(own);
+  }
+  return out;
+}
+
 export function writeClaimIndex(): { path: string; count: number; withEmail: number } {
   const rows = db.prepare("SELECT domain, website, email FROM operators WHERE origin != 'demo'").all() as { domain: string; website: string | null; email: string | null }[];
   const idx: Index = {};
   let withEmail = 0;
   for (const r of rows) {
     const id = catalogId(r.domain);
-    const domains = Array.from(new Set([ownDomain(r.domain), r.website ? ownDomain(hostOf(r.website)) : null].filter((x): x is string => !!x)));
+    const domains = ownDomains([r.domain, r.website ? hostOf(r.website) : ""]);
     const entry: Entry = { d: domains };
     // Only an address an owner could be asked to write from: `contactEmail` decodes the ones a site hid from
     // scrapers and drops a template's own inbox, a masked name and markup. A row with none falls through to
@@ -108,7 +169,10 @@ export type ClaimRule = {
  */
 export async function claimRule(id: string): Promise<ClaimRule> {
   const e = loadIndex()[id];
-  if (e) return { known: true, hasEmail: !!e.k, hint: e.h || null, domains: e.d, partner: null };
+  // Read each domain on the row rather than trust the file. The index was written by whichever sync last ran,
+  // which may have been built before a host was known to be one nobody owns, and a stale row granting
+  // `@aim.com` a listing cannot wait for the next sync to stop granting it.
+  if (e) return { known: true, hasEmail: !!e.k, hint: e.h || null, domains: ownDomains(e.d), partner: null };
   const item = await readJson<{ src?: string; affiliate?: { label?: string } }>(`o/${id}.json`).catch(() => null);
   if (item?.affiliate) return { known: true, hasEmail: false, hint: null, domains: [], partner: item.affiliate.label || "the partner's site" };
   const d = item?.src ? ownDomain(hostOf(item.src)) : null;
