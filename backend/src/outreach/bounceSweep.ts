@@ -86,12 +86,31 @@ const AUTO_SUBJECT = /^(automatic reply|auto(matic)?[- ]?(reply|response)|out of
 // lines a person might type ("I will get back to you soon") are deliberately left out.
 const AUTO_BODY = /doesn['’]?t get (checked|read|monitored)|(is|isn['’]?t|not) (being )?(regularly |frequently |often )?(checked|monitored)|no longer (in use|monitored|active|being monitored)|will be (removed|discontinued|deactivated|shut down)|(please )?(forward|re-?send|redirect) your (e-?mail|message)|this is an automated|auto(matic|mated)?[- ]?(reply|response|responder)|out of (the )?office|i am (currently )?(away|out of|on (vacation|leave|holiday))/i;
 
-/** Text of a fetched body part: base64 and quoted-printable decoded, html stripped. */
+/**
+ * Whether a decode produced text rather than rubbish: no replacement character and no control byte outside
+ * tab, newline and carriage return. Base64 of real text always passes; prose read as base64 never does.
+ */
+function readsAsText(s: string): boolean {
+  return !/[\uFFFD]/.test(s) && !/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/.test(s);
+}
+
+/**
+ * Text of a fetched body part: base64 and quoted-printable decoded, html stripped.
+ *
+ * The base64 test is a guess, because the part's own Content-Transfer-Encoding is not fetched with it, and a
+ * sentence with no punctuation in it is all letters and spaces once the whitespace is squeezed out: "Hi
+ * thanks for the email I am away until Monday" looked exactly like base64 and came back as mojibake. That
+ * cost twice over, since this text is both what the auto-reply phrases are matched against (so an unread
+ * inbox was read as a person, logged as a reply and retired from the campaign) and what Harshil is shown in
+ * the alert. So the decode now has to produce something readable, or the raw part stands.
+ */
 export function bodyText(raw: string): string {
   let s = raw;
   const compact = s.replace(/\s+/g, "");
-  if (compact.length >= 24 && /^[A-Za-z0-9+/]+={0,2}$/.test(compact)) {
-    s = Buffer.from(compact, "base64").toString("utf8");
+  const looksB64 = compact.length >= 24 && compact.length % 4 === 0 && /^[A-Za-z0-9+/]+={0,2}$/.test(compact);
+  const decoded = looksB64 ? Buffer.from(compact, "base64").toString("utf8") : "";
+  if (decoded && readsAsText(decoded)) {
+    s = decoded;
   } else if (/=\r?\n|=[0-9A-F]{2}/.test(s)) {
     s = Buffer.from(s.replace(/=\r?\n/g, "").replace(/=([0-9A-F]{2})/g, (_, h) => String.fromCharCode(parseInt(h, 16))), "latin1").toString("utf8");
   }

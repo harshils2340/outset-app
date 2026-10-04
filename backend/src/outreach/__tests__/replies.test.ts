@@ -55,3 +55,40 @@ test("a person promising to follow up is never mistaken for an auto-reply", () =
 test("quoted-printable bodies decode", () => {
   assert.equal(bodyText("caf=C3=A9 =\r\nopen").trim(), "café open");
 });
+
+/**
+ * The part's own Content-Transfer-Encoding is not fetched with it, so base64 is a guess from the text, and a
+ * sentence written without punctuation is nothing but letters and spaces once the whitespace is squeezed
+ * out. Three plausible bodies were being decoded as base64 into mojibake: the auto-reply phrases then matched
+ * nothing, so an unread inbox was logged as a person, that business was retired from the campaign, and the
+ * snippet in Harshil's alert was rubbish.
+ */
+test("a reply written without punctuation is read as the sentence it is, not decoded as base64", () => {
+  for (const body of [
+    "Hi thanks for the email I am away until Monday",
+    "Thank you for reaching out we will get back to you shortly",
+    "Yes please send me the details thanks",
+  ]) {
+    assert.equal(bodyText(body), body);
+  }
+});
+
+/**
+ * A quoted original carries punctuation of its own, which is what kept most replies readable; an
+ * auto-responder that quotes nothing is the shape that broke, and it is the shape most of them have.
+ */
+test("an out of office with no punctuation and nothing quoted still counts as automatic", () => {
+  const c = classifyReply({
+    from: "info@example.com",
+    subject: "Re: Who answers the phone after you close?",
+    headers: "Return-Path: <info@example.com>",
+    body: "Hi thanks for the email I am away until Monday",
+    own,
+  });
+  assert.equal(c.auto, true);
+});
+
+test("a body that really is base64 is still decoded", () => {
+  const text = "This is an automated reply, the inbox is not monitored.";
+  assert.equal(bodyText(Buffer.from(text).toString("base64")), text);
+});
