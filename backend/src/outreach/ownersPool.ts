@@ -142,7 +142,7 @@ export type OwnersPoolOptions = {
   /** How a page is read. Default: the shared crawler fetch (robots.txt, the From header). Tests pass saved pages. */
   fetchPage?: (url: string) => Promise<SitePage>;
   log?: (line: string) => void;
-  /** Deadline for one page (default 10 s), for one whole site (60 s), and the pause between two pages of a site (200 ms). */
+  /** Deadline for one page (default 20 s, robots.txt included, as the laptop's owners crawl), for one whole site (90 s), and the pause between two pages of a site (200 ms). */
   pageMs?: number;
   siteMs?: number;
   gapMs?: number;
@@ -198,7 +198,7 @@ export async function runOwnersPool(o: OwnersPoolOptions): Promise<OwnersPoolSum
   const read = (site: string): Promise<OwnersSiteResult> => {
     let p = sites.get(site);
     if (!p) {
-      p = withDeadline(ownersForSite(site, { fetchPage: o.fetchPage, pageMs: o.pageMs ?? 10_000, gapMs }), o.siteMs ?? 60_000, site);
+      p = withDeadline(ownersForSite(site, { fetchPage: o.fetchPage, pageMs: o.pageMs ?? 20_000, gapMs }), o.siteMs ?? 90_000, site);
       sites.set(site, p);
     }
     return p;
@@ -209,9 +209,14 @@ export async function runOwnersPool(o: OwnersPoolOptions): Promise<OwnersPoolSum
     let decision: OwnerDecision | null = null;
     if (!site) sum.skipped++;
     else {
-      const res = await read(site).catch(() => null);
-      if (!res || !res.loaded || res.blocked) sum.failed++;
-      else {
+      const res = await read(site).catch((e: unknown) => {
+        log(`could not read ${site}: ${((e as Error)?.message || String(e)).slice(0, 140)}`);
+        return null;
+      });
+      if (!res || !res.loaded || res.blocked) {
+        sum.failed++;
+        if (res) log(`could not read ${site}: ${res.blocked ? "blocked (" + (res.why || "challenge page") + ")" : res.why || "no page"}`);
+      } else {
         if (res.found.some((f) => f.name && /^[A-Z][a-z]/.test(f.name))) sum.namesOnSite++;
         decision = decideOwner(row, res.found);
       }

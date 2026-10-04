@@ -105,6 +105,8 @@ export type OwnersSiteResult = {
   /** Pages read, the home page included. */
   pages: number;
   found: OwnerFound[];
+  /** Why the home page did not load ("HTTP 404", "robots.txt says no", the fetch error), so a run can say what failed. */
+  why?: string;
 };
 
 /** Who runs the business, by what its own site says: names next to an owner word, personal mailboxes, mobile numbers. */
@@ -114,8 +116,17 @@ export async function ownersForSite(website: string, opts: OwnersSiteOptions = {
   const gapMs = opts.gapMs ?? 200;
   const maxExtra = opts.maxExtra ?? 4;
   const found: OwnerFound[] = [];
-  const home = await withDeadline(fetchPage(website), pageMs, website).catch(() => null);
-  if (!home || home.status >= 400 || !home.html) return { loaded: false, blocked: false, pages: 0, found };
+  let err = "";
+  const home = await withDeadline(fetchPage(website), pageMs, website).catch((e: unknown) => {
+    const c = (e as { cause?: { code?: string; message?: string } })?.cause;
+    err = [(e as Error)?.message || String(e), c?.code || c?.message].filter(Boolean).join(": ").slice(0, 140);
+    return null;
+  });
+  if (!home || home.status >= 400 || !home.html) {
+    // fetchHtml answers status 0 with no body when robots.txt disallows the page.
+    const why = !home ? err || "no answer" : home.status >= 400 ? "HTTP " + home.status : home.status === 0 ? "robots.txt says no" : "empty page";
+    return { loaded: false, blocked: !!home && looksBlocked(home), pages: 0, found, why };
+  }
   const base = new URL(home.finalUrl || website);
   const pages: { url: string; html: string }[] = [{ url: home.finalUrl, html: home.html }];
   const first = textOf(home.html);
