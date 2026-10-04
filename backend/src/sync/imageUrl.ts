@@ -1,3 +1,6 @@
+import { isIP } from "node:net";
+import { isBlockedAddress } from "../lib/safeFetch.ts";
+
 /**
  * The published address of a stored image. Shared by the catalog build and by the photo work list, because the
  * photo screen judges images by the address the site publishes, so anything that looks a verdict up has to ask
@@ -5,12 +8,24 @@
  */
 
 /**
- * A machine nobody but the developer can reach. A crawled page can carry one: solidcore's own site links
+ * A name nobody but the developer can reach. A crawled page can carry one: solidcore's own site links
  * `http://localhost:3000/solidcore-studios.webp`, which shipped as the cover of all fifteen of their studios,
  * and a guest's browser asked their own machine for it and got nothing.
+ *
+ * Names only. An address literal goes to `isBlockedAddress` in lib/safeFetch.ts, the guard the crawler already
+ * uses, because this was the third copy of "is this host private" in the tree and the one still reading an
+ * IPv4 address written inside an IPv6 one as a public host. `new URL()` rewrites the dotted tail into hextets,
+ * so `http://[::ffff:127.0.0.1]/hero.jpg` arrives here as `::ffff:7f00:1` and the IPv4-compatible
+ * `http://[::7f00:1]/hero.jpg` as itself: both matched nothing, shipped as a listing's cover, and a guest's
+ * browser asked their own machine for the picture. The shared guard reads both spellings as the address they
+ * are, and knows the unspecified address `::` besides, which the regex's own `::1` arm did not.
  */
-const PRIVATE_HOST =
-  /^(?:localhost|127(?:\.\d{1,3}){3}|0(?:\.\d{1,3}){3}|10(?:\.\d{1,3}){3}|192\.168(?:\.\d{1,3}){2}|169\.254(?:\.\d{1,3}){2}|172\.(?:1[6-9]|2\d|3[01])(?:\.\d{1,3}){2}|100\.(?:6[4-9]|[7-9]\d|1[01]\d|12[0-7])(?:\.\d{1,3}){2}|\[?::1\]?|\[?fe80:[0-9a-f:]*\]?|\[?f[cd][0-9a-f]{2}:[0-9a-f:]*\]?|[^.]+\.(?:local|internal|localdomain|lan|test|invalid|example|localhost))$/i;
+const PRIVATE_NAME = /^(?:localhost|[^.]+\.(?:local|internal|localdomain|lan|test|invalid|example|localhost))$/i;
+
+/** True for an address or a name a guest's browser could only resolve inside their own network. */
+function privateHost(host: string): boolean {
+  return isIP(host) ? isBlockedAddress(host) : PRIVATE_NAME.test(host);
+}
 
 /** wsrv.nl (images.weserv.nl) is a free image proxy we wrap trusted URLs through ourselves. A stored photo
  * address can already be one, when the operator's own site uses it as their CDN, and an unrecognized query
@@ -74,7 +89,7 @@ export function publishableImage(u: string): boolean {
   // address a photo screen or the app's own image proxy could ask for), `blob:`, `javascript:` or a bare file path.
   if (url.protocol !== "http:" && url.protocol !== "https:") return false;
   const host = url.hostname.replace(/^\[|\]$/g, "");
-  if (PRIVATE_HOST.test(host) || PARKED_HOST.test(host)) return false;
+  if (privateHost(host) || PARKED_HOST.test(host)) return false;
   if (PIXEL_HOST.test(host) || VENDOR_CHROME.test(host) || PIXEL_PATH.test(url.pathname) || PIXEL_NAME.test(url.pathname)) return false;
   if (WSRV_HOST.test(host)) {
     for (const key of url.searchParams.keys()) if (!WSRV_SAFE_PARAMS.has(key.toLowerCase())) return false;

@@ -123,3 +123,35 @@ test("a wsrv.nl address with an unrecognized query parameter is refused", () => 
   // The plain, ordinary wrap this codebase itself produces stays published.
   assert.equal(publishableImage("https://wsrv.nl/?url=example.com%2Fa.jpg&w=800&output=webp&q=78"), true);
 });
+
+/**
+ * An IPv4 address written inside an IPv6 one is still that address, and the guest's browser connects to the
+ * same place. This was the third copy of "is this host private" in the tree and the last one that read those
+ * spellings as a public host, so a crawled page linking one shipped as a listing's cover and every guest's
+ * browser went looking for the picture on their own machine.
+ */
+test("an address written inside an IPv6 one is read as the address it is", () => {
+  for (const u of [
+    // What `new URL()` leaves after rewriting a dotted tail into hextets, which is the form that reaches here.
+    "http://[::ffff:7f00:1]/hero.jpg", // ::ffff:127.0.0.1, loopback
+    "http://[::ffff:c0a8:10e]/hero.jpg", // ::ffff:192.168.1.14, private
+    "http://[::ffff:a9fe:a9fe]/hero.jpg", // ::ffff:169.254.169.254, link-local
+    "http://[::ffff:a00:1]/hero.jpg", // ::ffff:10.0.0.1, private
+    // The deprecated IPv4-compatible range, with no ffff in front of it.
+    "http://[::7f00:1]/hero.jpg",
+    // The dotted spelling, for a caller that builds the string itself rather than through `new URL()`.
+    "http://[::ffff:127.0.0.1]/hero.jpg",
+    // The unspecified address, which the old regex's ::1 arm did not know.
+    "http://[::]/hero.jpg",
+    "http://0.0.0.0/hero.jpg",
+  ]) {
+    assert.equal(publishableImage(u), false, u);
+    assert.equal(fullSize(u), undefined, u);
+  }
+});
+
+test("a public IPv6 host still publishes, so the guard refuses addresses and not the protocol", () => {
+  for (const u of ["http://[2606:4700:4700::1111]/hero.jpg", "https://[2001:4860:4860::8888]/img/boat.jpg"]) {
+    assert.equal(publishableImage(u), true, u);
+  }
+});
