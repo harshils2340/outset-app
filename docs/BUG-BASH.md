@@ -9857,6 +9857,80 @@ Playwright Chromium. `STRIPE_SECRET_KEY`, `RESEND_API_KEY` and `GITHUB_TOKEN` we
   with it cleared). **Local `main` was detached again**, tenth run in a row, at `e848cb85`. Re-pointed with
   `git checkout -B main` before committing.
 
+## 4 October 2026, hundred and thirty-fifth run (06:15 to 06:55 UTC)
+
+**Chosen, and why.** Nothing has landed since the hundred and thirty-fourth run's entry (`60932256` is HEAD),
+and that entry records the rehearsal green at 57 of 57, so the brief's rule (b) does not apply and the
+**rehearsal was skipped at the start** in favour of hunting. It was run at the end instead, because tonight's
+changes touch `src/lib` and `backend/src/sync`. Baseline after `npm install` on both sides: root `tsc
+--noEmit -p .` clean, backend `tsc` clean but for TS5097, backend 1,036 with 1,034 pass and 2 skipped, app
+1,245 pass.
+
+Target: **the one hard filter in search, the promise that a listing is somewhere a young child may go.** The
+Coverage list had the kid filter down as verified and left two open questions about the age a shop states, so
+this was read the other way round: not "does the rule fire" but "whose age is the number it fires on",
+measured over all 52,815 shipped detail files.
+
+**Found and fixed.** Three commits, pushed, rebased onto `3093cecd` which landed while this ran.
+
+- **The age of the adult a child has to bring was read as the child's own floor** (`e9dece8a`). "Children (17
+  and under) must be accompanied and supervised by an adult (18+) at all times" is a shop saying children are
+  welcome, and the filter, which refuses a listing outright under a panel promising "Only places whose
+  published rules allow younger kids", read that "18+" as the opposite. Legoland Discovery Center, Bette's
+  Fun Center, Zen Tubing, Rock Oasis, Xtreme Action Park, The Escape House, Cipher Solver and James River
+  Outfitters were all hidden from a parent; the signature a courier needs for a wine delivery was the same
+  mistake with a different grown-up. The escort clause is set aside before the floor is read, so a shop that
+  states a floor anywhere else still states one: a 21+ bar night and "public cruises are 21+ or 18+ if
+  accompanied by an adult" stay refused. Twelve listings now read as welcoming children, six fall back to
+  their kind, nothing moves the other way. Shepler's ferry went with them: it writes "children under 5 travel
+  free but must be accompanied by an adult" and the crawl glued "Only trained service animals permitted" on
+  to the end of it, which read as an adults-only door.
+- **The rule never read `requirements`, which is the field a shop's age rule actually lives in** (`a6e008f6`).
+  102 shipped partner products state their own minimum age of 12 or more there and were offered to a guest
+  filtering for younger kids: Weird Bar Crawl, Austin Live Music Crawl, The Sip of Montreal Brew Tour, a
+  shooting range experience and a run of adult walking and e-bike tours. The field cannot simply join the
+  three the rule already reads, because those are read for a yes as well as a no and a requirement line says
+  "Not recommended for children under 8" as often as it welcomes one, so it is read for a floor alone, and
+  only where the number is the floor for the whole booking. No operator listing moves.
+
+**Measured and left.** The open question about a stated age floor refusing the filter now has numbers, and the
+answer is that a floor cannot be believed wherever it is written. Reading any "must be at least N" the way
+`ages.ts` reads an age flips 111 listings, and the wrong half is large: a golf course's cart drivers, a gun
+range whose own line is "ages 10-17 may shoot under direct supervision of a parent", a jet ski rental stating
+"passengers must be at least 10 years old", "must be 21 to consume alcohol" on a family brewery. The 181
+listings writing "ages N+" with a two digit floor are mostly one tier of several ("junior golf program ages
+7-14", "adults - ages 10+: $60, children - ages 2-9: $55"), so refusing on the first floor read would be
+wrong on most of them: it wants the lowest age a listing states, which is the same want `minAge` already has
+open. The `codes` map in `api/auth.ts` is the one in-memory map there with no sweep, but only an address that
+already holds a claimed listing or sits in `ADMIN_EMAILS` can put an entry in it, so it is bounded by real
+operators and left alone.
+
+**Verification.** App `npm test` 1,251 pass, up from 1,245 (6 new); backend 1,046 with 1,044 pass and 2
+skipped after the rebase, which brought ten of its own. Every new test was run against the tree with its own fix reverted and fails there. `tsc
+--noEmit -p .` clean, backend's own `tsc` clean but for TS5097. The **rehearsal ran 57 of 57**, on a
+local Postgres 16 cluster built from scratch on port 5433 with SSL on and the on-disk Playwright Chromium.
+`STRIPE_SECRET_KEY`, `RESEND_API_KEY` and `GITHUB_TOKEN` were empty throughout.
+
+**Needs Harshil.**
+
+- **Neither fix tonight reaches a guest until a sync runs, and nothing in this repo can run one.** The
+  shipped `public/catalog.json` carries no `kid` field on any of its 52,816 rows, and `specs`, `gap` and
+  `extraNote` are empty on every one of them, so today the filter answers from `tags` and the shop's kind
+  alone. That is also true of the 524-listing fix an earlier run made: the verdict is taken at sync time and
+  the last sync predates the code that writes it. Worth knowing that the kid filter in production is
+  currently the kind fallback.
+- **The brief's rehearsal command names `scripts/e2e-local.mts`, which is `backend/scripts/e2e-local.mts`.**
+  The first attempt tonight failed on the path. Worth correcting in the nightly prompt.
+- Still open from earlier runs, unchanged: there is no error boundary in this app, now twenty runs asked;
+  "Open right now near you" is computed once a visit; the 108 operators with hacked websites still have not
+  been told; the phone's browse is not ranked while the desktop's is; the phone confirmation offers no way to
+  reach the shop; a guest cannot cancel a booking at all; a price sort and a price filter compare two dollars
+  on six metros; the cards say "$" for a Canadian shop; `lasertag` does not search `paintball`; and this
+  container still injects a `GITHUB_TOKEN`, which the brief says must be empty (everything tonight ran with
+  it cleared). **Local `main` is still detached**, eleventh run in a row, and this run could not re-point it:
+  the sandbox refused `git checkout -B main` as destructive, so the work was committed on the detached head
+  and pushed with `git push origin HEAD:main`.
+
 ## Coverage
 
 The catalog is 48,198 listings as of the 23 September sync, 1,873 of them Viator partner rows. Counts below
@@ -10913,6 +10987,13 @@ badge. The shipped `explain` entries against `explainTerms` over all 61,614 serv
 
 Every address the product hands a person, now that the root is the Otto page and the marketplace is at `/activities`: every internal link, image, stylesheet, script and in-page anchor of the five new static pages against the files, the render.yaml routes and the vite dev rewrites; every `href` both page generators write; every URL the API, the mail and the scripts build, now a source sweep of its own; every root-relative link in `src`; and all seventeen doors into the app driven in a real Chromium at 1280px and 400px, the root with each of the seven legacy hashes among them, for where each lands, sideways scroll, anything past the edge and a throw. The three Google Fonts URLs the site loads. The sitemap index, `sitemap-pages.xml`, `robots.txt` and `llms.txt` against what the build publishes. Every `GUEST_AGENT` branch read against what is left on the screen behind it. The outreach pool's new send order (`poolCandidates`) run against a real Postgres: family order, escape rooms at the head of indoor, a named mailbox before a desk inbox, completeness last, an unknown family at the back, and `FAMILY_ORDER` against the eight families the taxonomy defines. The reply sweep's body decoder against a sentence that only looks like base64.
 
+The kid filter, the one hard filter in search, read for whose age its number is rather than for whether it
+fires, over all 52,815 shipped detail files: the age of the adult a child has to bring, the signature a
+courier needs, an escort clause glued on to the line in front of it, the floor a listing states in its own
+`requirements`, and every spelling of a floor the rule reads against the 111 listings a broad reading of one
+would flip. Which fields the shipped browse catalog actually carries of the three the rule reads, and what
+the filter therefore answers from in production.
+
 **Not yet checked.** Whether the rehearsal should mirror the layout Render publishes rather than the one `vite build` leaves, which is what keeps the real home, its forward script and the route rewrites undriven (see this run's Needs Harshil). Whether `npm run build` and render.yaml should produce the same site at all, now that one runs `scripts/copy-operators.mjs` and the other does not. Whether a transactional email's wordmark should open the operator's page or the marketplace, which is one template serving both audiences (see this run's Needs Harshil). Whether the Inbox tab should stay in the tab bar at all while the guest agent is off, given that its list and its badge are now always empty by rule. Whether `SITE_PAGES` should be checked against the files that answer those paths, so a fifth business-type page added to the sitemap without its html cannot become a soft 404 under the catch-all. Whether `POST /auth/verify` should count a try it is about to find correct, which is
 what makes any client retry cost an owner one of five attempts (see this run's Needs Harshil). Whether a
 guest waiting out one of the two new deadlines should be told which wait they are in, 15 seconds on a
@@ -11364,4 +11445,4 @@ measured at 1,235 of 13,221 shipped entries, should not be, because those are th
 sync, which nothing in this repo can check because they are generated into `public/` at sync time and never
 committed. Whether the sync should read `ownWords` after all: it is still the one app reader the backend never
 calls, and where the hundred and thirty-second run measured it changing 0 blurbs on those pages it now changes
-40.
+40. Whether the lowest age a listing states, rather than the first floor a reader finds, should decide the kid filter: a broad reading of "must be at least N" flips 111 listings and the wrong half is a golf course's cart drivers, a gun range whose own line is "ages 10-17 may shoot under direct supervision of a parent" and a jet ski rental stating "passengers must be at least 10 years old", while the 181 listings writing "ages N+" with a two digit floor are mostly one tier of several, so both want the same thing `minAge` wants and neither is a rule yet (see the hundred and thirty-fifth run). Whether a requirement line that states a floor for one thing on the menu should be read as that thing's floor rather than set aside, which is what leaves "Minimum age 15 for Advanced Open Water Diver (12 for Junior)" saying nothing at all. Whether a sync should be run from here, or the verdicts the sync carries recomputed some other way, given that `kid` is on none of the 52,816 shipped rows and `specs`, `gap` and `extraNote` are empty on every one of them, so the kid filter in production is the kind fallback and two nights of fixes to it are waiting on a sync nothing in this repo can run (see that run's Needs Harshil).
