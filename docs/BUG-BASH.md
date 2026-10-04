@@ -9931,6 +9931,103 @@ local Postgres 16 cluster built from scratch on port 5433 with SSL on and the on
   the sandbox refused `git checkout -B main` as destructive, so the work was committed on the detached head
   and pushed with `git push origin HEAD:main`.
 
+## 4 October 2026, hundred and thirty-sixth run (06:58 to 08:05 UTC)
+
+**Chosen, and why.** Five commits landed after the hundred and thirty-fifth run's entry (`a5c1215a`,
+`0bd46830`, `7f3ff275`, `9a8a2789`, `46d4eaca`), all in `backend/src` and `backend/scripts`, so the brief's
+rule (b) applied and the **rehearsal was run at the start**: 57 of 57, on a Postgres 16 cluster built from
+scratch on port 5433 with SSL on and the on-disk Playwright Chromium. Baseline after `npm install` on both
+sides: root `tsc --noEmit -p .` clean, backend `tsc` clean but for TS5097, backend 1,051 with 1,049 pass and
+2 skipped, app 1,251 pass.
+
+Target: **what the long-running API process remembers, and what bounds it.** The Coverage list has no entry
+for idempotency, concurrency or a cache's own lifetime, so this was read as its own axis: every cache, map and
+read-modify-write in the API, for a blip remembered as an answer and for a key a caller chooses. Tonight's five
+outreach commits were read through first, since nothing had read them.
+
+**Found and fixed.** Three commits, pushed.
+
+- **A Cloudflare challenge about a real business was remembered as "no such business" for ten minutes**
+  (`133749f0`). The phone agent reads the site's own `o/<id>.json` over HTTP and caches the answer, a miss
+  included. Its own comment says only a 404 should be remembered, and the code guarded 5xx and let every 4xx
+  through: the site sits behind Cloudflare (see `clientIp` in `api/auth.ts`), so a 403 bot challenge, a 429 or
+  a 408 at the edge all became a hard no, and for the next ten minutes `GET /voice/:id` answered 404 and
+  `GET /voice/:id/availability` refused the shop, on a live call. Only 404 and 410 are the site's own no now.
+  The guest app's twin reader was fixed for exactly this (`fetchAvailability` in `src/lib/api.ts`, which
+  deletes its entry when nobody answered); the API's copy was the straggler.
+- **The agent's listing cache was the one cache in the API with no bound** (`57ea798f`). Both `/voice` routes
+  are public and key it on the id out of the path, and a miss is remembered too, so it held one entry per
+  distinct id for the life of the process and nothing ever left. The per-IP limit bounds how fast that grows
+  and not how far, at 120 an hour per address. Capped at 500, oldest out first, the rule `otto.ts` already
+  uses; `openSlots.ts` and `enrich/availability.ts` cap at 5,000, the concierge's sessions at 500, its live
+  reads at 400.
+- **The last copy of the private-host guard read an address hidden inside an IPv6 one as public**
+  (`3858765d`), which the eighty-ninth run named and left. `backend/src/sync/imageUrl.ts` matched address
+  literals with its own regex, which knew `::1`, `fe80::/10` and `fc00::/7` and not the IPv4-mapped range.
+  `new URL()` rewrites a dotted tail into hextets, so `http://[::ffff:127.0.0.1]/hero.jpg` reaches the sync as
+  `::ffff:7f00:1` and the IPv4-compatible `http://[::7f00:1]/` as itself: both passed as a public host, so a
+  crawled page linking one could ship as a listing's cover and every guest's browser went looking for the
+  picture on their own machine. Address literals go to `isBlockedAddress` in `lib/safeFetch.ts` now, the guard
+  the crawler already uses, leaving this file only the names (`.local`, `.lan`, `.test`) that guard does not
+  carry. `::` and `0.0.0.0` go with them.
+
+**Measured and left.** The rest of the axis came back clean, which is worth recording as much as the three
+defects. Every booking and payout write is already idempotent and serialised: the Stripe webhook and the
+guest's own return from Checkout both go through `updateBooking`'s `select ... for update` inside one
+transaction with an `if (x.status !== "pending") return x` guard, so a duplicate delivery captures nothing and
+mails nothing twice; `withTx` never retries, so the `authorized` flag cannot stick; `insertBookingChecked`
+takes `pg_advisory_xact_lock` on the listing; the payout run fixes a transfer's amount on the first attempt
+and keys it `transfer-<code>` under `runPayoutsOnce`. Every module-level regex with a `g` flag in both trees
+(38 of them) was checked against the `lastIndex` that `.test()` and `.exec()` leave behind, and every one used
+with `.exec` already resets it by hand (`sanitizeSvg.ts` twice, `catalog.ts`'s `statesAnAgeRule`); the rest go
+through `.replace` or `.match`, which do not read it. `enrich/availability.ts` caches only `result.live`, which
+is the open question about keeping an empty calendar, already answered the conservative way. `places.ts`'s
+geocoder cache is unbounded and never expires, read and left: it is per browser tab and bounded by what a
+person types. Tonight's outreach commits: `decideOwner`, `writeRow`'s race check, `retryable`, the two-pass
+queue, `siteAlive`, `readDnsError` and the resend's `variant >= RESEND_BEFORE` all read correctly, and the two
+things that did not are below.
+
+**Needs Harshil.**
+
+- **`DESK_WORD` in `backend/src/outreach/address.ts` matches inside ordinary people's names, so some owners
+  never get the pitch.** The words are matched anywhere in the local part, by design ("paddlinginfo@",
+  "mikescharters@"), and seven of them are substrings of common names: `rent` in brent@ and laurent@, `shop`
+  in bishop@, `ski` in every -ski surname, `mail` in ismail@ and esmail@, `fish` in fisher@, `tour` in toure@,
+  and `marina` which is a first name. Each scores 1 (a desk) instead of 5, so the front desk keeps the tie and
+  the owner's own inbox is passed over, and `ownerFirstName` drops the "Hi Brent,". The house fix is a list of
+  the ordinary words that collide, as the kind reader and the hours reader already keep. **It is unfixed
+  because it could not be measured here:** this container's data-handling guard refused the sweep over the
+  contact blocks in `public/o`, so there is no count of how many shipped operators it costs, and a fix in the
+  wrong direction (a desk greeted by name) is worse than the reach lost. Worth running that count on the
+  laptop before changing the rule. `1892fa76` landed on `origin/main` while this ran and extends `DESK_WORD`
+  by fifteen more words, read against all 117 changes the owners lookup made to the indoor pool, so whoever
+  wrote it has the data this needs; the seven name collisions are all still in the list.
+- **`otto-cloud.mts` writes a passed-over resend's `failed` touch under kind `otto` rather than its own kind**
+  (lines 204 and 211), while a failed *send* on the same row writes it under `otto_resend` (line 248). Both
+  keep the address out of future resends; only the first also keeps it out of the first-touch campaign for any
+  other business sharing it. Which of the two is wanted is a call about suppression, not a defect, so it is
+  left as it is.
+- **`FREE_MAIL` in `address.ts` and `FREE` in `touches.ts` are two different lists of the same thing.**
+  `touches.ts` knows googlemail, proton and protonmail; `address.ts` does not, so a personal mailbox on one of
+  those scores 0 and is never written to at all.
+- Still open from earlier runs, unchanged: there is no error boundary in this app, now twenty-one runs asked;
+  "Open right now near you" is computed once a visit; the 108 operators with hacked websites still have not
+  been told; the phone's browse is not ranked while the desktop's is; the phone confirmation offers no way to
+  reach the shop; a guest cannot cancel a booking at all; a price sort and a price filter compare two dollars
+  on six metros; the cards say "$" for a Canadian shop; `lasertag` does not search `paintball`; `POST
+  /auth/verify` still counts a try it is about to find correct; and no sync has run, so `kid`, `specs`, `gap`
+  and `extraNote` are still empty on every shipped row and four nights of fixes to the kid filter are waiting
+  on one. **The brief's rehearsal path is `backend/scripts/e2e-local.mts`, not `scripts/`**, second run to say
+  so. **Local `main` is still detached**, twelfth run in a row: the sandbox refuses `git checkout -B main`, so
+  the work was committed on the detached head and pushed with `git push origin HEAD:main`. This container
+  still injects a `GITHUB_TOKEN`; everything tonight ran with it cleared.
+
+**Verification.** Backend `npm test` 1,059 with 1,057 pass and 2 skipped, up 8 from 1,051 (6 new in
+`api/__tests__/voiceCache.test.ts`, 2 new in `sync/__tests__/imageUrl.test.ts`); app 1,251 pass, unchanged.
+Every new test was run against the tree with its own fix reverted and fails there. `tsc --noEmit -p .` clean,
+backend's own `tsc` clean but for TS5097. The **rehearsal ran 57 of 57** again at the end, since the changes
+are in `backend/src`. `STRIPE_SECRET_KEY`, `RESEND_API_KEY` and `GITHUB_TOKEN` were empty throughout.
+
 ## Coverage
 
 The catalog is 48,198 listings as of the 23 September sync, 1,873 of them Viator partner rows. Counts below
@@ -10994,6 +11091,21 @@ courier needs, an escort clause glued on to the line in front of it, the floor a
 would flip. Which fields the shipped browse catalog actually carries of the three the rule reads, and what
 the filter therefore answers from in production.
 
+What the long-running API process remembers, and what bounds it, read as its own axis: every cache and map in
+it (the phone agent's listing cache, Otto's answer cache and budget, the slot-facts cache, both
+`enrich/availability.ts` caches, the concierge's sessions and live reads, the two rate-limit maps and the
+code map) for a key a caller chooses, for a blip remembered as an answer, and for a cap, with the app's own
+`fetchAvailability` read as the twin of the first. Every booking and payout write for idempotency and
+concurrency: the Stripe webhook against a duplicate delivery and against the guest's own return from Checkout,
+`updateBooking`'s row lock inside one transaction, `withTx` for a retry that would re-run a mutator,
+`insertBookingChecked`'s advisory lock, and the payout run's `transfer-<code>` key under `runPayoutsOnce`.
+Every module-level regex with a `g` flag in both trees, all 38, against the `lastIndex` that `.test()` and
+`.exec()` leave behind. All three implementations of "is this host private" against each other, over every
+spelling an IPv4 address takes inside an IPv6 one, which closes that item. The five outreach commits of 4
+October (`a5c1215a`, `0bd46830`, `7f3ff275`, `9a8a2789`, `46d4eaca`) read end to end: `decideOwner`, the
+owners queue's two passes and its race check, `retryable`, `siteAlive` and `readDnsError`, and the resend's
+own copy-version cut.
+
 **Not yet checked.** Whether the rehearsal should mirror the layout Render publishes rather than the one `vite build` leaves, which is what keeps the real home, its forward script and the route rewrites undriven (see this run's Needs Harshil). Whether `npm run build` and render.yaml should produce the same site at all, now that one runs `scripts/copy-operators.mjs` and the other does not. Whether a transactional email's wordmark should open the operator's page or the marketplace, which is one template serving both audiences (see this run's Needs Harshil). Whether the Inbox tab should stay in the tab bar at all while the guest agent is off, given that its list and its badge are now always empty by rule. Whether `SITE_PAGES` should be checked against the files that answer those paths, so a fifth business-type page added to the sitemap without its html cannot become a soft 404 under the catch-all. Whether `POST /auth/verify` should count a try it is about to find correct, which is
 what makes any client retry cost an owner one of five attempts (see this run's Needs Harshil). Whether a
 guest waiting out one of the two new deadlines should be told which wait they are in, 15 seconds on a
@@ -11445,4 +11557,18 @@ measured at 1,235 of 13,221 shipped entries, should not be, because those are th
 sync, which nothing in this repo can check because they are generated into `public/` at sync time and never
 committed. Whether the sync should read `ownWords` after all: it is still the one app reader the backend never
 calls, and where the hundred and thirty-second run measured it changing 0 blurbs on those pages it now changes
-40. Whether the lowest age a listing states, rather than the first floor a reader finds, should decide the kid filter: a broad reading of "must be at least N" flips 111 listings and the wrong half is a golf course's cart drivers, a gun range whose own line is "ages 10-17 may shoot under direct supervision of a parent" and a jet ski rental stating "passengers must be at least 10 years old", while the 181 listings writing "ages N+" with a two digit floor are mostly one tier of several, so both want the same thing `minAge` wants and neither is a rule yet (see the hundred and thirty-fifth run). Whether a requirement line that states a floor for one thing on the menu should be read as that thing's floor rather than set aside, which is what leaves "Minimum age 15 for Advanced Open Water Diver (12 for Junior)" saying nothing at all. Whether a sync should be run from here, or the verdicts the sync carries recomputed some other way, given that `kid` is on none of the 52,816 shipped rows and `specs`, `gap` and `extraNote` are empty on every one of them, so the kid filter in production is the kind fallback and two nights of fixes to it are waiting on a sync nothing in this repo can run (see that run's Needs Harshil).
+40. Whether the lowest age a listing states, rather than the first floor a reader finds, should decide the kid filter: a broad reading of "must be at least N" flips 111 listings and the wrong half is a golf course's cart drivers, a gun range whose own line is "ages 10-17 may shoot under direct supervision of a parent" and a jet ski rental stating "passengers must be at least 10 years old", while the 181 listings writing "ages N+" with a two digit floor are mostly one tier of several, so both want the same thing `minAge` wants and neither is a rule yet (see the hundred and thirty-fifth run). Whether a requirement line that states a floor for one thing on the menu should be read as that thing's floor rather than set aside, which is what leaves "Minimum age 15 for Advanced Open Water Diver (12 for Junior)" saying nothing at all. Whether a sync should be run from here, or the verdicts the sync carries recomputed some other way, given that `kid` is on none of the 52,816 shipped rows and `specs`, `gap` and `extraNote` are empty on every one of them, so the kid filter in production is the kind fallback and two nights of fixes to it are waiting on a sync nothing in this repo can run (see that run's Needs Harshil). Whether `DESK_WORD` in `backend/src/outreach/address.ts` should match inside an
+ordinary name, which it does on seven words (`rent` in brent@, `shop` in bishop@, `ski` in every -ski
+surname, `mail` in ismail@, `fish` in fisher@, `tour` in toure@, and `marina`, which is a first name): each
+costs the owner's own inbox and the "Hi Brent,", and the count it costs across the shipped catalog could not
+be taken here because this container's data-handling guard refused the sweep over the contact blocks in
+`public/o` (see the hundred and thirty-sixth run's Needs Harshil). Whether a passed-over resend's `failed`
+touch should carry its own kind, as a failed send on the same row does, or kind `otto`, as the two
+deliverability skips write it: only the second keeps the address out of the first-touch campaign for another
+business sharing it. Whether `FREE_MAIL` in `address.ts` and `FREE` in `touches.ts` should be one list, since
+only the second knows googlemail, proton and protonmail and the first scores a mailbox there at 0. Whether a
+cache that is full of fresh entries should evict anything: `openSlots.ts` and `enrich/availability.ts` clear
+the whole map at 5,000, which is the pattern `auth.ts`'s own `sweep` comment argues against, and
+`concierge/live.ts`'s sweep at 400 removes nothing while all 400 are inside their ten minutes. Whether
+`places.ts`'s geocoder cache should expire or be capped, which it is neither, read and left because it is per
+browser tab and bounded by what a person types.
