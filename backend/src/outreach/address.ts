@@ -25,6 +25,12 @@ const ROLE = /^(info|hello|hi|contact|contactus|book|booknow|booking|bookings|re
  */
 const DESK_WORD = /(info|book|reserv|sales|office|admin|support|contact|hello|tour|charter|rental|cruise|order|event|team|staff|service|mail|marina|waiver|program|registrar|director|buyer|warehouse|frontdesk|reception|dispatch|crew|captain|pilot|instructor|guide|school|lesson|class|shop|store|fish|dive|kayak|boat|sail|parasail|jetski|rent|ski|surf|charters)/;
 
+/**
+ * The inbox of whoever runs the place rather than of a desk: owner@, manager@, gm@. Harshil, 4 October 2026: find the
+ * managers' and owners' direct inboxes, not info@. Better than any desk, below a named person's own mailbox.
+ */
+const DECIDER = /^(owner|owners|manager|managers|management|gm|generalmanager|general\.manager|ceo|founder|founders|president)$/;
+
 function localPart(email: string): string {
   return email.split("@")[0];
 }
@@ -49,7 +55,8 @@ export function looksPersonal(email: string, domain: string): boolean {
 
 /**
  * Where a pitch should go, from 0 (not this operator's, never) up. The owner's own mailbox at their domain
- * beats their personal gmail, which beats a mailbox that is neither a person nor a desk (a brand-named gmail),
+ * beats their personal gmail or the manager's inbox there (manager@, gm@, owner@), which beat a mailbox that is
+ * neither a person nor a desk (a brand-named gmail),
  * which beats a desk. Every desk scores the same, so a crawl candidate that is just another desk (waivers@,
  * paddlinginfo@) never displaces the front desk already on file: ties keep the first candidate, the front
  * desk. A role inbox on a stranger's domain is nobody's and scores 0, same as before any ranking existed.
@@ -59,6 +66,7 @@ function rank(email: string, own: string): number {
   const mine = ownDomain(host, own);
   const free = FREE_MAIL.test(host);
   if (!mine && !free) return 0;
+  if (DECIDER.test(localPart(email))) return mine ? 4 : 2;
   if (looksPersonal(email, own)) return mine ? 5 : 4;
   if (ROLE.test(email) || DESK_WORD.test(localPart(email))) return 1;
   return mine ? 3 : 2;

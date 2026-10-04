@@ -68,6 +68,17 @@ test("the owner's own mailbox beats the front desk when the site names one", () 
   assert.equal(outreachAddress({ email: "islandtimeparasail@gmail.com", domain: "islandtimeparasail.com" }, ["mike.reyes@gmail.com"]), "mike.reyes@gmail.com", "a person's gmail beats the shop's gmail");
 });
 
+test("the manager's or owner's own inbox beats a desk, and a named owner beats both", () => {
+  const op = { email: "info@puzzlevaultrooms.com", domain: "puzzlevaultrooms.com" };
+  assert.equal(outreachAddress(op, ["manager@puzzlevaultrooms.com"]), "manager@puzzlevaultrooms.com");
+  assert.equal(outreachAddress(op, ["gm@puzzlevaultrooms.com"]), "gm@puzzlevaultrooms.com");
+  assert.equal(outreachAddress(op, ["owner@puzzlevaultrooms.com"]), "owner@puzzlevaultrooms.com");
+  assert.equal(outreachAddress(op, ["manager@puzzlevaultrooms.com", "dana@puzzlevaultrooms.com"]), "dana@puzzlevaultrooms.com", "a person's own mailbox first");
+  assert.equal(outreachAddress({ email: "manager@puzzlevaultrooms.com", domain: "puzzlevaultrooms.com" }, ["dana@puzzlevaultrooms.com"]), "dana@puzzlevaultrooms.com");
+  assert.equal(outreachAddress(op, ["manager@legoland.com"]), "info@puzzlevaultrooms.com", "somebody else's manager");
+  assert.equal(ownerFirstName("manager@puzzlevaultrooms.com", ["Dana Price (owner)"]), null, "a role inbox opens with no name");
+});
+
 test("a crawl candidate that is junk or a stranger's never displaces the front desk", () => {
   const op = { email: "hello@capitolboatclub.com", domain: "capitolboatclub.com" };
   assert.equal(outreachAddress(op, ["619-1406capitolboatclub@gmail.com"]), "hello@capitolboatclub.com", "a phone number glued to an address");

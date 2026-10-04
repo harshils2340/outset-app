@@ -7,14 +7,15 @@ import { bestAddress, ownerFacts } from "../src/outreach/owner.ts";
 import { ownerFirstName } from "../src/outreach/address.ts";
 import { catalogId } from "../src/outreach/drafts.ts";
 import { smtpIdentities } from "../src/lib/mail.ts";
-import { ensureTouchTables, loadRamp, recordTouch, saveRamp } from "../src/outreach/touches.ts";
+import { ensureTouchTables, loadRamp, poolUpsertSql, recordTouch, saveRamp } from "../src/outreach/touches.ts";
 
 /**
  * Publishes what the cloud sender needs from this laptop's catalog into Postgres (src/outreach/touches.ts):
  *
  *   1. outreach_pool: every Otto candidate, with the address the pitch should go to (the owner's own mailbox
  *      when the site names one, else the front desk, owner.ts) and the first name to open with. The same
- *      eligibility as the laptop's draft queue. Businesses that stopped qualifying are removed.
+ *      eligibility as the laptop's draft queue. Businesses that stopped qualifying are removed. A business
+ *      the owners lookup (scripts/owners-pool.mts, on Render) found the owner for keeps that mailbox and name.
  *   2. outreach_sends: this disk's history (sent, failed, handoff, replied) so the cloud never mails a
  *      business the laptop or a friend already has. Idempotent.
  *   3. outreach_ramp: the warm-up state, seeded from data/outreach-otto-ramp.json the first time (or with
@@ -54,28 +55,18 @@ for (const op of ops) {
   rows.push([op.id, catalogId(op.domain), op.domain, op.name, op.website, to, op.phone, op.city, op.region, op.calendar_vendor, op.completeness, greet, op.family]);
 }
 
+// A row the owners lookup (scripts/owners-pool.mts) found the owner for keeps that mailbox and greeting:
+// poolUpsertSql leaves email, greet, desk_email and owner_source alone there and refreshes everything else.
 await withTx(async (c) => {
   for (let i = 0; i < rows.length; i += 500) {
     const chunk = rows.slice(i, i + 500);
-    const values: unknown[] = [];
-    const tuples = chunk.map((r, k) => {
-      const base = k * 13;
-      values.push(...r);
-      return "(" + Array.from({ length: 13 }, (_, j) => "$" + (base + j + 1)).join(", ") + ", now())";
-    });
-    await c.query(
-      `insert into outreach_pool (operator_id, catalog_id, domain, name, website, email, phone, city, region, calendar_vendor, completeness, greet, family, synced_at)
-       values ${tuples.join(", ")}
-       on conflict (operator_id) do update set catalog_id = excluded.catalog_id, domain = excluded.domain, name = excluded.name, website = excluded.website,
-         email = excluded.email, phone = excluded.phone, city = excluded.city, region = excluded.region, calendar_vendor = excluded.calendar_vendor,
-         completeness = excluded.completeness, greet = excluded.greet, family = excluded.family, synced_at = now()`,
-      values,
-    );
+    await c.query(poolUpsertSql(chunk.length), chunk.flat());
   }
   await c.query("delete from outreach_pool where synced_at < $1::timestamptz", [started]);
 });
 const named = rows.filter((r) => r[11]).length;
-console.log(`pool: ${rows.length} candidates published (${named} with an owner's first name), stale rows removed`);
+const [kept] = await query<{ n: number }>("select count(*)::int as n from outreach_pool where owners_checked_at is not null and owner_source is not null");
+console.log(`pool: ${rows.length} candidates published (${named} with an owner's first name), stale rows removed; ${kept?.n ?? 0} keep the owner the owners lookup found`);
 
 // This disk's history, so the cloud never repeats it.
 const first = smtpIdentities()[0]?.user || null;

@@ -44,7 +44,24 @@ export type PoolRow = {
    * to every family instead of just water, so reply rate can be compared by vertical: `outreach_sends` joined
    * back to this column by `operator_id` is that comparison, no new table needed. */
   family: string | null;
+  /** The front desk the pitch would have gone to, kept when the owners lookup (scripts/owners-pool.mts) found a better mailbox. */
+  desk_email?: string | null;
+  /** When the owners lookup read this business's own site, set whether or not it found anyone, so a rerun skips it. */
+  owners_checked_at?: string | null;
+  /** The page on the business's own site the owner's mailbox or name came from. Set means every later sync keeps email and greet. */
+  owner_source?: string | null;
 };
+
+/**
+ * Written by the owners lookup, which reads each business's own About, Team and Contact pages from a Render job
+ * and puts the owner's mailbox and first name straight into the pool (3 October 2026: greet was empty on all
+ * 161,368 rows and about half the sends went to info@ or bookings@).
+ */
+export const OWNER_COLUMNS_DDL = [
+  "alter table outreach_pool add column if not exists desk_email text",
+  "alter table outreach_pool add column if not exists owners_checked_at timestamptz",
+  "alter table outreach_pool add column if not exists owner_source text",
+];
 
 const DDL = [
   `create table if not exists outreach_pool (
@@ -64,6 +81,7 @@ const DDL = [
     synced_at timestamptz not null default now()
   )`,
   "alter table outreach_pool add column if not exists family text",
+  ...OWNER_COLUMNS_DDL,
   "create index if not exists outreach_pool_order on outreach_pool (completeness desc nulls last)",
   `create table if not exists outreach_sends (
     operator_id text not null,
@@ -162,21 +180,57 @@ export async function saveRamp(campaign: string, state: RampState): Promise<void
  * front desk forwards. Completeness breaks the remaining ties, as before.
  */
 export const FAMILY_ORDER = ["indoor", "motorsport", "play", "wellness", "food", "outdoor", "water", "air"];
-const DESK_INBOX = "^(info|hello|hi|contact|contactus|book|booknow|booking|bookings|reservation|reservations|res|sales|office|admin|support|help|team|staff|mail|email|events|inquiries|enquiries|general|frontdesk|guestservices|customerservice|service)$";
+export const DESK_INBOX = "^(info|hello|hi|contact|contactus|book|booknow|booking|bookings|reservation|reservations|res|sales|office|admin|support|help|team|staff|mail|email|events|inquiries|enquiries|general|frontdesk|guestservices|customerservice|service)$";
+
+/**
+ * Never written to as kind `$2`: the business not mailed, handed off or in conversation, and the address never
+ * used. Shared with the owners lookup's queue (ownersPool.ts), which reads sites in exactly this send order.
+ */
+export const POOL_UNTOUCHED = `not exists (select 1 from outreach_sends s where s.kind = $2 and s.operator_id = p.operator_id and s.status in ('sent', 'handoff', 'replied'))
+        and not exists (select 1 from outreach_sends s where s.kind = $2 and s.email = p.email)`;
+/** The send order above. `$3` is FAMILY_ORDER, `$4` is DESK_INBOX. */
+export const POOL_ORDER = `coalesce(array_position($3::text[], p.family), 99),
+        coalesce(p.family = 'indoor' and (p.name ilike '%escape%' or p.website ilike '%escape%'), false) desc,
+        (split_part(p.email, '@', 1) ~* $4),
+        p.completeness desc nulls last, p.operator_id`;
 
 export async function poolCandidates(limit: number, kind = "otto"): Promise<PoolRow[]> {
   await ensureTouchTables();
   return query<PoolRow>(
     `select p.* from outreach_pool p
-      where not exists (select 1 from outreach_sends s where s.kind = $2 and s.operator_id = p.operator_id and s.status in ('sent', 'handoff', 'replied'))
-        and not exists (select 1 from outreach_sends s where s.kind = $2 and s.email = p.email)
-      order by coalesce(array_position($3::text[], p.family), 99),
-        coalesce(p.family = 'indoor' and (p.name ilike '%escape%' or p.website ilike '%escape%'), false) desc,
-        (split_part(p.email, '@', 1) ~* $4),
-        p.completeness desc nulls last, p.operator_id
+      where ${POOL_UNTOUCHED}
+      order by ${POOL_ORDER}
       limit $1`,
     [limit, kind, FAMILY_ORDER, DESK_INBOX],
   );
+}
+
+/** What scripts/outreach-pool-sync.mts publishes for each candidate, in this order. */
+export const POOL_COLUMNS = ["operator_id", "catalog_id", "domain", "name", "website", "email", "phone", "city", "region", "calendar_vendor", "completeness", "greet", "family"] as const;
+
+/**
+ * A row the owners lookup wrote to: it read the business's own site and found the owner's mailbox or name there.
+ * `owners_checked_at` alone is not enough, since a site that named nobody is checked too and has nothing to keep.
+ */
+const OWNER_WORK = "outreach_pool.owners_checked_at is not null and outreach_pool.owner_source is not null";
+
+/**
+ * The pool sync's upsert for `rows` candidates, parameters `$1` up in POOL_COLUMNS order, row after row.
+ *
+ * The sync publishes from the laptop's catalog, whose address and greeting come from its own owner facts. For a
+ * business the owners lookup already found the owner for, a catalog without those facts would put the front
+ * desk back and drop the "Hi Jeff,", so on such a row email and greet stay as the lookup left them, and
+ * desk_email and owner_source are never written by a sync at all. Every other column is refreshed as before.
+ */
+export function poolUpsertSql(rows: number): string {
+  const n = POOL_COLUMNS.length;
+  const tuples = Array.from({ length: rows }, (_, k) => "(" + Array.from({ length: n }, (_, j) => "$" + (k * n + j + 1)).join(", ") + ", now())");
+  const keep = (col: string) => `${col} = case when ${OWNER_WORK} then outreach_pool.${col} else excluded.${col} end`;
+  return `insert into outreach_pool (${POOL_COLUMNS.join(", ")}, synced_at)
+       values ${tuples.join(", ")}
+       on conflict (operator_id) do update set catalog_id = excluded.catalog_id, domain = excluded.domain, name = excluded.name, website = excluded.website,
+         ${keep("email")}, phone = excluded.phone, city = excluded.city, region = excluded.region, calendar_vendor = excluded.calendar_vendor,
+         completeness = excluded.completeness, ${keep("greet")}, family = excluded.family, synced_at = now()`;
 }
 
 /**

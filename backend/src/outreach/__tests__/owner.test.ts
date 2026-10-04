@@ -1,7 +1,15 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { db, migrate, nowIso } from "../../db/client.ts";
-import { bestAddress, greeting, ownerFacts } from "../owner.ts";
+import { mkdtempSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+
+// This file drops and recreates the facts table, so it gets a scratch database of its own, like the other tests
+// that write to SQLite. Until 3 October 2026 it imported db/client.ts directly, which with no OUTSET_DB set opens
+// the laptop's real catalog (backend/data/outset.db), so every `npm test` there dropped the catalog's facts table.
+process.env.OUTSET_DB = join(mkdtempSync(join(tmpdir(), "outset-owner-")), "catalog.db");
+const { db, migrate, nowIso } = await import("../../db/client.ts");
+const { bestAddress, greeting, ownerFacts } = await import("../owner.ts");
 
 /**
  * A database with no facts table has no owner facts to give, and that is the front desk rather than an error.
