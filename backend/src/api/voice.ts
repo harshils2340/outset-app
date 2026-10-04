@@ -55,6 +55,22 @@ type Listing = {
 const cache = new Map<string, { at: number; value: Listing | null }>();
 
 /**
+ * Whether a status that is not ok is the site saying there is no such listing, which is worth remembering for
+ * the ten minutes below, or the site saying nothing at all, which is not.
+ *
+ * Only 404 and 410 are the first kind: a static host answers 404 for a file it does not have, and 410 for one
+ * it has withdrawn. Everything else is the question not getting through. The site sits behind Cloudflare (see
+ * `clientIp` in api/auth.ts), so this API host asking for a listing can be answered 403 by a bot challenge,
+ * 429 by a rate limit, or 408 when the edge gives up, and none of those is evidence about the listing. Reading
+ * them as "no such listing" is the blip the comment below was written about, closed for 5xx and left open for
+ * every 4xx: one Cloudflare challenge and the phone agent tells every caller for the next ten minutes that it
+ * has never heard of the business, and `/voice/:id/availability` refuses them for the same ten minutes.
+ */
+export function remembersMiss(status: number): boolean {
+  return status === 404 || status === 410;
+}
+
+/**
  * The published listing record, the same `o/<id>.json` a listing page reads, fetched over HTTP and cached.
  *
  * Only an answer is cached. A 404 is the site saying there is no such listing and is worth remembering; a
@@ -71,7 +87,7 @@ async function listing(id: string): Promise<Listing | null> {
       cache.set(id, { at: Date.now(), value });
       return value;
     }
-    if (res.status >= 500) return null;
+    if (!remembersMiss(res.status)) return null;
   } catch {
     return null;
   }
