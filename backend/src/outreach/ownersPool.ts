@@ -73,6 +73,20 @@ export function siteToRead(website: string | null | undefined): string | null {
   return u.href;
 }
 
+/**
+ * A site that did not load for a reason that passes: the host throttled us (429) or answered with a challenge,
+ * a 5xx, a timeout or a dropped connection. On 4 October 2026 that was one escape room site in eight on the first
+ * pass, many of them on the same website builder's hosts. Read again at the end of the run, slower, and left
+ * unmarked if it still fails, so the next run tries again. A site that is gone (no DNS, a 404, robots.txt says
+ * no) is marked like any other.
+ */
+export function retryable(res: OwnersSiteResult | null): boolean {
+  if (!res) return true;
+  if (res.blocked) return true;
+  const why = res.why || "";
+  return /^HTTP (429|5\d\d)$/.test(why) || /deadline|timed? ?out|ETIMEDOUT|ECONNRESET|EPIPE|socket|other side closed|UND_ERR|no answer/i.test(why);
+}
+
 export type OwnerDecision =
   /** A better mailbox than the one on file: the owner's at the business's domain, or a personal one the site gives. */
   | { change: "mailbox"; email: string; greet: string | null; source: string }
@@ -146,6 +160,9 @@ export type OwnersPoolOptions = {
   pageMs?: number;
   siteMs?: number;
   gapMs?: number;
+  /** Before the slow second pass over throttled sites: a wait (default 30 s), then a pause between pages (1.5 s), two sites at a time. */
+  retryWaitMs?: number;
+  retryGapMs?: number;
 };
 
 export type OwnersPoolSummary = {
@@ -164,6 +181,10 @@ export type OwnersPoolSummary = {
   greetSameMailbox: number;
   /** Sites that did not load: unreachable, an error status, robots.txt said no, a challenge page, or past the deadline. */
   failed: number;
+  /** Rows whose site was throttled or timed out on the first pass and was read again at the end, slower. */
+  retried: number;
+  /** Of the failed, those that were throttled or timed out twice: left unmarked, so the next run reads them again. */
+  leftForNextRun: number;
   /** Rows whose website is a social, review or marketplace page rather than their own site: not read, marked. */
   skipped: number;
   /** Rows a pool sync changed between the read and the write: left as the sync wrote them, marked. */
@@ -178,7 +199,7 @@ export async function runOwnersPool(o: OwnersPoolOptions): Promise<OwnersPoolSum
   const gapMs = o.gapMs ?? 200;
   const sum: OwnersPoolSummary = {
     family: o.family, dry: o.dry, selected: 0, checked: 0, mailboxes: 0, namesOnSite: 0, greetNewMailbox: 0, greetSameMailbox: 0,
-    failed: 0, skipped: 0, raced: 0, writeErrors: 0,
+    failed: 0, retried: 0, leftForNextRun: 0, skipped: 0, raced: 0, writeErrors: 0,
   };
   let skipChecked = true;
   if (o.dry) {
@@ -193,29 +214,44 @@ export async function runOwnersPool(o: OwnersPoolOptions): Promise<OwnersPoolSum
   const rows = (await q(queue.text, queue.params)) as unknown as PoolRow[];
   sum.selected = rows.length;
 
-  // Two rows on one website (a chain's locations) read it once.
-  const sites = new Map<string, Promise<OwnersSiteResult>>();
-  const read = (site: string): Promise<OwnersSiteResult> => {
-    let p = sites.get(site);
+  // Two rows on one website (a chain's locations) read it once a pass.
+  type Read = { res: OwnersSiteResult | null; err: string };
+  const passes = [new Map<string, Promise<Read>>(), new Map<string, Promise<Read>>()];
+  const read = (site: string, last: boolean): Promise<Read> => {
+    const seen = passes[last ? 1 : 0];
+    let p = seen.get(site);
     if (!p) {
-      p = withDeadline(ownersForSite(site, { fetchPage: o.fetchPage, pageMs: o.pageMs ?? 20_000, gapMs }), o.siteMs ?? 90_000, site);
-      sites.set(site, p);
+      const opts = { fetchPage: o.fetchPage, pageMs: o.pageMs ?? 20_000, gapMs: last ? o.retryGapMs ?? 1500 : gapMs };
+      p = withDeadline(ownersForSite(site, opts), o.siteMs ?? 90_000, site).then(
+        (res) => ({ res, err: "" }),
+        (e: unknown) => ({ res: null, err: ((e as Error)?.message || String(e)).slice(0, 140) }),
+      );
+      seen.set(site, p);
     }
     return p;
   };
 
-  const one = async (row: PoolRow): Promise<void> => {
+  const later: PoolRow[] = [];
+  const one = async (row: PoolRow, last: boolean): Promise<void> => {
     const site = siteToRead(row.website);
     let decision: OwnerDecision | null = null;
     if (!site) sum.skipped++;
     else {
-      const res = await read(site).catch((e: unknown) => {
-        log(`could not read ${site}: ${((e as Error)?.message || String(e)).slice(0, 140)}`);
-        return null;
-      });
+      const { res, err } = await read(site, last);
       if (!res || !res.loaded || res.blocked) {
+        const why = !res ? err || "no answer" : res.blocked ? "blocked (" + (res.why || "challenge page") + ")" : res.why || "no page";
+        if (retryable(res)) {
+          if (!last) {
+            later.push(row);
+            return;
+          }
+          sum.failed++;
+          sum.leftForNextRun++;
+          log(`could not read ${site}: ${why}; left for the next run`);
+          return;
+        }
         sum.failed++;
-        if (res) log(`could not read ${site}: ${res.blocked ? "blocked (" + (res.why || "challenge page") + ")" : res.why || "no page"}`);
+        log(`could not read ${site}: ${why}`);
       } else {
         if (res.found.some((f) => f.name && /^[A-Z][a-z]/.test(f.name))) sum.namesOnSite++;
         decision = decideOwner(row, res.found);
@@ -247,15 +283,28 @@ export async function runOwnersPool(o: OwnersPoolOptions): Promise<OwnersPoolSum
     }
   };
 
-  let next = 0;
-  const worker = async (w: number): Promise<void> => {
-    await sleep(w * gapMs);
-    while (next < rows.length) {
-      await one(rows[next++]);
-      const done = sum.checked + sum.writeErrors;
-      if (done % 100 === 0) log(`owners-pool: ${done}/${rows.length} rows, ${sum.mailboxes} owner mailboxes, ${sum.greetNewMailbox + sum.greetSameMailbox} names, ${sum.failed} sites failed`);
-    }
+  let logged = 0;
+  const pass = async (list: PoolRow[], concurrency: number, last: boolean): Promise<void> => {
+    let next = 0;
+    const worker = async (w: number): Promise<void> => {
+      await sleep(w * gapMs);
+      while (next < list.length) {
+        await one(list[next++], last);
+        const done = sum.checked + sum.writeErrors;
+        if (done - logged >= 100) {
+          logged = done;
+          log(`owners-pool: ${done}/${rows.length} rows, ${sum.mailboxes} owner mailboxes, ${sum.greetNewMailbox + sum.greetSameMailbox} names, ${sum.failed} sites failed, ${later.length} to read again`);
+        }
+      }
+    };
+    await Promise.all(Array.from({ length: Math.min(spawnWorkers(concurrency), list.length) }, (_, w) => worker(w)));
   };
-  await Promise.all(Array.from({ length: Math.min(spawnWorkers(o.concurrency), rows.length) }, (_, w) => worker(w)));
+  await pass(rows, o.concurrency, false);
+  if (later.length) {
+    sum.retried = later.length;
+    log(`owners-pool: ${later.length} site(s) throttled or timed out; reading them again, two at a time`);
+    await sleep(o.retryWaitMs ?? 30_000);
+    await pass(later, Math.min(2, o.concurrency), true);
+  }
   return sum;
 }

@@ -15,7 +15,7 @@ import type { PoolRow } from "../touches.ts";
 
 // touches.ts reaches db/client.ts through unsub.ts; keep that off the laptop's real catalog.
 process.env.OUTSET_DB = join(mkdtempSync(join(tmpdir(), "outset-owners-pool-")), "catalog.db");
-const { decideOwner, ownersQueue, runOwnersPool, siteToRead } = await import("../ownersPool.ts");
+const { decideOwner, ownersQueue, retryable, runOwnersPool, siteToRead } = await import("../ownersPool.ts");
 const { challenged, ownersForSite } = await import("../../enrich/ownerSite.ts");
 const { DESK_INBOX, FAMILY_ORDER, POOL_COLUMNS, POOL_ORDER, POOL_UNTOUCHED, poolUpsertSql } = await import("../touches.ts");
 
@@ -258,4 +258,51 @@ test("a home page with a reCAPTCHA form or Cloudflare's page script is read, and
   assert.equal(challenged({ status: 200, html: cloudflare, finalUrl: "https://lockboxescapes.com/" }), true);
   assert.equal(challenged({ status: 429, html: body, finalUrl: "https://lockboxescapes.com/" }), true);
   assert.equal(challenged({ status: 200, html: body, finalUrl: "https://lockboxescapes.com/rate-limit" }), true);
+});
+
+test("a throttled site is read again at the end, slower, and one that stays throttled is left for the next run", async () => {
+  const rows: PoolRow[] = [
+    { ...base, operator_id: "op-once", catalog_id: "o-oncerooms-com", domain: "oncerooms.com", name: "Once Rooms", website: "https://oncerooms.com/", email: "info@oncerooms.com" },
+    { ...base, operator_id: "op-always", catalog_id: "o-alwaysrooms-com", domain: "alwaysrooms.com", name: "Always Rooms", website: "https://alwaysrooms.com/", email: "info@alwaysrooms.com" },
+  ];
+  const p = pool(rows);
+  const asked: string[] = [];
+  const fetchPage = async (url: string) => {
+    asked.push(url);
+    if (url.startsWith("https://alwaysrooms.com")) return { status: 429, html: "Too Many Requests", finalUrl: url };
+    if (url === "https://oncerooms.com/") {
+      return asked.filter((u) => u === url).length === 1
+        ? { status: 429, html: "Too Many Requests", finalUrl: url }
+        : { status: 200, html: `<html><body><p>Run by owner Dana Price.</p><a href="mailto:dana@oncerooms.com">Email Dana</a></body></html>`, finalUrl: url };
+    }
+    return { status: 404, html: "", finalUrl: url };
+  };
+  const lines: string[] = [];
+  const s = await runOwnersPool({ family: "indoor", limit: 10, concurrency: 4, dry: false, q: p.q, fetchPage, log: (l) => lines.push(l), gapMs: 0, retryWaitMs: 0, retryGapMs: 0 });
+  assert.deepEqual([p.row("op-once").email, p.row("op-once").greet], ["dana@oncerooms.com", "Dana"], "the second, slower read got through");
+  assert.ok(p.row("op-once").owners_checked_at);
+  assert.deepEqual([p.row("op-always").email, p.row("op-always").owners_checked_at], ["info@alwaysrooms.com", null], "still throttled: not marked, so the next run reads it");
+  assert.deepEqual([s.retried, s.failed, s.leftForNextRun, s.checked, s.mailboxes], [2, 1, 1, 1, 1]);
+  assert.ok(lines.includes("could not read https://alwaysrooms.com/: blocked (HTTP 429); left for the next run"));
+  const again = await runOwnersPool({ family: "indoor", limit: 10, concurrency: 4, dry: false, q: p.q, fetchPage, log: () => {}, gapMs: 0, retryWaitMs: 0, retryGapMs: 0 });
+  assert.equal(again.selected, 1, "only the throttled one is read again");
+});
+
+test("a gone site is marked, a throttled or timed-out one is not", () => {
+  const r = (why: string, extra: Partial<{ loaded: boolean; blocked: boolean }> = {}) => ({ loaded: false, blocked: false, pages: 0, found: [], why, ...extra });
+  for (const why of ["HTTP 429", "HTTP 503", "deadline 20000ms: https://x.com/", "fetch failed: ECONNRESET", "fetch failed: UND_ERR_SOCKET"]) assert.equal(retryable(r(why)), true, why);
+  assert.equal(retryable(null), true, "the whole site ran past its deadline");
+  assert.equal(retryable(r("", { loaded: true, blocked: true })), true, "a challenge page");
+  for (const why of ["dns lookup failed: gonerooms.com", "HTTP 404", "HTTP 410", "robots.txt says no", "empty page"]) assert.equal(retryable(r(why)), false, why);
+});
+
+test("a builder page with a captcha script and little text of its own is still read through its menu", async () => {
+  const home = `<html><head><script>var cfg={"captcha":{"siteKey":"x"}}</script></head><body><nav><a href="/contact">Contact</a></nav><p>Escape rooms</p></body></html>`;
+  const contact = `<html><body><p>Questions: <a href="mailto:manager@builderrooms.com">manager@builderrooms.com</a></p></body></html>`;
+  const res = await ownersForSite("https://builderrooms.com/", {
+    gapMs: 0,
+    fetchPage: async (url) => ({ status: 200, html: url.endsWith("/contact") ? contact : home, finalUrl: url }),
+  });
+  assert.deepEqual([res.loaded, res.blocked, res.pages], [true, false, 2]);
+  assert.ok(res.found.some((f) => f.email === "manager@builderrooms.com"));
 });

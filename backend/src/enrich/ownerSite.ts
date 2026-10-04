@@ -176,7 +176,8 @@ export async function ownersForSite(website: string, opts: OwnersSiteOptions = {
       }
     }
   }
-  return { loaded: true, blocked: challenged(home), pages: pages.length, found: found.slice(0, 8) };
+  // A challenge page links nowhere, so a home page that led on to its About or Contact page was the site.
+  return { loaded: true, blocked: pages.length === 1 && challenged(home), pages: pages.length, found: found.slice(0, 8) };
 }
 
 /** The owners crawl's reader for one catalog operator, as before: its own website, the shared fetch, 20 seconds a page. */
