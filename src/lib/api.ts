@@ -437,6 +437,13 @@ async function readConfig(): Promise<ApiConfig> {
 
 /* ---------- bookings ---------- */
 
+/**
+ * Every answer `GET /bookings/paid/:listing/:code` can give about a booking. Named so a surface that labels
+ * one for a guest is checked for having a word for all of them: the Trips tab's own map was keyed by `string`
+ * and had no row for `noshow`, so a guest the operator had marked absent read their trip with no word on it.
+ */
+export type BookingStatus = "pending" | "new" | "accepted" | "declined" | "completed" | "noshow" | "cancelled";
+
 export type RemoteBooking = {
   code: string;
   listing: string;
@@ -448,7 +455,7 @@ export type RemoteBooking = {
   addons: string[];
   total: number | null;
   guest: { name: string; phone: string; email: string };
-  status: "pending" | "new" | "accepted" | "declined" | "completed" | "noshow" | "cancelled";
+  status: BookingStatus;
   created: string;
   decidedAt?: string;
   note?: string;

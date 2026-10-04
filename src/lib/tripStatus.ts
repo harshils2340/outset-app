@@ -14,8 +14,17 @@
  * API row and asking after it again every time the tab opens spends a limit the paid-return path needs.
  */
 
-/** A booking the operator has settled does not change again. */
-const SETTLED = ["declined", "cancelled", "completed"];
+/**
+ * A booking the operator has settled does not change again.
+ *
+ * All four of these can in fact be reopened from the booking drawer ("Reinstate as confirmed", "Undo
+ * no-show"), which is why `accepted` and `new` are not here: those are the two the operator is still
+ * expected to move, and a guest watching the tab should see it when they do. A settled one is a verdict,
+ * and re-asking after it on every window activation spends the 60 reads an hour that the guest's own return
+ * from Stripe needs. `noshow` was the one missing, so a guest whose operator had marked them absent paid a
+ * call for it on every focus pass, for an answer that had already been given.
+ */
+const SETTLED = ["declined", "cancelled", "completed", "noshow"];
 
 /**
  * The shortest gap between two reads of the same booking.

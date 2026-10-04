@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { LISTINGS } from "../../data/listings";
 import { ICONS } from "../../data/icons";
-import { bookingStatus, hasApi } from "../../lib/api";
+import { bookingStatus, hasApi, type BookingStatus } from "../../lib/api";
 import { startOfToday, dateKey } from "../../lib/dates";
 import { experienceById, stillArriving } from "../../lib/catalog";
 import { placeName } from "../../lib/listingDerive";
@@ -18,12 +18,15 @@ import { Markup } from "../Markup";
  * not expecting anyone. The guest's device only ever knew it had sent the booking, so the answer is read back
  * from the API.
  */
-const STATUS: Record<string, { label: string; tone: string }> = {
+const STATUS: Record<BookingStatus, { label: string; tone: string }> = {
   pending: { label: "Payment not finished", tone: "var(--few)" },
   new: { label: "Waiting on the operator", tone: "var(--ink)" },
   accepted: { label: "Confirmed", tone: "var(--open)" },
   completed: { label: "Confirmed", tone: "var(--open)" },
   declined: { label: "Not available", tone: "var(--few)" },
+  // The operator says nobody came. No email is sent for it and the money is not refunded, so this pill is
+  // the only place a guest can read it, and it says what the shop recorded rather than passing judgement.
+  noshow: { label: "Marked as a no-show", tone: "var(--few)" },
   cancelled: { label: "Cancelled", tone: "var(--few)" },
 };
 
@@ -126,7 +129,7 @@ export function TripsView() {
             // page do. A code belongs on a feed or rail card, which has no room to spell a state out; a trip
             // card has the width of the screen and said "OH".
             const sub = l ? l.op + " · " + l.launch : u ? placeName(u.area) : "Details are in your confirmation email";
-            const st = STATUS[status[b.code]] || null;
+            const st = STATUS[status[b.code] as BookingStatus] || null;
             const open = l ? () => openListing(l.id) : u ? () => openRequest(u.id) : null;
             const inner = (
               <>
