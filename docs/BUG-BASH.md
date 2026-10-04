@@ -10207,6 +10207,101 @@ mattered. The old day label was run on its own and reads "Mon 5" for tomorrow. `
 `STRIPE_SECRET_KEY`, `RESEND_API_KEY` and `GITHUB_TOKEN` were empty throughout.
 
 
+## 4 October 2026, hundred and thirty-ninth run (10:14 to 11:05 UTC)
+
+**Chosen, and why.** Nothing landed after the hundred and thirty-eighth run's entry (`14abdafe` is that entry,
+and the three fixes under it are its own), and that entry records its rehearsal green at 57 of 57, so by the
+brief's rule the **rehearsal was skipped at the start** and that time went on the hunt. It ran twice at the
+end, because tonight's work is in both `src/` and `backend/src/api`. Baseline after `npm install` on both
+sides: root `tsc --noEmit -p .` and `tsc -b` clean, backend `tsc` clean but for TS5097, backend 1,065 with
+1,063 pass and 2 skipped, app 1,258 pass.
+
+Target: **a listing the operator switched off, and every surface that should know.** Picked because the word
+`offline` does not appear once in the 11,781 lines of this log, so the guest-side cost of the dashboard's
+Published and Accepting switches had never been swept; the dashboard's own banners are on Verified. The axis
+is also the hundred and thirty-eighth run's, one switch over: what a guest is told when the operator's
+settings move under a booking already made.
+
+**Found and fixed.** Four commits, pushed.
+
+- **A claim reached a guest in two halves, a sync apart** (`60eb2fb2`). Every guest surface reads
+  `claimed && instant` before it promises instant confirmation, and `POST /bookings` accepts and captures on
+  the operator's Instant Book switch alone. But `claimed` was written only by the nightly sync, which bakes it
+  in beside the very patch that carries `instant`, so for as long as a day after a shop claimed and switched
+  Instant Book on the page offered "Request to book", and the confirmation read "Request sent. Nothing is
+  charged until they confirm", and where the guest had paid, "Held on your card. Charged only when they
+  confirm" for a card the API had already captured. The two "a claimed shop sells its own slots" rules (the
+  picker's `ownSlots`, Otto's empty-window line) read the shop as unclaimed too. `toCatalog` publishes
+  `claimed: true` now: the patch exists because somebody claimed the listing.
+- **A paused listing went on promising instant confirmation** (`4206b89a`). `bookingPaused` is read where the
+  Reserve button is and by Otto; the rows above the button were not. The desktop listing promised "Instant
+  confirmation. Your spot is confirmed the moment you book." in its highlight rows, under "Run by <shop>" and
+  in the business facts list, with "Not taking bookings right now" in the box beside them, and the phone sheet
+  did the same. The card was worse, because an Accepting switch off leaves a listing in every rail and search
+  by design: it read "Instant Book" beside a price and the tap landed on the refusal, and it read only the
+  hidden flag, so pausing never reached it at all. One rule, `instantBookable`.
+- **Both confirmations re-derived "are you booked" from the live switch** (`aac5be18`). The same fault
+  `bookedRow` closed, on the other half of the ticket. An operator flicking Instant Book off relabelled every
+  instant booking already taken: the desktop confirmation went from "You're booked" to "Request sent" and its
+  money lines from "Paid by card. Charged to your card." to "Held on your card. Charged only when <shop>
+  confirms." for a card already captured; the phone ticket went from "Booked." to "Request sent." A booking
+  freezes `instant` at confirm time now, the way it already freezes the service, variant, price and unit, and
+  `bookedInstant` keeps the live switch only as the fallback for older bookings and the ones read back from
+  the API.
+- **The public slot route read neither switch** (`d01d6352`). `GET /bookings/open/:listing` answered a shop
+  that had hidden its page or paused bookings with a full calendar, every time in it a 409 from the booking
+  route. The two switches were read in three places and spelled two ways, and this was the third; the rule is
+  `bookingPause` beside the record it reads, patch over profile and guarded for shape, which is the reading
+  `/voice` already had and the booking route did not.
+
+**Measured and left.** The rest of the axis came back clean. `getCatalog` filters an unpublished listing out
+of every rail, row and search while `byId` keeps it, so the wishlist and a shared link are the only places its
+card turns up, which is what the wishlist's own comment says. Otto refuses both switches, `/voice` answers a
+null `bookingUrl` and a speakable note, the phone sheet's footer and date section and the desktop reserve box
+all stand down, and the sync drops a `published: false` row from the catalog it writes. Every other reader of
+`item.claimed` (the picker's `ownSlots`, Otto's `liveWindowEmpty`) is more correct for the patch arriving
+earlier, not less.
+
+**Needs Harshil.**
+
+- **A shop that unpublishes may not be able to get back in.** The sync drops a `published: false` row from
+  `public/catalog.json`, and `OpLogin`'s own "Your businesses" list filters out any claimed id whose catalog
+  record is missing, while `tick()` calls a claim link for a listing the complete catalog does not hold a bad
+  link. So the operator's way back to the switch they flicked depends on the detail file under `public/o`
+  outliving the catalog row, which nothing in this repo can check because both are written at sync time. It
+  wants a decision: either the sync keeps an unpublished listing's detail file and its claim index on purpose,
+  or the dashboard stops needing a catalog record to open.
+- **`/voice/:id/availability` reads out a paused shop's vendor calendar.** The facts route beside it says "not
+  taking bookings through Outset" and hands the agent a null booking URL; this one still lists real departures
+  with the vendor's own `bookUrl`. Arguably right, since those times are the shop's and the shop is still
+  selling them on their own site, but the two routes now say different things about the same shop and nothing
+  in the repo settles which.
+- Still open from earlier runs, unchanged: there is no error boundary in this app, now twenty-four runs asked;
+  "Open right now near you" is computed once a visit; the 108 operators with hacked websites still have not
+  been told; the phone's browse is not ranked while the desktop's is; the phone confirmation offers no way to
+  reach the shop; a guest cannot cancel a booking at all; a price sort and a price filter compare two dollars
+  on six metros; the cards say "$" for a Canadian shop; `lasertag` does not search `paintball`;
+  `POST /auth/verify` counts a try it is about to find correct; `backend/src/concierge/demand.ts` still filters
+  its crawl queue by category and region and not by the town its own comment says it scopes to; a party floor a
+  shop states is read by nothing on the guest side; and no sync has run, so `kid`, `specs`, `gap` and
+  `extraNote` are still empty on every shipped row. **The brief's rehearsal path is
+  `backend/scripts/e2e-local.mts`, not `scripts/`**, fifth run to say so. **Local `main` is still detached**,
+  fifteenth run in a row: the sandbox refuses `git checkout -B main`, so the work was committed on the detached
+  head and pushed with `git push origin HEAD:main`. The Postgres cluster also needs building as `ubuntu` rather
+  than root, with its own socket directory; the brief's command line is otherwise exactly right.
+
+**Verification.** App `npm test` 1,273 pass, up 15 from 1,258, in `src/lib/__tests__/claimedArrives.test.ts`,
+`instantPromise.test.ts` and `bookedInstant.test.ts`; backend 1,073 with 1,071 pass and 2 skipped, up 8, in
+`backend/src/api/__tests__/bookingPause.test.ts`. Each new file was run against the tree with its own fix
+reverted and fails there: 4 of 4 fail without `claimed: true`, 4 of 6 fail with the three surfaces back on
+their own rule (2 of 6 with only the predicate reverted, which is the half that matters), 2 of 5 fail with the
+frozen flag out, and 1 of 8 fails with the slot route's gate out. `tsc --noEmit -p .` and `tsc -b` clean at the
+root, backend's own `tsc` clean but for TS5097. The **rehearsal ran twice at the end**, 57 of 57 both times,
+once after the app fixes and once after the API fix, on a Postgres 16 cluster built from scratch on port 5433
+with SSL on and the on-disk Playwright Chromium. `STRIPE_SECRET_KEY`, `RESEND_API_KEY` and `GITHUB_TOKEN` were
+empty throughout.
+
+
 ## Coverage
 
 The catalog is 48,198 listings as of the 23 September sync, 1,873 of them Viator partner rows. Counts below
@@ -11299,7 +11394,12 @@ per-route keying driven rather than read, the body limit each route really has a
 message promises, every method and path in the API against every other for a route shadowed by a later mount,
 and all 30 API paths the app fetches against the routes the API registers. Catalog text interpolated into a
 `new RegExp`, over every site in both trees that builds a pattern out of a town, a business name, a review
-signature or a page title.
+signature or a page title. A listing the operator switched off, and every surface that should know, on both
+switches: the wishlist card, the feed card, the desktop page's highlight rows, host line, business facts and
+reserve box, the phone sheet's highlight rows, date section and footer, Otto, `getCatalog` against `byId`, the
+sync's own drop of a `published: false` row, `POST /bookings`, both `/voice` routes and the public slot route.
+Whether a booking's own ticket can be relabelled by a switch flicked afterwards, over the four fields two
+confirmation screens read from the live record.
 
 **Not yet checked.** Whether the CORS preflight should carry the security headers and a cache-control, which it alone does not,
 because Hono's `cors` answers `OPTIONS` before the middleware that sets them and covering it means putting the
@@ -11778,4 +11878,10 @@ cache that is full of fresh entries should evict anything: `openSlots.ts` and `e
 the whole map at 5,000, which is the pattern `auth.ts`'s own `sweep` comment argues against, and
 `concierge/live.ts`'s sweep at 400 removes nothing while all 400 are inside their ten minutes. Whether
 `places.ts`'s geocoder cache should expire or be capped, which it is neither, read and left because it is per
-browser tab and bounded by what a person types.
+browser tab and bounded by what a person types. Whether a shop that unpublishes can get back to the switch it flicked: the sync
+drops its row from `public/catalog.json`, the dashboard's own "Your businesses" list filters out a claimed id
+with no catalog record, and a claim link for a listing the complete catalog does not hold is called bad, so the
+way back rests on the detail file under `public/o` outliving the row, which nothing here can check (see the
+hundred and thirty-ninth run's Needs Harshil). Whether `/voice/:id/availability` should read out a paused
+shop's vendor calendar, which it does while the facts route beside it hands the agent a null booking URL and
+tells it to take a name and number (see that run's Needs Harshil).
