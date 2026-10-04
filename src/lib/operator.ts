@@ -960,6 +960,18 @@ export function toCatalog(p: OperatorProfile, base: Unclaimed): Partial<Unclaime
   // tick and have turn up at the shop as an extra with no name. An add-on is on the menu once it has a name.
   const addons: UnclaimedOption[] = p.addons.filter((a) => a.name.trim()).map((a) => ({ name: a.name, detail: a.detail, price: cleanPrice(a.price) }));
   return {
+    /**
+     * This patch exists because somebody claimed the listing, so it is what says so.
+     *
+     * `claimed` reached a guest only through the nightly sync, which bakes it in beside the same patch, while
+     * `instant` reached them the moment the dashboard saved. The two halves of one rule travelled by different
+     * roads, so between a claim and the next sync every guest surface read `claimed && instant` as false: the
+     * page offered "Request to book", and the confirmation said "Request sent. Nothing is charged until they
+     * confirm" for a booking the API had already accepted on the shop's Instant Book switch and a card it had
+     * already captured. The booking API never waited for a sync (it reads the profile row), and neither does
+     * this now.
+     */
+    claimed: true,
     // A claimed shop that switched Instant Book on is the only kind a guest sees as Instant.
     instant: p.instantBook,
     // Paused in the dashboard: the guest page and the booking API both refuse new bookings until it is back on.
