@@ -271,6 +271,20 @@ export function bookingPaused(item: Unclaimed): boolean {
   return !!item.offline || item.accepting === false;
 }
 
+/**
+ * Whether a guest may be promised instant confirmation.
+ *
+ * `instant` is the operator's own Instant Book switch, and it is only a promise while the listing is actually
+ * taking bookings. Both pickers read `bookingPaused` where the Reserve button is, and Otto reads it too, but
+ * the rows above it did not: a shop that paused new bookings, or took its page down, had the same screen
+ * promising "Instant confirmation. Your spot is confirmed the moment you book." over "Not taking bookings
+ * right now", on the desktop highlight rows, the "Run by" line and the business facts list, and on the phone
+ * sheet's own highlight rows. A card for such a shop badged "Instant Book" beside a price.
+ */
+export function instantBookable(item: Unclaimed): boolean {
+  return !!(item.claimed && item.instant) && !bookingPaused(item);
+}
+
 export function fromPrice(item: Unclaimed): number | null {
   // A zero is a price the crawler could not read, not a free trip, so it must not become "From $0".
   const priced = item.options.map((o) => o.price).filter((n): n is number => n != null && n > 0);

@@ -15,6 +15,7 @@ import {
   fromPrice,
   getCatalog,
   guestCapFor,
+  instantBookable,
   listingFacts,
   mapsDirHref,
   mapsQuery,
@@ -423,7 +424,7 @@ function RequestBody({
   useEffect(() => { if (ready) warmCheckout(); }, [ready]);
   const day = dates[dateIdx];
   const p = priceUnclaimed(picked, qty, extras);
-  const instant = !!(item.claimed && item.instant);
+  const instant = instantBookable(item);
   // Whether a card is taken is decided by the API from the listing's own price, not by this screen, and it
   // takes one on a request as much as on an instant booking: the card is held and captured when the shop
   // accepts. This screen said nothing about a card at all, so a guest on a phone pressed "Request to book"

@@ -2,7 +2,7 @@ import { useRef, useState, type KeyboardEvent } from "react";
 import { metroById } from "../../data/metros";
 import { ART_LABEL } from "../../data/art";
 import type { Unclaimed } from "../../data/types";
-import { cardPlace, fromPrice, partnerBookLine, perPerson, publicRating, topRated } from "../../lib/catalog";
+import { bookingPaused, cardPlace, fromPrice, instantBookable, partnerBookLine, perPerson, publicRating, topRated } from "../../lib/catalog";
 import { dealToday } from "../../lib/companyAgent";
 import { money } from "../../lib/format";
 import { useApp } from "../../state/AppProvider";
@@ -37,7 +37,7 @@ export function UnclaimedCard({ item }: { item: Unclaimed; compact?: boolean }) 
   // Same bar the desktop card uses, so a business is a guest favourite on both surfaces or neither.
   const guestFav = topRated(item);
   const deal = dealToday(item);
-  const instant = !!(item.claimed && item.instant);
+  const instant = instantBookable(item);
   const [broken, setBroken] = useState<Set<string>>(new Set());
   const photos = Array.from(new Set([item.cover, ...(item.photos || [])].filter(Boolean) as string[]))
     .filter((p) => !broken.has(p))
@@ -62,10 +62,14 @@ export function UnclaimedCard({ item }: { item: Unclaimed; compact?: boolean }) 
   const dealTitle = liteDealTitle(item.deal);
   // An operator who switched their listing off keeps the record, so the wishlist is the one place a card for it
   // still turns up. It used to read "Instant Book" with a price, and opening it said the page was taken down.
+  // A shop that paused new bookings instead keeps its place in every rail and search by design, and its card
+  // read "Instant Book" with a price all the same, so the tap landed on "Not taking bookings right now".
+  // `bookingPaused` is the rule the pickers and Otto already read, and it covers both switches.
   // A partner's product says where it books before anything else, the way the desktop card does: a guest
   // should know that before the tap, not on the sheet it opens.
   const partner = partnerBookLine(item);
-  const badge = partner ? partner : item.offline ? "Not bookable" : guestFav ? "Guest favourite" : deal && !dealTitle ? "Deal today" : instant ? "Instant Book" : null;
+  const paused = bookingPaused(item);
+  const badge = partner ? partner : paused ? "Not bookable" : guestFav ? "Guest favourite" : deal && !dealTitle ? "Deal today" : instant ? "Instant Book" : null;
 
   const open = () => openRequest(item.id);
   const onKey = (e: KeyboardEvent<HTMLDivElement>) => {
@@ -145,7 +149,7 @@ export function UnclaimedCard({ item }: { item: Unclaimed; compact?: boolean }) 
         ) : null}
         <p className="aircardprice">
           {from == null ? (
-            <span>{partner ? partner : item.offline ? "Not taking bookings" : instant ? "Instant Book" : "Request to book"}</span>
+            <span>{partner ? partner : paused ? "Not taking bookings" : instant ? "Instant Book" : "Request to book"}</span>
           ) : (
             <>
               <span className="from">From </span>

@@ -10,7 +10,7 @@ import { SLOT_TIMES } from "../../data/slots";
 import type { Unclaimed } from "../../data/types";
 import { measurableFrom } from "../explore/feed";
 import { streetOf } from "../../lib/address";
-import { addressLine, bookingPaused, contactFor, fmtPhone, fromPrice, getCatalog, guestCapFor, listingFacts, mapsHref, maxGuestsFor, partnerBookLine, perPerson, publicRating, telHref, topRated as isTopRated, venueMapsQuery } from "../../lib/catalog";
+import { addressLine, bookingPaused, contactFor, fmtPhone, fromPrice, getCatalog, guestCapFor, instantBookable, listingFacts, mapsHref, maxGuestsFor, partnerBookLine, perPerson, publicRating, telHref, topRated as isTopRated, venueMapsQuery } from "../../lib/catalog";
 import { clockOfMinutes, DAYS, dayPickLabel, fmtDate, fmtReviews, fmtTime, money, moneyIn, priceWith, reviewsLine } from "../../lib/format";
 import { srcSet, thumb } from "../../lib/images";
 import { embedAutoplay, isGif, listingMedia, photoCandidates, probePhotos, type Media } from "../../lib/media";
@@ -1007,7 +1007,7 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
   const ready = !paused && time != null && (!needService || picked != null) && guestOk;
   // The card form's script and config load now, while the guest reads the price, so "Book and pay" opens it at once.
   useEffect(() => { if (ready && p.total) warmCheckout(); }, [ready, p.total]);
-  const instant = !!(item.claimed && item.instant);
+  const instant = instantBookable(item);
   // Say what pressing it does: a card payment, Otto holding the saved card, or a request the operator confirms.
   const ottoNow = ottoActive(wallet, p.total);
   const ctaLabel = payments && p.total ? (ottoNow ? "Book with Otto" : "Book and pay") : instant ? "Book" : "Request to book";
