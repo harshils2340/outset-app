@@ -179,7 +179,7 @@ async function sendBatch(limit: number, quota: Record<string, number>): Promise<
   const out = { sent: 0, skipped: 0, failed: 0, resent: 0, retired: [] as { mailbox: string; error: string }[] };
   // Half of today's allowance goes to the resend (most recently mailed first) while it lasts, the rest to
   // businesses never mailed; alternating so a cut-short day still does some of each. Same daily cap.
-  const resends = (await resendCandidates(Math.ceil(limit / 2) * 2, COPY_VERSION)).map((r) => ({ ...r, kind: RESEND_KIND }));
+  const resends = (await resendCandidates(Math.ceil(limit / 2) * 2)).map((r) => ({ ...r, kind: RESEND_KIND }));
   const fresh = (await poolCandidates(limit * 2)).map((r) => ({ ...r, kind: "otto" }));
   const resendBudget = Math.min(Math.ceil(limit / 2), resends.length);
   const rows: (PoolRow & { kind: string })[] = [];

@@ -242,16 +242,26 @@ export function poolUpsertSql(rows: number): string {
 export const RESEND_KIND = "otto_resend";
 
 /**
+ * The first copy that landed in Primary. A business whose email was this copy or any later one (or one of the
+ * hand-written follow-ups) already has a pitch it could see, so it never gets the resend. Keyed on this date rather
+ * than on today's COPY_VERSION: bumping the copy on 3 October made the 52 businesses that got the 2 October copy
+ * the day before look due for a resend, a near-duplicate two days after the first.
+ */
+export const RESEND_BEFORE = "2026-10-02";
+
+/**
  * Who should get the resend, newest first. Skips any business that replied, bounced, was handed to a friend
  * to send, or already got a resend; skips an address that ever bounced, failed or replied (the pool may hold
- * a better address than the one first mailed, which is then the one used); and skips anyone whose first email
- * was already this copy.
+ * a better address than the one first mailed, which is then the one used); and skips anyone who already got a
+ * copy from RESEND_BEFORE on.
  */
-export async function resendCandidates(limit: number, currentVariant: string): Promise<(PoolRow & { last_at: string })[]> {
+export const RESEND_SEEN = "coalesce(bool_or(variant >= $2 or variant like 'followup-%'), false)";
+
+export async function resendCandidates(limit: number, primarySince: string = RESEND_BEFORE): Promise<(PoolRow & { last_at: string })[]> {
   await ensureTouchTables();
   return query<PoolRow & { last_at: string }>(
     `with first as (
-       select operator_id, max(at) as last_at, coalesce(bool_or(variant = $2), false) as had_current
+       select operator_id, max(at) as last_at, ${RESEND_SEEN} as had_current
          from outreach_sends where kind = 'otto' and status = 'sent' group by operator_id
      )
      select p.*, first.last_at from first join outreach_pool p on p.operator_id = first.operator_id
@@ -262,7 +272,7 @@ export async function resendCandidates(limit: number, currentVariant: string): P
         and not exists (select 1 from outreach_sends s where s.email = p.email and s.status in ('bounce', 'failed', 'replied'))
       order by first.last_at desc, p.operator_id
       limit $1`,
-    [limit, currentVariant],
+    [limit, primarySince],
   );
 }
 
