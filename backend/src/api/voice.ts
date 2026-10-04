@@ -53,6 +53,35 @@ type Listing = {
 };
 
 const cache = new Map<string, { at: number; value: Listing | null }>();
+/**
+ * How many listings the facts cache holds at once.
+ *
+ * Both routes are public and take the id out of the path, so the key is whatever the caller asked about, and a
+ * miss is remembered as well as an answer. Unbounded, that is one entry per distinct id for the life of the
+ * process, and nothing ever leaves: the per-IP limit holds any one caller to 120 an hour, which bounds how
+ * fast it grows and not how far, since `ID` allows any 3 to 80 characters of a-z, 0-9 and - and the limit is
+ * per address. Every other cache in this API is capped, and this was the one that was not: `otto.ts` at 500
+ * oldest-first (the rule copied here), `openSlots.ts` and `enrich/availability.ts` at 5,000, the concierge's
+ * sessions at 500 and its live reads at 400. 500 is far more than the businesses with a number pointed at the
+ * agent, and a ten-minute entry costs one fetch to rebuild.
+ */
+const CACHE_MAX = 500;
+
+/** Remember one answer, oldest out first once the cache is full. */
+function remember(id: string, value: Listing | null): void {
+  if (!cache.has(id) && cache.size >= CACHE_MAX) cache.delete(cache.keys().next().value as string);
+  cache.set(id, { at: Date.now(), value });
+}
+
+/** For tests: the cache is per process, so a test that fills it would reach the next one. */
+export function resetVoiceCacheForTests(): void {
+  cache.clear();
+}
+
+/** For tests: how many listings are remembered right now. */
+export function voiceCacheSize(): number {
+  return cache.size;
+}
 
 /**
  * Whether a status that is not ok is the site saying there is no such listing, which is worth remembering for
@@ -84,14 +113,14 @@ async function listing(id: string): Promise<Listing | null> {
     const res = await fetch(`${SITE}o/${encodeURIComponent(id)}.json`, { signal: AbortSignal.timeout(8000), headers: { accept: "application/json" } });
     if (res.ok) {
       const value = (await res.json()) as Listing;
-      cache.set(id, { at: Date.now(), value });
+      remember(id, value);
       return value;
     }
     if (!remembersMiss(res.status)) return null;
   } catch {
     return null;
   }
-  cache.set(id, { at: Date.now(), value: null });
+  remember(id, null);
   return null;
 }
 

@@ -11,7 +11,7 @@ import assert from "node:assert/strict";
  */
 
 process.env.SITE_URL = "https://onoutset.com/";
-const { voice, remembersMiss } = await import("../voice.ts");
+const { voice, remembersMiss, resetVoiceCacheForTests, voiceCacheSize } = await import("../voice.ts");
 
 const shop = {
   id: "o-blip-com",
@@ -81,4 +81,23 @@ test("a real 404 is remembered, so a caller asking for a shop that is not there 
   assert.equal((await voice.request(`http://localhost/voice/${id}`)).status, 404);
   assert.equal((await voice.request(`http://localhost/voice/${id}`)).status, 404);
   assert.equal(asked, 1, "the site's own no is worth remembering");
+});
+
+test("the cache is capped, so ids callers walk cannot grow it for the life of the process", async () => {
+  resetVoiceCacheForTests();
+  globalThis.fetch = (async () => new Response("no", { status: 404 })) as typeof fetch;
+  // Each request from its own caller, since the per-IP limit holds any one of them to 120 an hour and the
+  // growth that matters is across callers and across the life of the process.
+  for (let i = 0; i < 620; i++) {
+    await voice.request(`http://localhost/voice/o-walked-${i}-com`, { headers: { "cf-connecting-ip": `203.0.113.${i % 254}` } });
+  }
+  assert.equal(voiceCacheSize(), 500, "the cap is reached and held, not cleared out from under the live entries");
+});
+
+test("asking about the same listing twice does not spend two of the cap's places", async () => {
+  resetVoiceCacheForTests();
+  globalThis.fetch = (async () => new Response("no", { status: 404 })) as typeof fetch;
+  await voice.request("http://localhost/voice/o-same-com", { headers: { "cf-connecting-ip": "203.0.113.254" } });
+  await voice.request("http://localhost/voice/o-same-com", { headers: { "cf-connecting-ip": "203.0.113.254" } });
+  assert.equal(voiceCacheSize(), 1);
 });
