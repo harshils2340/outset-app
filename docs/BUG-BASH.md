@@ -10118,6 +10118,95 @@ the changes are in `backend/src`. `STRIPE_SECRET_KEY`, `RESEND_API_KEY` and `GIT
 throughout.
 
 
+## 4 October 2026, hundred and thirty-eighth run (09:14 to 10:20 UTC)
+
+**Chosen, and why.** Nothing landed after the hundred and thirty-seventh run's entry (`354ec4c6` is that
+entry, and the two fixes under it are its own), so by the brief's rule the **rehearsal was skipped at the
+start** and that time went on the hunt; it ran at the end instead, because tonight's work is in `src/`.
+Baseline after `npm install` on both sides: root `tsc --noEmit -p .` and `tsc -b` clean, backend `tsc` clean
+but for TS5097, backend 1,065 with 1,063 pass and 2 skipped, app 1,251 pass.
+
+Target: **what a booking says it was for, held against the menu it was picked from.** Every area the brief
+names is on Verified, so this was read as its own axis: the fields a booking froze at confirm time against
+the live catalog record every screen then draws it with. A claimed shop's menu is not a stable list. The
+operator's Services page reorders by drag, hides a row and deletes one, and `toCatalog` rebuilds `options`
+from those services on every save, so the index a booking stored moves under it. That is a fault with a
+date on it: the dashboard was fixed for exactly this and the booking has carried `service`, `variant`,
+`price` and `per` ever since. The guest's own copy was never moved over.
+
+**Found and fixed.** Three commits, pushed.
+
+- **Both confirmation screens named whatever now sits at the index a booking stored** (`73116e8a`). An
+  operator who dragged their second service to the top relabelled bookings already made: the desktop
+  confirmation's "Booking" row and the phone ticket's "Service" row named the other service, and the desktop
+  price lines were recomputed from it, at the row's current price rather than the one paid. Deleting a
+  service was worse, because the index then pointed past the end of the menu: the row vanished altogether
+  and a guest reopening their trip was shown a confirmation that no longer said what they had booked.
+  `bookedRow` in `storage.ts` makes the one reading the dashboard already made, what the booking wrote down
+  wins and the index is the fallback for bookings older than those fields, and `guestBookingsFor` now shares
+  it rather than keeping the second copy of the rule. A booking that carries a service but no index at all,
+  which is every one taken through Ask and every one read back from the API, now names its row on the
+  desktop confirmation too, where before that screen showed no booking row at all.
+- **The operator's week could not say "Tomorrow"** (`6530f548`). Home groups the next seven days under a day
+  label, and that label built its date at `T12:00:00` and measured the gap from midnight today, so every
+  answer was half a day out: tomorrow came to 1.5 days, `Math.round` took it to 2, and the branch was
+  unreachable. A shop with a booking the next morning read "Mon 5" under a heading promising the week. The
+  rule moves to `weekDayLabel` beside `relDay`, which has always built its day at midnight.
+- **The desktop confirmation's second naming of the same line went with it** (`dfaaf077`), since a booking
+  carrying a service can no longer reach it. Both screens name the booked row through `bookedName` now, so a
+  service whose name is the business's own leaves the line out rather than printing the listing title back at
+  the guest; the price lines under it stay on `tidyName`, because money needs a label beside it either way.
+
+**Measured and left.** The rest of the axis came back clean. No shipped listing names an option or an add-on
+in digits alone, over all 52,815 detail files, so `splitAddons` cannot read an extra as the index today,
+though an operator typing "18" into their own Add-ons row would make it do so. The extras a confirmation
+prints are the names the booking stored, not the menu's, so renaming an add-on does not lose it; only the
+price line it sits on drops, and the breakdown already hides itself unless it adds to the stored total. The
+trip card names the listing and nothing stored. Every other day sum in both trees builds both sides the same
+way: `relDay`, `dayPhrase` (both at noon UTC), `dayWord` and `whenLabel` are each exact, and Home was the
+only place comparing a noon date against a midnight one. Harshil's `71f92805` was read end to end, since no
+run had: the lookarounds do what they say, `rank` only ever sees a lowercased address so the missing `i`
+flags cost nothing, and what the new shape gives up is small and one-way ("fisheries@" and "bookers@" are no
+longer desks, and a surname opening the mailbox still reads as one: Skinner, Skidmore). Every effect in the
+app that fetches and then sets state carries its own `alive`, `live`, `cancelled` or abort guard, so a slow
+answer for one listing cannot land on another.
+
+**Needs Harshil.**
+
+- **A party floor a shop states is read by nothing on the guest side.** 235 shipped listings write one in
+  their group lines, and `groupCap` deliberately drops a floor so it cannot be mistaken for a ceiling, so the
+  picker offers a party of two on a helicopter whose own line says "minimum 2 passengers per flight" and a
+  charter that needs ten. The operator can only decline, which is the same shape as the ceiling bug that was
+  fixed. It is left because most of those lines are about one package rather than the shop ("Minimum 10 guests
+  for Birthday Triple Play", "Corporate outings require minimum 10 players"), so a blanket "at least N" would
+  be wrong on a good share: it wants the judgement, and new copy on the box, rather than a rule.
+- **The backend suite reads app source, so an app-only change can turn it red.** `api/__tests__/bookedName.test.ts`
+  matched the old confirmation branch by its exact text; the rehearsal caught it and nothing else would have,
+  because the app's own `npm test` was green throughout. The guard now reads the rule rather than the spelling.
+- Still open from earlier runs, unchanged: there is no error boundary in this app, now twenty-three runs
+  asked; "Open right now near you" is computed once a visit; the 108 operators with hacked websites still
+  have not been told; the phone's browse is not ranked while the desktop's is; the phone confirmation offers
+  no way to reach the shop; a guest cannot cancel a booking at all; a price sort and a price filter compare
+  two dollars on six metros; the cards say "$" for a Canadian shop; `lasertag` does not search `paintball`;
+  `POST /auth/verify` counts a try it is about to find correct; `backend/src/concierge/demand.ts` still
+  filters its crawl queue by category and region and not by the town its own comment says it scopes to, which
+  was read again tonight and is a product call about how far a Waterloo question should reach; and no sync
+  has run, so `kid`, `specs`, `gap` and `extraNote` are still empty on every shipped row. **The brief's
+  rehearsal path is `backend/scripts/e2e-local.mts`, not `scripts/`**, fourth run to say so. **Local `main`
+  is still detached**, fourteenth run in a row: the sandbox refuses `git checkout -B main`, so the work was
+  committed on the detached head and pushed with `git push origin HEAD:main`. This container still injects a
+  `GITHUB_TOKEN`; everything tonight ran with it cleared.
+
+**Verification.** App `npm test` 1,258 pass, up 7 from 1,251, in `src/lib/__tests__/bookedRow.test.ts` and
+`weekDayLabel.test.ts`; backend 1,065 with 1,063 pass and 2 skipped, unchanged. Each new test was run against
+the tree with its own fix reverted and fails there: the booked-row tests cannot even load without the helper,
+and with the helper in place but both screens reverted the screen check alone fails, which is the fault that
+mattered. The old day label was run on its own and reads "Mon 5" for tomorrow. `tsc --noEmit -p .` and
+`tsc -b` clean at the root, backend's own `tsc` clean but for TS5097. The **rehearsal ran at the end**, 57 of
+57, on a Postgres 16 cluster built from scratch on port 5433 with SSL on and the on-disk Playwright Chromium.
+`STRIPE_SECRET_KEY`, `RESEND_API_KEY` and `GITHUB_TOKEN` were empty throughout.
+
+
 ## Coverage
 
 The catalog is 48,198 listings as of the 23 September sync, 1,873 of them Viator partner rows. Counts below
@@ -11196,6 +11285,12 @@ October (`a5c1215a`, `0bd46830`, `7f3ff275`, `9a8a2789`, `46d4eaca`) read end to
 owners queue's two passes and its race check, `retryable`, `siteAlive` and `readDnsError`, and the resend's
 own copy-version cut.
 
+What a booking says it was for, against the menu it was picked from: the service, the sub-line and the price
+every surface names a booking by, on the guest's two confirmation screens and the operator's own feed, held
+against a menu the operator has since reordered, shortened or repriced, with the stored index read as the
+fallback it is; every add-on and option name in the shipped catalog for one written in digits alone, which
+would read as that index; and every day sum in both trees for two sides built at different hours of the day.
+
 What the composed API actually answers, as against what each handler asks for, which is the one thing its own
 unit tests cannot see because they drive sub-apps and read source text: the `cache-control` on every route
 against each handler's own intent, the security headers on a hit, a miss and a handler that throws, the CORS
@@ -11211,7 +11306,13 @@ because Hono's `cors` answers `OPTIONS` before the middleware that sets them and
 body limit behind CORS (see the hundred and thirty-seventh run's Needs Harshil). Whether `GET /profiles/:id`,
 the one public read route with no per-caller limit, should have one, given that it is what every guest's
 browser calls when a listing opens and the reads beside it sit at 120 to 240 an hour (see that run's Needs
-Harshil). Whether `backend/src/concierge/demand.ts` should scope its crawl queue by the town people asked
+Harshil). Whether a party floor a shop states should reach the guest at all, on the 235 shipped listings whose group
+lines write one: the picker offers two people a flight whose own line reads "minimum 2 passengers", the
+operator can only decline, and most of those lines are about one package rather than the shop, so it wants a
+judgement and new copy rather than a rule (see the hundred and thirty-eighth run's Needs Harshil). Whether an
+operator may name an add-on in digits alone, which `splitAddons` would read as the index of the service they
+booked: no shipped listing does, and the dashboard's own editor takes anything typed into it. Whether
+`backend/src/concierge/demand.ts` should scope its crawl queue by the town people asked
 about, which its own comment says it does with an `instr` on a lowered city and its SQL does not do at all: it
 filters by category and region only, so a question about escape rooms in Waterloo queues escape rooms across
 Ontario and labels each row "asked for ... near Waterloo". Whether the rehearsal should mirror the layout Render publishes rather than the one `vite build` leaves, which is what keeps the real home, its forward script and the route rewrites undriven (see this run's Needs Harshil). Whether `npm run build` and render.yaml should produce the same site at all, now that one runs `scripts/copy-operators.mjs` and the other does not. Whether a transactional email's wordmark should open the operator's page or the marketplace, which is one template serving both audiences (see this run's Needs Harshil). Whether the Inbox tab should stay in the tab bar at all while the guest agent is off, given that its list and its badge are now always empty by rule. Whether `SITE_PAGES` should be checked against the files that answer those paths, so a fifth business-type page added to the sitemap without its html cannot become a soft 404 under the catch-all. Whether `POST /auth/verify` should count a try it is about to find correct, which is
@@ -11612,9 +11713,7 @@ should inject a `GITHUB_TOKEN` at all, given that the brief says it must be empt
 the GitHub API path for every file `public/` does not hold while one is set (see that run's Needs Harshil). Whether `POST /otto/ask` should refuse a partner's
 product the way `POST /bookings` and the two `/voice` routes do: it is handed its facts by the caller and reads
 no listing file, so the gate costs a disk read on every uncached question to close a door no surface of ours
-opens, and `assistantOn` is the product's own gate (see the hundred and sixteenth run). Whether both
-confirmation screens should name the option a booking picked out of the live menu by index, which is the fault
-the dashboard was fixed for and which only a trip card that opened a confirmation would ever expose. Whether the phone's browse should be ranked at all, which is
+opens, and `assistantOn` is the product's own gate (see the hundred and sixteenth run). Whether the phone's browse should be ranked at all, which is
 the hundred and seventeenth run's Needs Harshil: `browseList` returns the catalog's own order, the desktop's
 `rankForRail` scores cover, price, reviews and nearness and demotes a listing whose own words never confirm its
 kind, and 32 guessed-kind cards reach the first six of 455 phone category pages with 4 of them leading on one.
