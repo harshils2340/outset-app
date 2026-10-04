@@ -10028,6 +10028,96 @@ Every new test was run against the tree with its own fix reverted and fails ther
 backend's own `tsc` clean but for TS5097. The **rehearsal ran 57 of 57** again at the end, since the changes
 are in `backend/src`. `STRIPE_SECRET_KEY`, `RESEND_API_KEY` and `GITHUB_TOKEN` were empty throughout.
 
+## 4 October 2026, hundred and thirty-seventh run (08:12 to 08:50 UTC)
+
+**Chosen, and why.** One commit landed after the hundred and thirty-sixth run's entry, `71f92805`, which is
+Harshil's own fix for that run's first Needs Harshil (the desk words that matched surnames). It touches
+`backend/src`, so the brief's rule (b) applied and the **rehearsal ran at the start**: 57 of 57, on a Postgres
+16 cluster built from scratch on port 5433 with SSL on and the on-disk Playwright Chromium. Baseline after
+`npm install` on both sides: root `tsc --noEmit -p .` clean, backend `tsc` clean but for TS5097, backend 1,060
+with 1,058 pass and 2 skipped, app 1,251 pass.
+
+Target: **the answer the composed API actually sends, as against the one each handler asks for.** Every area
+the brief lists is on Verified, and so is nearly every axis anyone has invented since, so this was read as its
+own axis: the whole app as a caller meets it. The API's own tests are unit tests of sub-apps and of source
+text, so a middleware that runs after a handler, and a limit registered above one, are invisible to all of
+them. Both of tonight's defects live exactly there, and both had a test sitting beside them that could not see
+them.
+
+**Found and fixed.** Two commits, pushed.
+
+- **Two routes' deliberate `cache-control` was overwritten, so `/where` and `/nearby` answered `no-store`**
+  (`d8199a0c`). The blanket security middleware sets its headers after `await next()`, and set
+  `cache-control: no-store` on every answer that was not an uploaded photo. `/where` sets
+  `private, max-age=600` on purpose, which is the ten minutes in the guest's own browser that stops the home
+  re-asking where they are on every visit, and `/nearby` sets `private, max-age=300` in front of a paid Google
+  Places call. Driven on the composed app, both came back `no-store`. Each has a test of its own and neither
+  saw it: `whereCache.test.ts` reads the header out of `routes.ts`, and `nearby.test.ts` drives the `nearby`
+  sub-app alone, where that middleware does not exist. The middleware now leaves a cache-control a handler set
+  and fills in `no-store` where there is none, which is every other answer. The uploaded photo keeps its year
+  through the same rule, and the 404 beside it now says `no-store` where before it said nothing at all. Both
+  of the app's fetches pass no `cache` option, so the browser honours the header: the fix is real and not
+  notional.
+- **The photo route's own 1.8 MB ceiling was unreachable, because the blanket body limit in front of it was
+  smaller** (`ef83d31d`). A photo travels as base64 inside JSON, a third longer than the file, so the 2 MB
+  blanket `bodyLimit` is about 1.57 MB of JPEG. The upload route says it takes 1.8 MB and the browser's own
+  resize passes aim at 1.7 MB, so a detailed photograph that came out of those passes between the two, which
+  is the spray and foliage and crowd case that loop was written for, was accepted by the browser, refused by
+  the body limit with a bare `{"error":"too large"}`, and never reached the route that would have measured it
+  and said so in the operator's own words. Measured on the composed app: 1,570,000 bytes of JPEG reaches the
+  route, 1,600,000 does not. `POST /uploads/` now carries 3 MB, which admits 1.8 MB of JPEG with its base64
+  and JSON; every other body stays at 2 MB, and the photo route keeps the real ceiling and the real message.
+  The comment on that limit said photo uploads had their own larger one. They had a smaller one in front of it.
+
+**Measured and left.** The rest of the axis came back clean, which is worth recording as much as the two
+defects. The rate limiter keys on `clientIp` plus `c.req.routePath`, and `routePath` resolves per route
+through a mounted sub-app, so exhausting `/auth/request-code` at 20 an hour leaves `/unsubscribe`,
+`/claims/:id/request` and `/uploads/:id` answering: driven, not read. The security headers are on a hit, on a
+miss and on a handler that throws. The CORS preflight carries `Vary: Origin, Access-Control-Request-Headers`,
+so no shared cache can hand one origin's allowance to another, and the allow list in `routes.ts` agrees with
+`render.yaml`'s `ALLOWED_ORIGINS` and with `src/lib/site.ts`. No two routes in the API share a method and a
+path, so nothing is shadowed by a later mount, and the three paths that look duplicated (`/profiles/:id`,
+`/unsubscribe`, `/wallet`) are different methods. All 30 API paths the app fetches are routes the API
+registers, the three `/bookings/...` shapes whose segment counts have to stay distinct included. No handler
+sets any header the middleware also sets, so the clobber was the only one of its kind. `/claims/:id/request`
+answers the same `ok:false, reason:"unknown"` for a listing that exists and one that does not, and refuses a
+traversal id outright. Catalog text interpolated into a `new RegExp` was read across both trees: every site
+that builds a pattern out of a town, a business name, a review signature or a page title escapes it first, so
+a shop with a bracket in its name throws nowhere.
+
+**Needs Harshil.**
+
+- **The CORS preflight is the one answer with no security headers and no cache-control.** Hono's `cors`
+  short-circuits `OPTIONS` with a 204 before `next()`, so the middleware's post-`next` block never runs on it.
+  A preflight has no body, nothing leaks, and its `Vary` is right. Left as it is rather than moved, because
+  covering it means reordering the two middlewares, which puts the body limit behind CORS: a change to the
+  shape of the stack, not a fix.
+- **`GET /profiles/:id` is the one public read route with no per-caller limit.** It is what every guest's
+  browser calls when a listing opens, so a limit there would refuse ordinary browsing, and the reads beside it
+  sit at 120 to 240 an hour. Read and left, because the right number is a product call.
+- Still open from earlier runs, unchanged: there is no error boundary in this app, now twenty-two runs asked;
+  "Open right now near you" is computed once a visit; the 108 operators with hacked websites still have not
+  been told; the phone's browse is not ranked while the desktop's is; the phone confirmation offers no way to
+  reach the shop; a guest cannot cancel a booking at all; a price sort and a price filter compare two dollars
+  on six metros; the cards say "$" for a Canadian shop; `lasertag` does not search `paintball`; `POST
+  /auth/verify` still counts a try it is about to find correct; `backend/src/concierge/demand.ts` filters its
+  crawl queue by category and region and not by the town its own comment says it scopes to; and no sync has
+  run, so `kid`, `specs`, `gap` and `extraNote` are still empty on every shipped row. The hundred and
+  thirty-sixth run's first Needs Harshil, the desk words matching surnames, **is fixed on main** by
+  `71f92805`. **The brief's rehearsal path is `backend/scripts/e2e-local.mts`, not `scripts/`**, third run to
+  say so. **Local `main` is still detached**, thirteenth run in a row: the sandbox refuses `git checkout -B
+  main`, so the work was committed on the detached head and pushed with `git push origin HEAD:main`. This
+  container still injects a `GITHUB_TOKEN`; everything tonight ran with it cleared.
+
+**Verification.** Backend `npm test` 1,065 with 1,063 pass and 2 skipped, up 5 from 1,060, all 5 in
+`api/__tests__/composedHeaders.test.ts`, which drives `app` out of `routes.ts` rather than a sub-app; app
+1,251 pass, unchanged. Each new test was run against the tree with its own fix reverted and fails there, and
+passes with the other fix reverted, so neither test is carried by the other change. `tsc --noEmit -p .` clean
+at the root, backend's own `tsc` clean but for TS5097. The **rehearsal ran again at the end**, 57 of 57, since
+the changes are in `backend/src`. `STRIPE_SECRET_KEY`, `RESEND_API_KEY` and `GITHUB_TOKEN` were empty
+throughout.
+
+
 ## Coverage
 
 The catalog is 48,198 listings as of the 23 September sync, 1,873 of them Viator partner rows. Counts below
@@ -11106,7 +11196,25 @@ October (`a5c1215a`, `0bd46830`, `7f3ff275`, `9a8a2789`, `46d4eaca`) read end to
 owners queue's two passes and its race check, `retryable`, `siteAlive` and `readDnsError`, and the resend's
 own copy-version cut.
 
-**Not yet checked.** Whether the rehearsal should mirror the layout Render publishes rather than the one `vite build` leaves, which is what keeps the real home, its forward script and the route rewrites undriven (see this run's Needs Harshil). Whether `npm run build` and render.yaml should produce the same site at all, now that one runs `scripts/copy-operators.mjs` and the other does not. Whether a transactional email's wordmark should open the operator's page or the marketplace, which is one template serving both audiences (see this run's Needs Harshil). Whether the Inbox tab should stay in the tab bar at all while the guest agent is off, given that its list and its badge are now always empty by rule. Whether `SITE_PAGES` should be checked against the files that answer those paths, so a fifth business-type page added to the sitemap without its html cannot become a soft 404 under the catch-all. Whether `POST /auth/verify` should count a try it is about to find correct, which is
+What the composed API actually answers, as against what each handler asks for, which is the one thing its own
+unit tests cannot see because they drive sub-apps and read source text: the `cache-control` on every route
+against each handler's own intent, the security headers on a hit, a miss and a handler that throws, the CORS
+preflight's `Vary` and the allow list against `render.yaml` and the app's own `SITE`, the rate limiter's
+per-route keying driven rather than read, the body limit each route really has against the limit its own
+message promises, every method and path in the API against every other for a route shadowed by a later mount,
+and all 30 API paths the app fetches against the routes the API registers. Catalog text interpolated into a
+`new RegExp`, over every site in both trees that builds a pattern out of a town, a business name, a review
+signature or a page title.
+
+**Not yet checked.** Whether the CORS preflight should carry the security headers and a cache-control, which it alone does not,
+because Hono's `cors` answers `OPTIONS` before the middleware that sets them and covering it means putting the
+body limit behind CORS (see the hundred and thirty-seventh run's Needs Harshil). Whether `GET /profiles/:id`,
+the one public read route with no per-caller limit, should have one, given that it is what every guest's
+browser calls when a listing opens and the reads beside it sit at 120 to 240 an hour (see that run's Needs
+Harshil). Whether `backend/src/concierge/demand.ts` should scope its crawl queue by the town people asked
+about, which its own comment says it does with an `instr` on a lowered city and its SQL does not do at all: it
+filters by category and region only, so a question about escape rooms in Waterloo queues escape rooms across
+Ontario and labels each row "asked for ... near Waterloo". Whether the rehearsal should mirror the layout Render publishes rather than the one `vite build` leaves, which is what keeps the real home, its forward script and the route rewrites undriven (see this run's Needs Harshil). Whether `npm run build` and render.yaml should produce the same site at all, now that one runs `scripts/copy-operators.mjs` and the other does not. Whether a transactional email's wordmark should open the operator's page or the marketplace, which is one template serving both audiences (see this run's Needs Harshil). Whether the Inbox tab should stay in the tab bar at all while the guest agent is off, given that its list and its badge are now always empty by rule. Whether `SITE_PAGES` should be checked against the files that answer those paths, so a fifth business-type page added to the sitemap without its html cannot become a soft 404 under the catch-all. Whether `POST /auth/verify` should count a try it is about to find correct, which is
 what makes any client retry cost an owner one of five attempts (see this run's Needs Harshil). Whether a
 guest waiting out one of the two new deadlines should be told which wait they are in, 15 seconds on a
 stalled listing link and 20 on the card form, both of which say nothing until they end (see this run's Needs
