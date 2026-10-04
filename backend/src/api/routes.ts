@@ -48,9 +48,19 @@ export const app = new Hono();
 // Browser calls come only from the site (and a dev server). Everything else is same-origin tooling.
 const ORIGINS = (process.env.ALLOWED_ORIGINS || "https://onoutset.com,https://www.onoutset.com,https://harshils2340.github.io,http://localhost:5173,http://localhost:5199").split(",").map((s) => s.trim());
 // An unauthenticated caller could stream an arbitrarily large body at the API, and the Stripe webhook has to
-// read the whole thing before it can check the signature. 2 MB is far above any real booking or profile write;
-// photo uploads have their own, larger, limit checked inside that route.
-app.use("*", bodyLimit({ maxSize: 2 * 1024 * 1024, onError: (c) => c.json({ error: "too large" }, 413) }));
+// read the whole thing before it can check the signature. 2 MB is far above any real booking or profile write.
+//
+// A photo is the one body that is legitimately bigger, and this limit used to apply to it too: the browser
+// sends JPEG bytes as base64 inside JSON, which is a third longer than the file, so 2 MB here is about
+// 1.57 MB of JPEG, under the 1.8 MB the upload route says it takes and under the 1.7 MB the browser's own
+// resize passes aim at. A detailed photograph that came out of those passes between the two was accepted by
+// the browser, refused here with a bare "too large", and never reached the route that would have measured it
+// and said so in the operator's own words. The photo route keeps the real ceiling; this one just stops
+// leaving it unreachable.
+const tooLarge = (c: { json: (body: unknown, status: 413) => Response }) => c.json({ error: "too large" }, 413);
+const anyBody = bodyLimit({ maxSize: 2 * 1024 * 1024, onError: tooLarge });
+const photoBody = bodyLimit({ maxSize: 3 * 1024 * 1024, onError: tooLarge });
+app.use("*", (c, next) => (c.req.method === "POST" && c.req.path.startsWith("/uploads/") ? photoBody : anyBody)(c, next));
 // DELETE is on this list because the dashboard's "Release this listing" uses it. A method missing here fails
 // only in a browser, on the preflight, so the route answers every in-process test and none of the real presses.
 app.use("*", cors({ origin: (o) => (ORIGINS.includes(o) ? o : ""), allowHeaders: ["content-type", "x-claim-token", "x-session", "x-wallet"], allowMethods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"], maxAge: 600 }));
