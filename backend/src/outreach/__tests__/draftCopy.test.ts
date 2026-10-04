@@ -137,3 +137,16 @@ test("the mail carries Harshil's call link as a 'love to chat' hyperlink, once",
   assert.equal(c.html.split(cal).length - 1, 1, "the call link appears exactly once in the html");
   assert.ok(c.body.indexOf('Just reply "yes"') < c.body.indexOf(cal), "the reply-yes close still comes first");
 });
+
+/**
+ * The pitch's own sentence calls Outset "an instant-booking marketplace for local activities", and the link
+ * under it is the proof. The site root stopped being that marketplace on 3 October 2026, when the Otto page
+ * (an AI front desk sold to operators) became the home and the marketplace moved to /activities, so the
+ * invitation to look at a marketplace opened a page selling a phone receptionist instead.
+ */
+test("'take a look' opens the marketplace the sentence above it describes, not the site root", () => {
+  const c = draftCopy(op, {} as never, empty, "info@seabreezejetski.com");
+  assert.ok(c.body.includes("Take a look: https://onoutset.com/activities"), c.body);
+  assert.ok(c.html.includes('<a href="https://onoutset.com/activities">Take a look</a>'), c.html);
+  assert.ok(!/href="https:\/\/onoutset\.com\/"/.test(c.html), "no link in the pitch opens the bare root");
+});

@@ -160,7 +160,11 @@ export function draftCopy(op: Op, sc: ReturnType<typeof scale>, f: PageFacts, em
   const menu = f.priced.length || f.services ? "services" : null;
   const built = [menu, f.photos ? "your photos" : null, f.hours ? "your hours" : null, f.rules ? "your cancellation policy" : null].filter(Boolean) as string[];
   const who = "I'm Harshil, the founder of Outset, an instant-booking marketplace for local activities across the US and Canada.";
-  const browse = "Take a look: " + SITE;
+  // The sentence above calls Outset a marketplace, so "take a look" has to open the marketplace. Since
+  // 3 October 2026 the site root is the Otto page, which sells an AI front desk: an owner invited to look at
+  // a marketplace of local activities landed on "Your 24/7 Front Desk" instead.
+  const MARKETPLACE = SITE + "activities";
+  const browse = "Take a look: " + MARKETPLACE;
   const offer = built.length
     ? "We can build " + op.name + " a complete page using " + andList(built) + ", all set up and ready to go, for free. We just need your OK to do it."
     : "We can build " + op.name + " a complete page, all set up and ready to go, for free. We just need your OK to do it.";
@@ -183,7 +187,7 @@ export function draftCopy(op: Op, sc: ReturnType<typeof scale>, f: PageFacts, em
   ].filter((l) => l !== null) as string[];
   const paras = [
     "<p>" + esc(hi) + "</p>",
-    "<p>" + esc(who) + "<br>" + link(SITE, "Take a look") + "</p>",
+    "<p>" + esc(who) + "<br>" + link(MARKETPLACE, "Take a look") + "</p>",
     "<p>" + esc(offer) + (vendor ? " " + esc(vendor) : "") + "</p>",
     "<p>" + esc(trySample) + "<br>" + link(demoUrl, "See a sample listing") + "</p>",
     "<p>" + esc(scaleLine) + "<br>" + esc(cta) + "</p>",
