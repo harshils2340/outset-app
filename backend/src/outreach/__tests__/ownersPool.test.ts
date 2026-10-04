@@ -16,7 +16,7 @@ import type { PoolRow } from "../touches.ts";
 // touches.ts reaches db/client.ts through unsub.ts; keep that off the laptop's real catalog.
 process.env.OUTSET_DB = join(mkdtempSync(join(tmpdir(), "outset-owners-pool-")), "catalog.db");
 const { decideOwner, ownersQueue, runOwnersPool, siteToRead } = await import("../ownersPool.ts");
-const { ownersForSite } = await import("../../enrich/ownerSite.ts");
+const { challenged, ownersForSite } = await import("../../enrich/ownerSite.ts");
 const { DESK_INBOX, FAMILY_ORDER, POOL_COLUMNS, POOL_ORDER, POOL_UNTOUCHED, poolUpsertSql } = await import("../touches.ts");
 
 const FIXTURES = join(import.meta.dirname, "fixtures", "owners");
@@ -247,4 +247,15 @@ test("a site that lists the manager's inbox beside info@ gets the pitch sent to 
   assert.ok(site.found.some((f) => f.email === "manager@lockboxescapes.com"), "manager@ is read, not filtered out as a desk");
   const d = decideOwner({ email: "info@lockboxescapes.com", domain: "lockboxescapes.com", greet: null }, site.found);
   assert.deepEqual(d, { change: "mailbox", email: "manager@lockboxescapes.com", greet: null, source: "https://lockboxescapes.com/contact" });
+});
+
+test("a home page with a reCAPTCHA form or Cloudflare's page script is read, and only a real challenge page is blocked", () => {
+  const body = "<p>" + "Four rooms, sixty minutes, one way out. Book a room for your team or your family. ".repeat(30) + "</p>";
+  const ordinary = `<html><head><script src="https://www.google.com/recaptcha/api.js"></script></head><body>${body}
+    <form><div class="g-recaptcha"></div></form><script>a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js'</script></body></html>`;
+  assert.equal(challenged({ status: 200, html: ordinary, finalUrl: "https://lockboxescapes.com/" }), false);
+  const cloudflare = `<html><head><title>Just a moment...</title></head><body><div id="cf-chl-widget"></div>Verifying you are human.</body></html>`;
+  assert.equal(challenged({ status: 200, html: cloudflare, finalUrl: "https://lockboxescapes.com/" }), true);
+  assert.equal(challenged({ status: 429, html: body, finalUrl: "https://lockboxescapes.com/" }), true);
+  assert.equal(challenged({ status: 200, html: body, finalUrl: "https://lockboxescapes.com/rate-limit" }), true);
 });

@@ -86,6 +86,20 @@ function namesNearTitles(text: string): { name: string; title: string }[] {
 
 export type SitePage = { status: number; html: string; finalUrl: string };
 
+/**
+ * The site telling us to stop rather than the site. looksBlocked (fetch.ts) also fires on plenty of ordinary
+ * home pages, because "captcha" is in every page with a reCAPTCHA on its contact form and "challenge-platform"
+ * is in the script Cloudflare's bot detection adds to every page it serves: on 4 October 2026 that was 27 of the
+ * first 120 escape rooms, each one dropped as blocked after it had loaded. A status or an address that says
+ * stop still counts; a body only counts when it is the whole page, a challenge with next to no text of its own.
+ */
+export function challenged(p: SitePage): boolean {
+  if (p.status === 429 || p.status === 403 || p.status === 503) return true;
+  if (/\/(rate-?limit|challenge|blocked|captcha|access-?denied)\b/i.test(p.finalUrl)) return true;
+  if (!looksBlocked(p)) return false;
+  return textOf(p.html).text.trim().length < 1500;
+}
+
 export type OwnersSiteOptions = {
   /** How a page is read. Default: the shared crawler fetch (robots.txt honoured, page cache, CPU floor on a laptop). Tests pass saved pages. */
   fetchPage?: (url: string) => Promise<SitePage>;
@@ -125,7 +139,7 @@ export async function ownersForSite(website: string, opts: OwnersSiteOptions = {
   if (!home || home.status >= 400 || !home.html) {
     // fetchHtml answers status 0 with no body when robots.txt disallows the page.
     const why = !home ? err || "no answer" : home.status >= 400 ? "HTTP " + home.status : home.status === 0 ? "robots.txt says no" : "empty page";
-    return { loaded: false, blocked: !!home && looksBlocked(home), pages: 0, found, why };
+    return { loaded: false, blocked: !!home && challenged(home), pages: 0, found, why };
   }
   const base = new URL(home.finalUrl || website);
   const pages: { url: string; html: string }[] = [{ url: home.finalUrl, html: home.html }];
@@ -162,7 +176,7 @@ export async function ownersForSite(website: string, opts: OwnersSiteOptions = {
       }
     }
   }
-  return { loaded: true, blocked: looksBlocked(home), pages: pages.length, found: found.slice(0, 8) };
+  return { loaded: true, blocked: challenged(home), pages: pages.length, found: found.slice(0, 8) };
 }
 
 /** The owners crawl's reader for one catalog operator, as before: its own website, the shared fetch, 20 seconds a page. */
