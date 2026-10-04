@@ -101,6 +101,17 @@ test("a crawl candidate that is junk or a stranger's never displaces the front d
   assert.equal(outreachAddress({ email: null, domain: "capitolboatclub.com" }, ["ron@capitolboatclub.com"]), "ron@capitolboatclub.com", "no front desk at all, the owner still counts");
 });
 
+test("a surname is not a desk word, and a desk with a new name is still a desk", () => {
+  for (const person of ["lszymanski@coloradorenaissance.com", "brent@shop.com", "trent.lee@shop.com", "mfisher@shop.com", "jbishop@shop.com", "stafford@shop.com", "storey@shop.com", "booker@shop.com", "ismail@shop.com", "merchant@shop.com"])
+    assert.equal(looksPersonal(person, "shop.com"), true, person);
+  for (const desk of ["ski@shop.com", "waterski@shop.com", "skischool@shop.com", "gofish@shop.com", "fishing@shop.com", "shop@shop.com", "email@shop.com", "booking@shop.com", "staff@shop.com", "store@shop.com",
+    "wix.comwebmaster@bqmra.com", "tech@shop.com", "merch@shop.com", "partnership@shop.com", "concierge@shop.com", "camping@shop.com", "racing@shop.com", "experience@shop.com", "apalacheeenrollment@shop.com"])
+    assert.equal(looksPersonal(desk, "shop.com"), false, desk);
+  assert.equal(outreachAddress({ email: "lszymanski@coloradorenaissance.com", domain: "coloradorenaissance.com" }, ["crfcrf@coloradorenaissance.com"]), "lszymanski@coloradorenaissance.com", "a person on file stays against a tie");
+  assert.equal(outreachAddress({ email: "buckeyeqm@gmail.com", domain: "bqmra.com" }, ["wix.comwebmaster@bqmra.com"]), "buckeyeqm@gmail.com", "a site builder's address glued to its label");
+  assert.equal(ownerFirstName("brent@shop.com", ["Brent Lowe (owner)"]), "Brent", "Brent gets his name");
+});
+
 test("a mailbox is a person only when it reads like one", () => {
   assert.equal(looksPersonal("ron@capitolboatclub.com", "capitolboatclub.com"), true);
   assert.equal(looksPersonal("patrick.ferro@montgomeryparks.org", "montgomeryparks.org"), true);

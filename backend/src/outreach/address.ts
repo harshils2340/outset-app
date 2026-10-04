@@ -24,8 +24,10 @@ const ROLE = /^(info|hello|hi|contact|contactus|book|booknow|booking|bookings|re
  * mikescharters@, captainsteve@ are the business, not someone's own inbox. So are a vendor's and an events
  * desk's: on 4 October 2026 the owners lookup moved an escape room's pitch to farskymediacompany@gmail.com, the
  * web designer named in its footer, and others to corporate@, donations@, hiring@, birthdays@ and coaches@.
+ * The short words stop short of common surnames: Szymanski is not a ski desk, Brent is not a rental, nor are
+ * Fisher, Bishop, Stafford, Storey, Booker or Ismail a fishing, shop, staff, store, booking or mail desk.
  */
-const DESK_WORD = /(info|book|reserv|sales|office|admin|support|contact|hello|tour|charter|rental|cruise|order|event|team|staff|service|mail|marina|waiver|program|registrar|director|buyer|warehouse|frontdesk|reception|dispatch|crew|captain|pilot|instructor|guide|school|lesson|class|shop|store|fish|dive|kayak|boat|sail|parasail|jetski|rent|ski|surf|charters|corporate|media|design|digital|marketing|agency|creative|consult|solutions|graphic|photo|productions|member|youth|coach|donation|hiring|retail|birthday|party|parties|yoga|communication|facilit|payroll|invoice|volunteer|league)/;
+const DESK_WORD = /(info|book(?!er)|reserv|sales|office|admin|support|contact|hello|tour|charter|rental|cruise|order|event|team|staff(?!ord)|service|(?<!is)mail|marina|waiver|program|registrar|director|buyer|warehouse|frontdesk|reception|dispatch|crew|captain|pilot|instructor|guide|school|lesson|class|(?<!bi)shop|store(?![yr])|fish(?!er|man|burn)|dive|kayak|boat|sail|parasail|jetski|(?:^|[._-]|water|snow|heli|aqua)ski|skis|skiing|surf|charters|corporate|media|design|digital|marketing|agency|creative|consult|solutions|graphic|photo|productions|member|youth|coach|donation|hiring|retail|birthday|party|parties|yoga|communication|facilit|payroll|invoice|volunteer|league|webmaster|wix|tech|racing|experience|concierge|merch(?!ant)|camping|women|entertain|partner|enroll)/;
 
 /**
  * The inbox of whoever runs the place rather than of a desk: owner@, manager@, gm@. Harshil, 4 October 2026: find the
