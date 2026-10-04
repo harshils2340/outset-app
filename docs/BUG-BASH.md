@@ -10302,6 +10302,105 @@ with SSL on and the on-disk Playwright Chromium. `STRIPE_SECRET_KEY`, `RESEND_AP
 empty throughout.
 
 
+## 4 October 2026, hundred and fortieth run (11:15 to 11:55 UTC)
+
+**Chosen, and why.** Nothing had landed since the hundred and thirty-ninth run's entry (`4d605277`), and that
+entry records its rehearsal green at 57 of 57, so by the brief's rule the **rehearsal was skipped at the
+start**. It ran once at the end, because both of tonight's fixes are in code it covers. Baseline after `npm
+install` on both sides: root `tsc --noEmit -p .` and `tsc -b` clean, backend `tsc` clean but for TS5097,
+backend 1,073 with 1,071 pass and 2 skipped, app 1,273 pass.
+
+Target: **who a listing may be claimed by, read against the index that ships rather than against the rule**.
+Picked by looking for live modules this log has never named: `backend/src/lib/claimIndex.ts` is one, it has no
+test of its own, and it is the gate on the one action that hands a stranger an operator dashboard. The brief's
+"an address that does not match the business" is on Verified, but as logic; the 423,187 rows the gate actually
+reads had never been held against it.
+
+**Found and fixed.** Two commits, pushed.
+
+- **A listing was claimable from the booking system, site builder or mail provider its page happens to sit
+  on** (`299adfd9`). `ownDomain` turns a crawled host into "a domain this business owns", and any address
+  there can ask for a claim link and be sent a signed one. Its refusal list covered the site builders and the
+  consumer mail providers somebody had thought of; **803 of the shipped rows name a host it had not**, over 83
+  hosts: a shop's page on `booksy.com` (274 rows), `setmore.com` (112), `yolasite.com` (75), `tripod.com` (64),
+  `tumblr.com`, `webnode.com`, `acuityscheduling.com`, `netlify.app`, `vercel.app`, `github.io` or
+  `herokuapp.com`; its listing on `yelp.com`, `eventbrite.com`, `groupon.com`, `expedia.com`, `airbnb.com`,
+  `classpass.com`, `patch.com` or `nextdoor.com`; a link page or a shortener (`t.co`, `goo.gl`, `g.page`,
+  `bio.link`, `beacons.ai`, `msha.ke`, `mailchi.mp`); or the whole row keyed by a consumer mail provider.
+  Fourteen of those rows publish no on-file address at all, so the domain was the only way in, and **anybody
+  who could sign up for a mailbox at `aim.com`, `usa.com`, `126.com`, `earthlink.net`, `rr.com` or
+  `roadrunner.com` had a working route to a real business**. The rest were worse in a quieter way: the
+  stranger beat an owner we do hold an address for. `claimRule` reads each domain on a row through the rule
+  now rather than trusting the file, so an index written by an earlier sync stops granting a refused host
+  without waiting for the next one. Every one of the 83 refused suffixes was read by hand; no real operator
+  domain in the index loses the route it had, and the 290 rows left with no route at all land on the claim
+  screen's own honest dead end ("We don't have an email from your website yet. Write to support ... and we'll
+  verify by hand"), with the Send button already disabled by `noWay`.
+- **A guest the operator marked absent read a trip with no word on it** (`da1bf7ad`). `noshow` is one of the
+  seven answers `GET /bookings/paid/:listing/:code` gives, and the Trips tab's pill map was keyed by `string`,
+  so the missing row cost nothing at compile time: a guest whose operator pressed No-show read a title, a
+  time, a party and a code and nothing else, which is the exact fault the status read was written to stop. No
+  decision email is sent for a no-show (`mailDecision` runs on accepted, declined and cancelled only) and the
+  money is not refunded, so the pill is the only place it can be read. The map is keyed by the union now,
+  named `BookingStatus` in `api.ts`, so an eighth status cannot slip in unlabelled. `askStatus` had the same
+  gap on the other side: a no-show is a verdict like a decline, a cancellation or a completion, and it was
+  being asked after again on every window activation out of the sixty reads an hour the guest's own return
+  from Stripe depends on.
+
+**Measured and left.** The claim fallback is sound: of 52,815 shipped detail files, the only 6,492 missing
+from the index are the partner rows, and every one is refused by the affiliate branch, so no listing is
+granted a domain by the detail file at all. No row's domain is a bare public suffix (the 107 that look like
+one are real county, state and provincial domains, `co.sonoma.ca.us` and `state.nj.us` among them). 25 of the
+335,104 domains on rows are not hostnames at all, so their rule is dead rather than open: 7 with a glued
+scheme, a leading dot, a trailing dot, a comma for a dot, a backtick, and underscores; 20 of the 25 still hold
+an on-file address, 5 hold nothing, and each wants a supply judgement rather than a reader. `/auth/request-code`
+and `/auth/verify` grant only listings already claimed by that address (`idsForEmail` reads the link table a
+completed claim writes), and no outreach draft carries a claim link any more. 748 index domains name more than
+one listing, covering 2,239, and they are chains (`clubpilates.com` 110, `locations.massageenvy.com` 92) plus a
+handful of city and utility domains. `src/lib/agent.ts`, `src/lib/inventory.ts`, `src/data/slots.ts` and
+`DetailView.tsx` are the hand-built `LISTINGS` branch and `LISTINGS` is empty, so none of it runs today; its
+fabricated `capacity()` and its fee prose both agree with `pricing.ts` where they can be checked. `kindLabel`
+in the phone sheet has no word for one of the 64 `ArtKind`s (`paddleboard`, 73 catalog rows) and falls back to
+"this", unreachable while `GUIDES` holds 14 blocks and the section is gated on one. Input semantics on the
+guest forms came back clean: all three fields on all three surfaces carry `autoComplete`, `inputMode` and
+`maxLength`, and the app has 30 live regions and 5 `aria-invalid` already.
+
+**Needs Harshil.**
+
+- **290 shipped listings now have no way to claim at all.** 276 of them never had one in practice (their only
+  "domain" was a per-shop subdomain like `springspa.yolasite.com`, where no mailbox exists), but 14 did: those
+  are the ones a stranger could have taken, and shutting that door shuts the owner's with it. Either the crawl
+  should read an address off those pages so the email route exists, or the claim screen's "write to support"
+  path needs to be a real queue somebody reads.
+- **`SHARED_HOSTS` in `claimIndex.ts` is now the third list of "hosts nobody owns" in the backend**, beside
+  `FREE_MAIL` in `outreach/address.ts` (18 providers) and `FREE` in `outreach/touches.ts` (16). All three
+  disagree, which was already an open item; mine is now much the longest, and the two outreach lists score a
+  mailbox at a provider they do not know as if it were the shop's own.
+- Still open from earlier runs, unchanged: there is no error boundary in this app, now twenty-five runs asked;
+  "Open right now near you" is computed once a visit; the 108 operators with hacked websites still have not
+  been told; the phone's browse is not ranked while the desktop's is; the phone confirmation offers no way to
+  reach the shop; a guest cannot cancel a booking at all; a price sort and a price filter compare two dollars
+  on six metros; the cards say "$" for a Canadian shop; `lasertag` does not search `paintball`; `POST
+  /auth/verify` counts a try it is about to find correct; `concierge/demand.ts` still filters its crawl queue
+  by category and region and not by the town its own comment names; a shop that unpublishes may not be able to
+  get back to the switch it flicked; `/voice/:id/availability` reads out a paused shop's vendor calendar; and
+  no sync has run, so `kid`, `specs`, `gap` and `extraNote` are still empty on every shipped row, and the
+  claim-index fix reaches production through `claimRule` rather than through the file. **The brief's rehearsal
+  path is `backend/scripts/e2e-local.mts`, not `scripts/`**, sixth run to say so. **Local `main` is still
+  detached**, sixteenth run in a row: the sandbox refuses `git checkout -B main`, so the work was committed on
+  the detached head and pushed with `git push origin HEAD:main`. The Postgres cluster still needs building as
+  `ubuntu` with its own socket directory, and its SSL certificate generating, before the brief's command line
+  works; it is otherwise exactly right.
+
+**Verification.** Backend `npm test` 1,078 with 1,076 pass and 2 skipped, up 5, in
+`backend/src/lib/__tests__/claimShared.test.ts`; app 1,276 pass, up 3, in `src/lib/__tests__/tripNoShow.test.ts`.
+Each new file was run against the tree with its own fix reverted and fails there: 3 of 5 fail without the
+shared-host fix (the two that pass are the ones about a real operator's domain, which must not change), and 3
+of 3 fail without the no-show fix. `tsc --noEmit -p .` and `tsc -b` clean at the root, backend's own `tsc`
+clean but for TS5097. The **rehearsal ran once at the end, 57 of 57**, on a Postgres 16 cluster built
+from scratch on port 5433 with SSL on and the on-disk Playwright Chromium. `STRIPE_SECRET_KEY`,
+`RESEND_API_KEY` and `GITHUB_TOKEN` were empty throughout.
+
 ## Coverage
 
 The catalog is 48,198 listings as of the 23 September sync, 1,873 of them Viator partner rows. Counts below
@@ -11401,6 +11500,14 @@ sync's own drop of a `published: false` row, `POST /bookings`, both `/voice` rou
 Whether a booking's own ticket can be relabelled by a switch flicked afterwards, over the four fields two
 confirmation screens read from the live record.
 
+Who a listing may be claimed by, read against the index that
+ships rather than against the rule: all 423,187 rows and all 335,104 domains on them through `ownDomain`, for a
+host the business publishes on and does not own (the booking systems, the site builders, the application hosts,
+the marketplaces, the link pages and the consumer mail providers, 83 suffixes on 803 rows), for a bare public
+suffix, and for a string that is not a hostname at all; the detail-file fallback over all 52,815 shipped files,
+against the 6,492 partner rows it serves; and both sign-in routes against which listings an address gets. Every
+answer the paid-booking read can give, against the word each guest surface has for it.
+
 **Not yet checked.** Whether the CORS preflight should carry the security headers and a cache-control, which it alone does not,
 because Hono's `cors` answers `OPTIONS` before the middleware that sets them and covering it means putting the
 body limit behind CORS (see the hundred and thirty-seventh run's Needs Harshil). Whether `GET /profiles/:id`,
@@ -11884,4 +11991,18 @@ with no catalog record, and a claim link for a listing the complete catalog does
 way back rests on the detail file under `public/o` outliving the row, which nothing here can check (see the
 hundred and thirty-ninth run's Needs Harshil). Whether `/voice/:id/availability` should read out a paused
 shop's vendor calendar, which it does while the facts route beside it hands the agent a null booking URL and
-tells it to take a name and number (see that run's Needs Harshil).
+tells it to take a name and number (see that run's Needs Harshil). Whether the 290 shipped listings now left with no way to claim at all
+should get one: 276 never had one in practice, their only "domain" being a per-shop subdomain no mailbox exists
+at, and the other 14 are the ones a stranger could have taken, so shutting that door shut the owner's with it
+(see the hundred and fortieth run's Needs Harshil). Whether `SHARED_HOSTS` in `claimIndex.ts`, `FREE_MAIL` in
+`outreach/address.ts` and `FREE` in `outreach/touches.ts` should be one list, now that the first is much the
+longest of the three and the two outreach lists score a mailbox at a provider they do not know as if it were the
+shop's own. Whether the 25 domains on rows that are not hostnames should be normalised where the row is read,
+on the leading dot, the trailing dot, the comma written for a dot, the backtick and the underscores beside the
+seven glued schemes already open: each is a dead rule rather than an open door, 20 of the 25 still hold an
+on-file address, and picking the shop behind the string is a supply judgement. Whether `kindLabel` in the phone
+sheet should have a word for `paddleboard`, the one `ArtKind` of 64 it has none for, which is unreachable while
+`GUIDES` holds 14 blocks and the guide section is gated on one. Whether the hand-built `LISTINGS` branch
+(`src/lib/agent.ts`, `src/lib/inventory.ts`, `src/data/slots.ts`, `DetailView.tsx`) should still ship at all:
+`LISTINGS` is empty, so none of it runs, and `inventory.ts`'s `capacity()` fabricates a seat count from a hash
+of the id, the date and the time, which is the one thing `AGENTS.md` says never to invent.
