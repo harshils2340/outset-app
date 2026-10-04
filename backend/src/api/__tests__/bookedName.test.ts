@@ -106,7 +106,11 @@ test("every surface that reads a booking back names it through the one rule", ()
 
   for (const rel of ["../../../../src/components/web/WebConfirm.tsx", "../../../../src/components/booking/ConfirmView.tsx"]) {
     const src = read(rel);
-    assert.match(src, /bookedName\(\s*(?:booking|b)\.service,/, rel + " still prints a raw service name");
+    // The row these screens head is the one `bookedRow` hands back, which is the booking's own `service`
+    // wherever it recorded one, so the rule is read off that row rather than off the field behind it. The
+    // price lines below it stay on `tidyName`, because a row whose name is the shop's own still needs a
+    // label there, and `bookedName` would leave the money with nothing beside it.
+    assert.match(src, /bookedName\(/, rel + " still prints a raw service name");
     assert.doesNotMatch(src, /\{\s*(?:booking|b)\.service\s*\}/, rel + " still prints a raw service name");
     assert.doesNotMatch(src, /extras\.join\(/, rel + " still lists add-ons raw");
   }

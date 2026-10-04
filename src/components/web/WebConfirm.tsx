@@ -65,6 +65,10 @@ export function WebConfirm({ booking, onDone, onOpen }: { booking: Booking; onDo
     GUEST_AGENT ? "Questions? Otto on the listing answers from the operator's own info." : null,
   ].filter(Boolean);
   const p = picked ? priceUnclaimed(picked, booking.qty, addonRows) : null;
+  // One naming for the row, whichever side of the booking it came from: `bookedName` drops a service whose
+  // name is the business's own, so the line does not print the listing title back at the guest.
+  const bookedTitle = picked ? bookedName(picked.name, item.title) : "";
+  const bookedLabel = bookedTitle ? bookedTitle + (picked!.detail ? " · " + tidyLength(picked!.detail) : "") : "";
   const lines = p && p.base && booking.total && Math.abs(p.total - booking.total) < 0.01 ? p : null;
 
   return (
@@ -106,13 +110,9 @@ export function WebConfirm({ booking, onDone, onOpen }: { booking: Booking; onDo
               <div className="alconfirmrow">
                 <span><b>Guests</b><small>{booking.qty} {booking.qty === 1 ? "guest" : "guests"}</small></span>
               </div>
-              {picked ? (
+              {bookedLabel ? (
                 <div className="alconfirmrow">
-                  <span><b>Booking</b><small>{tidyName(picked.name)}{picked.detail ? " · " + tidyLength(picked.detail) : ""}</small></span>
-                </div>
-              ) : booking.service ? (
-                <div className="alconfirmrow">
-                  <span><b>Booking</b><small>{bookedName(booking.service, item.title)}</small></span>
+                  <span><b>Booking</b><small>{bookedLabel}</small></span>
                 </div>
               ) : null}
               {extras.length ? (
