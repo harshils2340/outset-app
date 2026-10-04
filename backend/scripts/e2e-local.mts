@@ -302,10 +302,19 @@ console.log("\n4. The site, built against the local API");
   const script = `import { build } from "vite"; await build({ configFile: ${JSON.stringify(join(ROOT, "vite.config.ts"))}, root: ${JSON.stringify(ROOT)}, publicDir: false, logLevel: "warn", build: { outDir: ${JSON.stringify(dist)}, emptyOutDir: true } });`;
   const r = await run("node", ["--input-type=module", "-e", script], { cwd: ROOT, env: { ...process.env, VITE_API_URL: API_URL }, quiet: true });
   const built = existsSync(join(dist, "index.html"));
-  // /operators is its own entry point on the deployed site (scripts/copy-operators.mjs does this in the real build).
+  /**
+   * The paths the app is actually served at. On the deployed site the root is the Otto page (public/otto.html,
+   * moved to index.html at build time) and the app answers at /activities, /operators, /admin and /listing/*
+   * through render.yaml's catch-all rewrite. `vite preview` serves files, not rewrites, so each path the
+   * rehearsal drives needs an entry point of its own here. /activities was added on 4 October 2026: without
+   * it the flow opened the guest listing at the root, which on the real site is the page that sells an AI
+   * front desk to operators, so the one address a guest's own link carries went undriven.
+   */
   if (built) {
-    mkdirSync(join(dist, "operators"), { recursive: true });
-    copyFileSync(join(dist, "index.html"), join(dist, "operators", "index.html"));
+    for (const path of ["operators", "activities"]) {
+      mkdirSync(join(dist, path), { recursive: true });
+      copyFileSync(join(dist, "index.html"), join(dist, path, "index.html"));
+    }
   }
   for (const f of ["favicon.svg", "favicon-32.png", "apple-touch-icon.png", "robots.txt"]) {
     if (existsSync(join(ROOT, "public", f))) cpSync(join(ROOT, "public", f), join(dist, f));

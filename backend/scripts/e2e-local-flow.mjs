@@ -295,7 +295,7 @@ async function flow(ctx) {
 
   /* ================= (a) a guest opens the test listing by its link ================= */
 
-  await goto(`${BASE}/#o=${ID}`);
+  await goto(`${BASE}/activities#o=${ID}`);
   await untilLocal(async () => String(await text()).includes(TITLE), 20000, 300);
   await sleep(1200);
   await shot("a-guest-listing");
@@ -340,7 +340,7 @@ async function flow(ctx) {
   await shot("c2-published-off");
   // The guest link still opens an unpublished listing on purpose (it drops out of browse, search and the
   // rails and stays reachable by its own link), but the page says it is hidden and shows no booking box.
-  await goto(`${BASE}/#o=${ID}`);
+  await goto(`${BASE}/activities#o=${ID}`);
   await sleep(2500);
   const stillOpens = (await has("This listing is hidden right now")) && !(await has("Pick a time"));
   await shot("c3-guest-while-unpublished");
@@ -553,7 +553,7 @@ async function flow(ctx) {
 
   /* ================= (d) every edit reached the guest page ================= */
 
-  await goto(`${BASE}/#o=${ID}`);
+  await goto(`${BASE}/activities#o=${ID}`);
   await until(() => document.body.innerText.includes("harness"), 15000);
   await sleep(1500);
   const page = await text();
@@ -628,7 +628,7 @@ async function flow(ctx) {
     const open = await fetch(`${API}/bookings/open/${encodeURIComponent(ID)}?from=${first.date}&days=1&service=${encodeURIComponent(first.service)}`).then((r) => r.json()).catch(() => null);
     const stillListed = !!open?.days?.[0]?.slots?.includes(first.slot);
     // The page, reloaded: the picked day must not offer that start time any more.
-    await goto(`${BASE}/#o=${ID}`);
+    await goto(`${BASE}/activities#o=${ID}`);
     await until(() => document.body.innerText.includes("harness"), 15000);
     await sleep(2500);
     // The month grid lives inside the date and time popover, which a fresh page load starts closed. Reaching
