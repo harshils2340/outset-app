@@ -1322,6 +1322,20 @@ export function isoToDate(iso: string): Date {
   return new Date(y, m - 1, d);
 }
 
+/**
+ * A day in Home's "Next 7 days" list: "Tomorrow 5", else "Tue 6".
+ *
+ * This read the day off `new Date(iso + "T12:00:00")` and measured the gap from midnight today, so every
+ * answer was half a day out: tomorrow came to 1.5 days and rounded to 2, and the "Tomorrow" the list was
+ * written to show could not be reached at all. A shop with a booking the next morning read "Mon 5" under a
+ * heading promising the week. Built at midnight, as `relDay` and every other day sum in this file are, the
+ * gap is whole days and the label says what it meant to.
+ */
+export function weekDayLabel(iso: string): string {
+  const d = isoToDate(iso);
+  return (relDay(iso) === "Tomorrow" ? "Tomorrow" : DAY_SHORT[d.getDay()]) + " " + d.getDate();
+}
+
 export function relDay(iso: string): string {
   const t = startOfToday();
   const d = isoToDate(iso);

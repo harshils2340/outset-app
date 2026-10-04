@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { dateKey, startOfToday } from "../../lib/dates";
 import { fmtTime, money } from "../../lib/format";
-import { DAY_SHORT, completedLately, onTheBooks, payoutSum, setupChecks, weekAheadLine } from "../../lib/operator";
+import { completedLately, onTheBooks, payoutSum, setupChecks, weekAheadLine, weekDayLabel } from "../../lib/operator";
 import type { OpBooking } from "../../lib/operator";
 import { Markup } from "../Markup";
 import { OD_ICONS, useOp } from "./opContext";
@@ -93,11 +93,7 @@ export function OpHome() {
     const m = payoutSum(items);
     return m ? " · " + money(m) : "";
   };
-  const dayLabel = (k: string) => {
-    const d = new Date(k + "T12:00:00");
-    const diff = Math.round((d.getTime() - startOfToday().getTime()) / 86400000);
-    return (diff === 1 ? "Tomorrow" : DAY_SHORT[d.getDay()]) + " " + d.getDate();
-  };
+  const dayLabel = weekDayLabel;
 
   return (
     <div className="odpage odhome">
