@@ -65,3 +65,41 @@ test("the record's own words beat a stale flag, so a claimed operator's edit is 
   const tightened = lite({ kid: true, specs: ["Adults only"] });
   assert.equal(kidFriendly(tightened), false);
 });
+
+/**
+ * The grown-up's age is not the child's. Every line quoted here is a shipped one, and each was refused to a
+ * guest filtering for younger kids although the shop's own sentence is that children may come if an adult
+ * comes with them: Legoland Discovery Center, Bette's Fun Center, Zen Tubing, Rock Oasis, Xtreme Action Park,
+ * The Escape House, Cipher Solver, James River Outfitters and Shepler's ferry among them.
+ */
+test("the age of the adult a child has to bring is not a floor on the child", () => {
+  assert.equal(kidVerdict("Children (17 and under) must be accompanied and supervised by an adult (18+) at all times"), true);
+  assert.equal(kidVerdict("Every group must include at least one adult (18+) to supervise minors"), null, "the escort line alone states nothing either way");
+  assert.equal(kidVerdict("Children 13 and under must be supervised at ratio 2 children to 1 adult (adult must be 18+)"), true);
+  assert.equal(kidVerdict("Guests under 18 must be accompanied by a parent or legal guardian 21+ who remains with them"), null, "no longer a door, and the line names no child");
+  assert.equal(kidVerdict("Parent or guardian 18+ must sign waiver for minors; family campsites available"), true);
+  assert.equal(kidVerdict("Anyone under 16, a paid adult (18+) must be present in the room. Recommended age 12 and up"), null, "a two digit floor is not a family word either way");
+  assert.equal(kidVerdict("Wine shipments require signature of sober adult 21+"), null, "a courier's signature says nothing about who may visit");
+});
+
+test("a floor the shop states about the guest still refuses, escort line or not", () => {
+  assert.equal(
+    kidVerdict("Public cruises are 21+ or 18+ if accompanied by an adult. Children welcome on private charters"),
+    false,
+    "the cruise itself has a floor",
+  );
+  assert.equal(
+    kidVerdict("Children must be accompanied by an adult 18+. The long beach location is 21+ only"),
+    false,
+    "one line is the escort, the other is the door",
+  );
+  assert.equal(kidVerdict("Minimum age 9 years; minors must be accompanied by an adult 18+ who fills out the waiver"), null);
+});
+
+test('"an adult only" is an escort, not a door', () => {
+  // Shepler's ferry: "children under 5 travel free but must be accompanied by an adult" with the next line,
+  // "Only trained service animals permitted", glued on to the end of it by the crawl.
+  assert.equal(kidVerdict("Children under 5 travel free but must be accompanied by an adult only trained service animals permitted"), true);
+  assert.equal(kidVerdict("Adults only"), false, "the plural, standing on its own, is still the door");
+  assert.equal(kidVerdict("This is an adults only experience"), false);
+});
