@@ -2,7 +2,7 @@ import { Hono } from "hono";
 import { ID, rateLimit } from "./auth.ts";
 import { getProfile, listBookings } from "../lib/repo.ts";
 import type { StoredBooking } from "./bookings.ts";
-import type { StoredProfile } from "./profiles.ts";
+import { bookingPause, type StoredProfile } from "./profiles.ts";
 import { instantOf, todayIn, zoneForArea } from "../lib/zone.ts";
 import { readJson } from "../lib/store.ts";
 import { encodeWeek, isTradingHoursLine } from "../sync/hours.ts";
@@ -317,6 +317,13 @@ export async function weekOf(listing: string): Promise<PublishedWeek> {
   return (await factsOf(listing)).week;
 }
 
+/** The run of dates this answer covers, with nothing open on any of them. */
+export function noDays(start: Date, days: number): OpenDay[] {
+  const out: OpenDay[] = [];
+  for (let i = 0; i < days; i++) out.push({ date: iso(new Date(start.getFullYear(), start.getMonth(), start.getDate() + i)), slots: [] });
+  return out;
+}
+
 export async function openSlots(listing: string, from: string, days: number, service = "", now = new Date(), guests = 1): Promise<{ known: boolean; claimed: boolean; days: OpenDay[] }> {
   const [rec, list, known] = await Promise.all([
     getProfile<StoredProfile>(listing).catch(() => null),
@@ -326,6 +333,11 @@ export async function openSlots(listing: string, from: string, days: number, ser
   const profile = (rec?.profile as DashboardProfile | null) || null;
   const zone = known.zone;
   const start = dayOf(from) || dayOf(zone ? todayIn(zone, now) : iso(now)) || new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  // The dashboard's Published and Accepting switches, which `POST /bookings` refuses on and this route read
+  // neither of. A shop that had hidden its page or paused bookings was answered here with a full calendar of
+  // open times, every one of which that route would then turn away. Only the guest page asks today and it
+  // hides its own picker for both, but this route is public and the next surface to read it would not know.
+  if (bookingPause(rec)) return { known: true, claimed: !!profile, days: noDays(start, days) };
   return { known: true, claimed: !!profile, days: openDaysFor(profile, list, start, days, service, guests, now, zone, known.week) };
 }
 

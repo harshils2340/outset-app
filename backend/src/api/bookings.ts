@@ -2,7 +2,7 @@ import { Hono } from "hono";
 import { ID, bodyText, jsonBody, mayEdit, rateLimit } from "./auth.ts";
 import { readJson } from "../lib/store.ts";
 import { getBooking, getProfile, getWallet, insertBookingChecked, listBookings, updateBooking, updateBookingChecked } from "../lib/repo.ts";
-import type { StoredProfile } from "./profiles.ts";
+import { bookingPause, pauseReason, type StoredProfile } from "./profiles.ts";
 import { capture, chargeSaved, createCheckout, releaseIntent, reverseTransfer, sessionStatus, stripeEnabled, verifyWebhook } from "../lib/stripe.ts";
 import { agentMayCharge, OTTO_LIVE, WALLET_ID } from "../payments/wallet.ts";
 import { attachWalletFromSession } from "./wallet.ts";
@@ -269,8 +269,8 @@ bookings.post("/bookings", rateLimit(20, 60 * 60 * 1000), async (c) => {
   if (listingKnown && !detail && !profile) return c.json({ error: "no such listing" }, 404);
   // The dashboard's Published and Accepting switches. The guest page hides the booking box for both, but the
   // page is not the only client, and before this a paused shop's API still took the booking and emailed them.
-  const accepting = (profile?.patch as { accepting?: boolean } | undefined)?.accepting ?? (profile?.profile as { accepting?: boolean } | null)?.accepting;
-  if (profile && (profile.published === false || accepting === false)) return c.json({ error: profile.published === false ? "This listing is hidden right now" : "This business is not taking bookings right now" }, 409);
+  const pause = bookingPause(profile);
+  if (pause) return c.json({ error: pauseReason(pause) }, 409);
   const instant = !!(profile?.profile as { instantBook?: boolean } | null)?.instantBook;
   // One time, one party. The guest page hides a time once it is taken, but the page is a snapshot and two guests
   // can be looking at the same one; this is the check that actually stops the second booking.

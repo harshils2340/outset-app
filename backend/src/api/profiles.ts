@@ -22,6 +22,31 @@ export type StoredProfile = {
   alsoClaimedBy?: string[];
 };
 
+/**
+ * The dashboard's Published and Accepting switches, for every route that offers or takes a booking.
+ *
+ * The same two switches were read in three places and spelled two ways, and the third place did not read them
+ * at all: `POST /bookings` refuses both, `/voice` turns both into `takingBookings`, and
+ * `GET /bookings/open/:listing` answered a shop that had hidden its page or paused bookings with a full
+ * calendar of open times, every one of which the booking route would then refuse. The guest page hides its own
+ * picker for both, which is why nobody met it, but the page is not the only client and this route is public.
+ *
+ * `patch` wins over `profile`, because the patch is what the dashboard publishes to guests. It is guarded for
+ * shape first: an array is an object, and a patch stored as one would read its numbered keys.
+ */
+export function bookingPause(rec: StoredProfile | null | undefined): "hidden" | "paused" | null {
+  if (!rec) return null;
+  if (rec.published === false) return "hidden";
+  const patch = rec.patch && typeof rec.patch === "object" && !Array.isArray(rec.patch) ? (rec.patch as { accepting?: boolean }) : null;
+  const accepting = patch?.accepting ?? (rec.profile as { accepting?: boolean } | null)?.accepting;
+  return accepting === false ? "paused" : null;
+}
+
+/** What a guest is told when one of those switches is down. */
+export function pauseReason(pause: "hidden" | "paused"): string {
+  return pause === "hidden" ? "This listing is hidden right now" : "This business is not taking bookings right now";
+}
+
 const fresh = (id: string, now: string): StoredProfile => ({ id, claimedAt: now, updatedAt: now, owner: { name: "", email: "", phone: "" }, published: true, profile: null, patch: {} });
 const cleanOwner = (o: Partial<StoredProfile["owner"]> | undefined, cur: StoredProfile["owner"]) =>
   o ? { name: bodyText(o.name, cur.name).slice(0, 120), email: bodyText(o.email, cur.email).trim().toLowerCase().slice(0, 200), phone: bodyText(o.phone, cur.phone).slice(0, 40) } : cur;

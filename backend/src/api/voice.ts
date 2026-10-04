@@ -5,7 +5,7 @@ import { zonedNow } from "../concierge/shopday.ts";
 import { zoneForArea } from "../lib/zone.ts";
 import { getProfile } from "../lib/repo.ts";
 import { pgConfigured } from "../db/pg.ts";
-import type { StoredProfile } from "./profiles.ts";
+import { bookingPause, type StoredProfile } from "./profiles.ts";
 import { splitIncluded } from "../../../src/lib/listingDerive.ts";
 
 /**
@@ -176,8 +176,9 @@ export function applyEdits(l: Listing, rec: StoredProfile | null): { listing: Li
   if (!rec) return { listing: l, takingBookings: true };
   // An array is an object, and a patch stored as one would spread as numbered keys over the whole record.
   const patch = rec.patch && typeof rec.patch === "object" && !Array.isArray(rec.patch) ? (rec.patch as Partial<Listing> & { accepting?: boolean }) : null;
-  const accepting = patch?.accepting ?? (rec.profile as { accepting?: boolean } | null)?.accepting;
-  return { listing: patch ? { ...l, ...patch } : l, takingBookings: rec.published !== false && accepting !== false };
+  // The same two switches the booking route refuses on, read by the same rule, so the agent and the route
+  // cannot disagree about whether a caller may be sent to a booking page.
+  return { listing: patch ? { ...l, ...patch } : l, takingBookings: !bookingPause(rec) };
 }
 
 async function withOperatorEdits(l: Listing): Promise<{ listing: Listing; takingBookings: boolean }> {
