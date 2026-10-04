@@ -104,4 +104,8 @@ test("the addresses nobody reads are one list, so the two campaigns cannot drift
     assert.ok(UNREADABLE_ADDRESS.test(a), a);
   }
   assert.ok(!UNREADABLE_ADDRESS.test("info@seabreezejetski.com"));
+  for (const a of ["jdoe123@blackstonegc.com", "john.doe@shop.com", "janedoe@shop.com", "yourname@shop.com", "your.email@shop.com", "firstname@shop.com", "first.last@shop.com", "name@yourdomain.com"]) {
+    assert.ok(UNREADABLE_ADDRESS.test(a), a);
+  }
+  for (const a of ["jeff@shop.com", "joe.doherty@shop.com", "doe@shop.com", "testarossa@shop.com", "jdoerr@shop.com".replace("jdoerr", "jdorr")]) assert.ok(!UNREADABLE_ADDRESS.test(a), a);
 });

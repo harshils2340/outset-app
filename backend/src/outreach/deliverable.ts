@@ -65,3 +65,47 @@ export function isDeliverable(email: string): Promise<boolean> {
   }
   return p;
 }
+
+/**
+ * Whether the business's own website still has a name. On 4 October 2026 one escape room in eight in the queue had
+ * a website whose domain no longer existed: a business that has closed or moved on, whose gmail or desk inbox is
+ * where bounces and abandoned, full mailboxes come from (13 bounces in three days, about 6% of sends, against the
+ * 2-3% past which Gmail starts reading a sender as a scraped list). Dead only when every name tried, with and
+ * without www, answered that nothing is there; no website at all, or a resolver that cannot answer, is not
+ * evidence and lets the business through, the same rule as `decide` above.
+ */
+export function siteAlive(lookups: { a: boolean | null; aaaa: boolean | null }[]): boolean {
+  return !lookups.length || lookups.some((l) => l.a !== false || l.aaaa !== false);
+}
+
+/** The names a website answers under: its own host, and the same with or without www. None for no website. */
+export function siteHosts(website: string | null | undefined): string[] {
+  const raw = (website || "").trim();
+  if (!raw) return [];
+  let host = "";
+  try {
+    host = new URL(/^[a-z][a-z0-9+.-]*:\/\//i.test(raw) ? raw : "https://" + raw).hostname.toLowerCase();
+  } catch {
+    return [];
+  }
+  if (!host.includes(".") || /^\d{1,3}(\.\d{1,3}){3}$/.test(host)) return [];
+  const bare = host.replace(/^www\./, "");
+  return bare === host ? [host, "www." + host] : [host, bare];
+}
+
+const sites = new Map<string, Promise<boolean>>();
+
+/** True unless the business's website is known to be gone. Cached per host for the life of the process. */
+export function siteResolves(website: string | null | undefined): Promise<boolean> {
+  const hosts = siteHosts(website);
+  if (!hosts.length) return Promise.resolve(true);
+  let p = sites.get(hosts[0]);
+  if (!p) {
+    p = Promise.all(hosts.map(async (h) => {
+      const [a, aaaa] = await Promise.all([has(() => dns.resolve4(h)), has(() => dns.resolve6(h))]);
+      return { a, aaaa };
+    })).then(siteAlive);
+    sites.set(hosts[0], p);
+  }
+  return p;
+}

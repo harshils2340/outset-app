@@ -2,7 +2,7 @@ import "../src/env.ts";
 import { sendMail, smtpIdentities } from "../src/lib/mail.ts";
 import { emailHash, loadSuppression, mailPostal, unsubPageUrl } from "../src/lib/unsub.ts";
 import { outreachBlockers, UNREADABLE_ADDRESS } from "../src/outreach/guards.ts";
-import { isDeliverable } from "../src/outreach/deliverable.ts";
+import { isDeliverable, siteResolves } from "../src/outreach/deliverable.ts";
 import { COPY_VERSION, draftOttoCopy } from "../src/outreach/ottoDrafts.ts";
 import { recordSend } from "../src/lib/outreachLog.ts";
 import { recordRun, rungFor, type RampState } from "../src/outreach/ramp.ts";
@@ -201,6 +201,13 @@ async function sendBatch(limit: number, quota: Record<string, number>): Promise<
     seen.add(to);
     if (!(await isDeliverable(to))) {
       console.log("skipped " + to + ": domain takes no mail");
+      if (!dry) await recordTouch({ operatorId: r.operator_id, email: to, status: "failed" }).catch(() => undefined);
+      out.skipped++;
+      continue;
+    }
+    // A business whose own website's name is gone has closed or moved on; its inbox is a bounce or nobody's.
+    if (!(await siteResolves(r.website))) {
+      console.log("skipped " + to + ": website " + r.website + " no longer exists");
       if (!dry) await recordTouch({ operatorId: r.operator_id, email: to, status: "failed" }).catch(() => undefined);
       out.skipped++;
       continue;

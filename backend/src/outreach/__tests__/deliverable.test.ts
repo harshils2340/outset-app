@@ -1,6 +1,6 @@
 import { strict as assert } from "node:assert";
 import test from "node:test";
-import { decide, readDnsError } from "../deliverable.ts";
+import { decide, readDnsError, siteAlive, siteHosts } from "../deliverable.ts";
 import { dayStartIso } from "../sendOtto.ts";
 
 test("a domain with a mail exchanger, or at least an address, can be sent to", () => {
@@ -57,4 +57,15 @@ test("the day boundary is right on the two days a year the clocks move", () => {
   assert.equal(dayStartIso("America/Toronto", new Date("2026-11-01T23:17:00Z")), "2026-11-01T04:00:00.000Z");
   // And a zone on a half hour offset, which the same arithmetic also has to survive.
   assert.equal(dayStartIso("America/St_Johns", new Date("2026-06-15T15:00:00Z")), "2026-06-15T02:30:00.000Z");
+});
+
+test("a business whose website's name no longer exists is passed over, and nothing less counts", () => {
+  assert.equal(siteAlive([{ a: false, aaaa: false }, { a: false, aaaa: false }]), false, "both names answered that nothing is there");
+  assert.equal(siteAlive([{ a: false, aaaa: false }, { a: true, aaaa: false }]), true, "the site answers without www");
+  assert.equal(siteAlive([{ a: null, aaaa: false }, { a: false, aaaa: false }]), true, "a resolver that could not answer is not evidence");
+  assert.equal(siteAlive([]), true, "no website at all is not evidence either");
+  assert.deepEqual(siteHosts("http://www.escapetheknight.com/"), ["www.escapetheknight.com", "escapetheknight.com"]);
+  assert.deepEqual(siteHosts("timeheistescapes.com"), ["timeheistescapes.com", "www.timeheistescapes.com"]);
+  assert.deepEqual(siteHosts("https://countdownthunderba.wixsite.com/mysite"), ["countdownthunderba.wixsite.com", "www.countdownthunderba.wixsite.com"]);
+  for (const w of [null, "", "not a site", "http://10.0.0.1/"]) assert.deepEqual(siteHosts(w), [], String(w));
 });
