@@ -19,7 +19,7 @@ import { agentReply } from "../lib/agent";
 import { bookingDates, dateKey, msToNextDay } from "../lib/dates";
 import { fmtDate, money, nowStamp } from "../lib/format";
 import { daySlotsOpen, openSeats } from "../lib/inventory";
-import { contactFor, experienceById, fromPrice, initials } from "../lib/catalog";
+import { contactFor, experienceById, fromPrice, initials, instantBookable } from "../lib/catalog";
 import { loadListing, loadRemoteCatalog, onListingEdits } from "../lib/catalogLoad";
 import { hashOpensAnotherListing, listingId, listingInHash } from "../lib/hashRoute";
 import { availabilityNow, confirmPaid, fetchAvailability, hasApi, loadWalletId, submitBooking, warmApi , apiConfig, type LiveAvailability } from "../lib/api";
@@ -343,6 +343,9 @@ function reducer(state: AppState, action: Action): AppState {
         variant: picked?.detail || "",
         price: picked?.price ?? (action.total != null ? action.total : null),
         per: picked?.per,
+        // Frozen here for the same reason the service name is: the screens that read it back are read months
+        // later, and the operator's switches move in between.
+        instant: instantBookable(u),
         code: action.code || makeCode(initials(u.title)),
         created: Date.now(),
         guest: action.guest,
@@ -357,7 +360,7 @@ function reducer(state: AppState, action: Action): AppState {
         bookings: [booking, ...state.bookings],
         sheet: null,
         screen: "confirm",
-        toast: (u.claimed && u.instant ? "Confirmed - " : "Request sent - ") + booking.code,
+        toast: (booking.instant ? "Confirmed - " : "Request sent - ") + booking.code,
       };
     }
     case "checkoutDone":

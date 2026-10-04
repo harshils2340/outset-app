@@ -329,6 +329,14 @@ export type Booking = {
   variant?: string;
   price?: number | null;
   per?: string;
+  /**
+   * Whether the shop was on Instant Book when this was taken, so a switch flicked afterwards cannot unconfirm
+   * a trip. Both confirmation screens read the live record, so an operator turning Instant Book off, pausing
+   * bookings or hiding their page turned "You're booked" into "Request sent" and "Paid by card. Charged to
+   * your card." into "Held on your card. Charged only when they confirm." for a guest who had already paid.
+   * Bookings taken before this field, and the ones read back from the API, have none: see `bookedInstant`.
+   */
+  instant?: boolean;
 };
 
 export type TabId = "explore" | "trips" | "inbox" | "account";

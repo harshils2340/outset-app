@@ -3,7 +3,7 @@ import { ICONS } from "../../data/icons";
 import { addressLine, contactFor, experienceById } from "../../lib/catalog";
 import { fmtDate, fmtTime, moneyIn } from "../../lib/format";
 import { countryOfArea } from "../../data/regions";
-import { bookedRow, splitAddons } from "../../lib/storage";
+import { bookedInstant, bookedRow, splitAddons } from "../../lib/storage";
 import { useApp } from "../../state/AppProvider";
 import { Markup } from "../Markup";
 import { Fragment } from "react";
@@ -37,8 +37,9 @@ export function ConfirmView() {
   const addressRaw = contact ? addressLine(contact) : null;
   const where = l ? l.launch : addressRaw ? tidyAddress(addressRaw) : meetPlace(u!.area);
   const op = l ? l.op : u!.title;
-  // Only a shop that claimed its listing and switched Instant Book on can promise a confirmed slot.
-  const instant = !!(u?.claimed && u?.instant);
+  // Only a shop that claimed its listing and switched Instant Book on can promise a confirmed slot, and what
+  // this ticket says is what it was taken as, not what the switch reads today: see `bookedInstant`.
+  const instant = bookedInstant(b, u);
   // The dollars the booking was taken in, from the same area line the server charged it by.
   const cur = u ? countryOfArea(u.area) : "US";
   /* A catalog booking stores the service it picked as an index into the menu and every extra by name. This

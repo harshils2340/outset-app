@@ -4,7 +4,7 @@ import { ICONS } from "../../data/icons";
 import type { Booking } from "../../data/types";
 import { addressLine, contactFor, experienceById, fmtPhone, mapsHref, perPerson, publicRating, telHref } from "../../lib/catalog";
 import { addonPrice, pickedAddons, priceUnclaimed, serviceFeeLabel } from "../../lib/pricing";
-import { bookedRow, splitAddons } from "../../lib/storage";
+import { bookedInstant, bookedRow, splitAddons } from "../../lib/storage";
 import { placeName } from "../../lib/listingDerive";
 import { arrivalNote, tidyAddress, tidyLength, tidyName } from "./WebListing";
 import { bookedName } from "../../lib/listingDerive";
@@ -46,7 +46,8 @@ export function WebConfirm({ booking, onDone, onOpen }: { booking: Booking; onDo
   // confirmation written in December does not say which January.
   const trip = new Date(y, m - 1, d);
   const when = trip.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: trip.getFullYear() === new Date().getFullYear() ? undefined : "numeric" });
-  const instant = !!(item.claimed && item.instant);
+  // What the booking wrote down, not what the dashboard's switch says today: see `bookedInstant`.
+  const instant = bookedInstant(booking, item);
   const first = booking.guest?.name ? booking.guest.name.split(" ")[0] : "";
   // The price lines are the same breakdown the listing showed; they appear only when they add up to the stored total.
   const addonRows = pickedAddons(item.addons, extras);

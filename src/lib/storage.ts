@@ -124,6 +124,22 @@ export function bookedRow(
   return (optionIdx == null ? null : (options || [])[optionIdx]) || null;
 }
 
+/**
+ * Whether this booking was confirmed on the spot.
+ *
+ * The same fault `bookedRow` closes, on the other half of the ticket. Both confirmation screens asked the live
+ * catalog record whether the shop was on Instant Book, and the operator's dashboard can turn that switch off,
+ * pause new bookings or hide the listing at any time afterwards. So a guest reopening a trip was told "Request
+ * sent" for a booking the shop had confirmed on the spot, and, where they had paid by card, that their money
+ * was only "Held on your card" and would be "Charged only when they confirm" for a card already charged.
+ *
+ * What the booking wrote down wins. The live switch stays as the fallback for bookings older than the field
+ * and for the ones read back from the API, which is what both screens did for all of them before.
+ */
+export function bookedInstant(b: Pick<Booking, "instant">, item: { claimed?: boolean; instant?: boolean } | null | undefined): boolean {
+  return b.instant ?? !!(item?.claimed && item?.instant);
+}
+
 /** The name, mobile and email the booking form remembers between trips. Empty when nobody has booked here. */
 export function loadGuest(): { name?: string; phone?: string; email?: string } {
   try {
