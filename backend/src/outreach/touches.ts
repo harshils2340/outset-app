@@ -252,7 +252,7 @@ export const RESEND_BEFORE = "2026-10-02";
 /**
  * The follow-up: one short note in the same thread, a few days after a first email that landed in Primary
  * (RESEND_BEFORE on, the hand-written follow-ups of 1 October aside) and drew nothing back. Its own kind, so it
- * never counts as a first touch and goes once.
+ * never counts as a first touch and goes once. Never after a resend: those businesses have had two already.
  */
 export const BUMP_KIND = "otto_bump";
 
@@ -268,17 +268,17 @@ export async function bumpCandidates(limit: number): Promise<(PoolRow & { sent_t
     `with firsts as (
        select distinct on (operator_id) operator_id, lower(email) as sent_to, mailbox as sent_from, at as last_at
          from outreach_sends
-        where kind in ('otto', $2) and status = 'sent' and variant >= $3 and variant not like 'followup-%'
+        where kind = 'otto' and status = 'sent' and variant >= $2 and variant not like 'followup-%'
         order by operator_id, at desc
      )
      select p.*, f.sent_to, f.sent_from, f.last_at::text as last_at
        from firsts f join outreach_pool p on p.operator_id = f.operator_id
       where f.last_at < now() - interval '66 hours'
-        and not exists (select 1 from outreach_sends s where s.operator_id = f.operator_id and (s.kind = $4 or s.status in ('replied', 'bounce', 'handoff')))
+        and not exists (select 1 from outreach_sends s where s.operator_id = f.operator_id and (s.kind in ($3, $4) or s.status in ('replied', 'bounce', 'handoff')))
         and not exists (select 1 from outreach_sends s where s.email = f.sent_to and s.status in ('bounce', 'failed', 'replied'))
       order by f.last_at, p.operator_id
       limit $1`,
-    [limit, RESEND_KIND, RESEND_BEFORE, BUMP_KIND],
+    [limit, RESEND_BEFORE, BUMP_KIND, RESEND_KIND],
   );
 }
 

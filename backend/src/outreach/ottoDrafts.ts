@@ -57,9 +57,22 @@ function whatOttoDoes(id: string | null): string {
   return "It answers only from your own info, prices and policies, so it never makes anything up, and takes the booking down for you.";
 }
 
-/** An escape room, by its name or its site: the queue leads with them (touches.ts), so they get their own words. */
-function isEscapeRoom(op: Pick<OttoOp, "name" | "domain">): boolean {
-  return /escape|escaperoom/i.test(op.name + " " + op.domain);
+/**
+ * An escape room: the queue leads with them (touches.ts), so they get their own words. "Escape" alone is not
+ * enough outside the indoor family: 106 day spas, a fishing charter and a campground use the word too.
+ */
+function isEscapeRoom(op: Pick<OttoOp, "name" | "domain" | "family">): boolean {
+  const s = op.name + " " + op.domain;
+  return /escape\s*(room|game)s?|escaperoom|escapegame|room\s*escape/i.test(s) || (op.family === "indoor" && /escape/i.test(s));
+}
+
+/**
+ * The business's name as an owner would say it in a sentence: no ", LLC" or " Inc." on the end, which reads as
+ * pulled from a registry rather than written by a person.
+ */
+export function plainName(name: string): string {
+  const n = name.trim().replace(/,?\s+(llc|l\.l\.c\.|inc|incorporated|ltd|limited|corp|co)\.?$/i, "").trim();
+  return n || name.trim();
 }
 
 /**
@@ -115,15 +128,17 @@ export function draftOttoCopy(op: OttoOp, email?: string, opts?: { greet?: strin
   const SITE = "https://onoutset.com/";
   const OTTO = SITE + "#call";
   const escape = isEscapeRoom(op);
-  const subject = "Missed calls at " + op.name;
-  const question = "When " + busyLine(op) + " or after you close, who picks up " + possessive(op.name) + " phone?";
+  const name = plainName(op.name);
+  const subject = "Missed calls at " + name;
+  // "the phone at X", never "X's phone": 220 of the next 600 names end in a plural s ("Escape Rooms's phone").
+  const question = "When " + busyLine(op) + " or after you close, who picks up the phone at " + name + "?";
   const pain = escape
     ? "For most escape rooms it's voicemail, and the caller books the next room on their list."
     : "For most places it's voicemail, and the caller books with the next one that picks up.";
   const what = "I built Outset to pick up those calls. " + whatOttoDoes(op.calendar_vendor) + " You get a summary of every call.";
   const hearText = "Here's a 40-second recording of a real call: " + OTTO;
   const hearHtml = "Here's a 40-second recording of a real call: " + link(OTTO, "give it a listen") + ".";
-  const offer = "Can I set one up for " + op.name + "? I'll build it from your own info so you can call it and test it yourself. It's free, and you only keep it if it books you guests.";
+  const offer = "Can I set it up for " + name + "? I'll build it from your own info so you can call it and test it yourself. It's free, and you only keep it if it books you guests.";
   const lines = [hi, "", question, "", pain, "", what + " " + hearText, "", offer, "", ...signOff(op, to).lines];
   const html = '<div dir="ltr">' + [
     "<p>" + esc(hi) + "</p>",
@@ -153,11 +168,11 @@ function signOff(op: OttoOp, to: string): { lines: string[]; html: string } {
       "Founder, Outset",
       ...(where ? [where] : []),
       'Not a fit? Reply "no" and I won\'t email again, or unsubscribe: ' + stop,
-      "Remove " + op.name + " from Outset's listings: " + remove,
+      "Remove " + plainName(op.name) + " from Outset's listings: " + remove,
     ],
     html: '<p style="color:#777">Harshil<br>Founder, Outset' + (where ? "<br>" + esc(where) : "") +
       "<br>Not a fit? Reply \"no\" and I won't email again, or " + link(stop, "unsubscribe") + "." +
-      "<br>" + link(remove, "Remove " + op.name + " from Outset's listings") + ".</p>",
+      "<br>" + link(remove, "Remove " + plainName(op.name) + " from Outset's listings") + ".</p>",
   };
 }
 
@@ -173,7 +188,7 @@ export function draftOttoBump(op: OttoOp, email: string, opts: { greet?: string 
   const to = (email || "").trim().toLowerCase();
   const hi = opts.greet ? "Hi " + opts.greet + "," : "Hi,";
   const subject = /^re:/i.test(opts.subject) ? opts.subject : "Re: " + opts.subject;
-  const ask = "Following up in case this got buried. Would it help if I set up a free test line for " + op.name +
+  const ask = "Following up in case this got buried. Would it help if I set up a free test line for " + plainName(op.name) +
     ", built from your own info, so you can call it and hear how it handles your callers?";
   const off = signOff(op, to);
   const body = [hi, "", ask, "", ...off.lines].join("\n");

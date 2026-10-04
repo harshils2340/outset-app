@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { BUMP_VERSION, COPY_VERSION, busyLine, draftOttoBump, draftOttoCopy, type OttoOp } from "../ottoDrafts.ts";
+import { BUMP_VERSION, COPY_VERSION, busyLine, draftOttoBump, draftOttoCopy, plainName, type OttoOp } from "../ottoDrafts.ts";
 
 const op: OttoOp = {
   id: "op-1", domain: "clockwiseescape.com", name: "Clockwise Escape Room Boise", email: "info@clockwiseescape.com",
@@ -16,11 +16,11 @@ const copy = (o: Partial<OttoOp> = {}) => draftOttoCopy({ ...op, ...o }, "info@c
 test("short: a question, the pain, what Otto does, one recording, an offer", () => {
   const c = copy();
   assert.equal(c.subject, "Missed calls at " + op.name);
-  assert.ok(c.body.includes("When your game masters are running rooms or after you close, who picks up " + op.name + "'s phone?"), c.body);
+  assert.ok(c.body.includes("When your game masters are running rooms or after you close, who picks up the phone at " + op.name + "?"), c.body);
   assert.ok(c.body.includes("the caller books the next room on their list"), c.body);
   assert.ok(c.body.includes("I built Outset to pick up those calls."), c.body);
   assert.ok(c.body.includes("answers only from your own info"), "grounded: never makes anything up");
-  assert.ok(c.body.includes("Can I set one up for " + op.name + "?"), c.body);
+  assert.ok(c.body.includes("Can I set it up for " + op.name + "?"), c.body);
   assert.ok(c.body.includes("you only keep it if it books you guests."), c.body);
   const beforeSignoff = c.body.split("\nHarshil\n")[0];
   assert.ok(beforeSignoff.split(/\s+/).length < 130, "the body before the sign-off stays a short note: " + beforeSignoff.split(/\s+/).length + " words");
@@ -69,7 +69,7 @@ test("the first line is the owner's own day, by kind of business", () => {
   assert.equal(at("Bayside Bowl", "play"), "your team is busy with guests");
   assert.equal(at("Bayside Bowl", null), "your team is busy with guests");
   const kart = copy({ name: "On Track Karting", domain: "monzakarting.com", family: "motorsport" }).body;
-  assert.ok(kart.includes("When your crew is out on the track or after you close, who picks up On Track Karting's phone?"), kart);
+  assert.ok(kart.includes("When your crew is out on the track or after you close, who picks up the phone at On Track Karting?"), kart);
   assert.ok(kart.includes("books with the next one that picks up"), "the escape-room line is for escape rooms");
 });
 
@@ -85,4 +85,27 @@ test("the follow-up is two lines in the same thread, with the same ways out", ()
   assert.equal(b.variant, BUMP_VERSION);
   assert.ok(!b.body.includes("—") && !b.html.includes("—"));
   assert.ok(draftOttoBump(op, "x@y.com", { greet: "Ron", subject: "s" }).body.startsWith("Hi Ron,\n"));
+});
+
+test("a plural name or a legal suffix never breaks the first line", () => {
+  const rooms = copy({ name: "Alaska Escape Rooms", domain: "alaskaescaperooms.com" });
+  assert.ok(rooms.body.includes("who picks up the phone at Alaska Escape Rooms?"), "no Rooms's");
+  assert.ok(!/s's\b/.test(rooms.body), rooms.body);
+  const llc = copy({ name: "House of Clues, LLC", domain: "houseofclues.com", family: "indoor" });
+  assert.equal(llc.subject, "Missed calls at House of Clues");
+  assert.ok(llc.body.includes("the phone at House of Clues?") && !llc.body.includes("LLC"), llc.body);
+  assert.equal(plainName("Escape Works Inc."), "Escape Works");
+  assert.equal(plainName("Bayside Co"), "Bayside");
+  assert.equal(plainName("Inc"), "Inc", "a name that is only a suffix stays");
+  assert.equal(plainName("Lincoln Escape"), "Lincoln Escape");
+});
+
+test("the escape-room line is for escape rooms, not every business with escape in its name", () => {
+  const spa = copy({ name: "Escape Day Spa", domain: "escapedayspa.com", family: "wellness" }).body;
+  assert.ok(spa.includes("When you're with a client"), spa);
+  assert.ok(!spa.includes("game masters") && !spa.includes("escape rooms"), spa);
+  const charter = copy({ name: "Island Escape Charters", domain: "islandescape.com", family: "water" }).body;
+  assert.ok(charter.includes("your crew is out on the water"), charter);
+  assert.ok(copy({ name: "The Lockbox", domain: "thelockboxescaperoom.com", family: null }).body.includes("game masters"), "named so by its site");
+  assert.ok(copy({ name: "Exit Strategy", domain: "exitstrategy.com", family: "indoor" }).body.includes("your team is out on the floor"));
 });
