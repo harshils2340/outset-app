@@ -1,6 +1,7 @@
 import { DatabaseSync } from "node:sqlite";
-import { mkdirSync, readFileSync } from "node:fs";
-import { dirname, join } from "node:path";
+import { mkdirSync, mkdtempSync, readFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -8,7 +9,12 @@ const root = join(here, "../..");
 const dataDir = join(root, "data");
 // OUTSET_DB points a read-mostly job (sync) at a snapshot so crawlers writing to the live file never stall it.
 // OUTSET_DB_PATH is the durable location in the cloud (Render disk at /var/data/outset.db). Default: backend/data/outset.db.
-const dbPath = process.env.OUTSET_DB || process.env.OUTSET_DB_PATH || join(dataDir, "outset.db");
+const real = join(dataDir, "outset.db");
+const asked = process.env.OUTSET_DB || process.env.OUTSET_DB_PATH || real;
+// Under the test runner (node --test sets NODE_TEST_CONTEXT in every test process) the laptop's real catalog is
+// never opened: a test gets a scratch file instead. Until 3 October 2026 owner.test.ts dropped the catalog's facts
+// table, 797,399 rows, on every `npm test` here, because it named no database and this default was the real one.
+const dbPath = process.env.NODE_TEST_CONTEXT && resolve(asked) === resolve(real) ? join(mkdtempSync(join(tmpdir(), "outset-test-")), "outset.db") : asked;
 
 mkdirSync(dataDir, { recursive: true });
 mkdirSync(dirname(dbPath), { recursive: true });
