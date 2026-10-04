@@ -9763,6 +9763,100 @@ throughout.
   (everything tonight ran with it cleared). **Local `main` was detached again**, ninth run in a row, at the
   hundred and thirty-second run's commit. Re-pointed with `git checkout -B main` before committing.
 
+## 4 October 2026, hundred and thirty-fourth run (05:15 to 07:15 UTC)
+
+**Chosen, and why.** Fourteen commits landed after the hundred and thirty-third run's entry (`03b0ba82`),
+among them the biggest change to the product's shape in weeks: on 3 October the site root stopped being the
+marketplace and became the Otto page, the AI front desk sold to operators, with the marketplace moved to
+`/activities` and the operator side to `/operators` (`9bddc6ef`), plus new `/features`, `/integrations`,
+`/pricing` and `/for/escape-rooms` pages, a sitemap and `llms.txt` rewrite, the marketplace's own generated
+pages taken out of search, and the guest assistant switched off behind `GUEST_AGENT`. None of it has been
+bug-bashed. Since those commits touch `backend/src`, `src/` and the scripts, the brief's rule (b) applies and
+the **rehearsal was run**: once at the start as a baseline and twice more after changes. Baseline after `npm
+install` on both sides: root `tsc --noEmit -p .` and `tsc -b` clean, backend `tsc` clean but for TS5097,
+backend 1,030 with 1,028 pass and 2 skipped, app 1,245 pass, **rehearsal 57 of 57**.
+
+Target: **every address the product hands a person, now that the one it used to hand them is somebody else's
+page.** Read as a sweep rather than a diff: every link in the five new static pages against the files and the
+routes behind them, every `href` the two page generators write, every URL the API and the mail build, every
+root-relative link in `src`, and all seventeen doors into the app driven in a real Chromium at 1280px and
+400px.
+
+**Found and fixed.** Five commits, pushed.
+
+- **Every landing page's first crumb walked a guest out of the marketplace** (`2767adf4`). The 3 October
+  commit moved the logo, the "Open Outset" button, every card's hash link and the per-listing page's own
+  crumb to `/activities`, and missed the crumb on the 3,004 pages under `/p/`. Each of those pages offered
+  two "Outset" links side by side going to two different places, and stepping up the trail landed on the page
+  that sells a phone receptionist.
+- **Six links the API mails, and eight more in the scripts, still pointed at the root** (`38bb7728`): the
+  claim link, Stripe's success and cancel URLs, the booking email's listing link, the phone agent's booking
+  URL, the Stripe Connect profile URL and both outreach take-it-down links. They worked only because the
+  Otto page carries a script that forwards an old root hash, which is the net under links already in the
+  wild: a guest returning from paying loaded a sales page that then replaced itself, and an owner whose
+  browser never ran that script met a sales page with no way into their dashboard. A source sweep now fails
+  on any URL built from a site root and a hash, because there are nine separate `SITE` constants.
+- **The listing pitch invited an owner to look at a marketplace and opened the sales page** (`1be1887f`).
+  "I'm Harshil, the founder of Outset, an instant-booking marketplace for local activities across the US and
+  Canada. Take a look: https://onoutset.com/" now reads `/activities`.
+- **A reply with no punctuation in it was decoded as base64 into mojibake** (`0d5340bf`). The fetched body
+  part arrives without its Content-Transfer-Encoding, so base64 is guessed from the text, and "Hi thanks for
+  the email I am away until Monday" is nothing but letters and spaces once the whitespace is squeezed out.
+  That cost twice over: the auto-reply phrases are matched against that text, so an unread inbox read as a
+  person, was logged as a reply and was retired from the campaign, and the same rubbish is what the alert to
+  Harshil quotes. A quoted original carries punctuation and hid it; an auto-responder that quotes nothing
+  does not, and most do not.
+- **The rehearsal drove an address the deployed site no longer serves** (`b047769a`). Its temp dist carried
+  an entry point for `/operators` alone, so the guest-listing steps opened the root, which in production is
+  the Otto page. The dist now carries `/activities` too and the four steps name it.
+
+**Swept and clean, or measured and left.** Every internal link, image, stylesheet, script and in-page anchor
+of all five new static pages against the files on disk, the render.yaml routes and the vite dev rewrites: all
+resolve, every `<symbol>` an icon reference names exists, and nothing is orphaned. All three Google Fonts
+URLs in `index.html` and `public/site.css` answer 200, so last night's Newsreader fix holds and Manrope is
+sound. `sitemap-pages.xml`, the sitemap index, `robots.txt` and `llms.txt` against what the build actually
+publishes. Seventeen doors into the app, driven at 1280px and 400px: the root with each of `#o=`, `#remove=`,
+`#claim=`, `#paid=`, `#wallet`, `#admin` and `?preview=1`, `/activities`, `/activities#o=`, `/operators`,
+`/operators#claim=`, `/listing/<id>` and the four marketing pages. Every one lands where it should, with no
+sideways scroll, nothing past the edge and no throw. Every `GUEST_AGENT` branch read against what is left on
+the screen behind it. The new pool-ordering SQL (`poolCandidates`, `840b85ab`) run against a real Postgres
+over twelve shaped rows: family order, escape rooms at the head of indoor, a named mailbox before a desk
+inbox, completeness last and an unknown family at the back, all exactly as written, and `FAMILY_ORDER`
+covers all eight families the taxonomy defines.
+
+**Verification.** Backend `npm test` 1,036 with 1,034 pass and 2 skipped, up from 1,030 (6 new); app `npm
+test` 1,245 pass, unchanged. Every new test was run against the tree with its own fix reverted and fails
+there. `tsc --noEmit -p .`, `tsc -b` and the backend's own `tsc` all clean but for TS5097. The **rehearsal
+ran 57 of 57** three times, on a local Postgres 16 cluster on port 5433 with SSL on and the on-disk
+Playwright Chromium. `STRIPE_SECRET_KEY`, `RESEND_API_KEY` and `GITHUB_TOKEN` were empty throughout.
+
+**Needs Harshil.**
+
+- **Every transactional email's wordmark links to the root** (`backend/src/lib/emailTemplate.ts`). That page
+  is now the AI front desk sold to operators, which is right for a claim email and wrong for the guest who
+  just booked a kayak trip and tapped "Outset" at the top of their confirmation. One template serves both, so
+  this is your call about what the brand's home is rather than a defect, and it is the one root link left.
+- **`npm run build` and what Render publishes are now different sites.** `package.json` runs
+  `scripts/copy-operators.mjs`; render.yaml does not, and instead copies `index.html` to `app.html`, moves
+  `otto.html` over `index.html` and leans on route rewrites for `/activities`, `/operators` and `/admin`. So
+  a local build has the app at the root and no Otto page, and nothing in this repo checks the published
+  layout. Both are outside the folders this run may change.
+- **The rehearsal still cannot see the real home.** It builds with `publicDir: false`, so the temp dist has
+  no `otto.html` and no forward script, and the one page every outreach email and every old link now lands
+  on is undriven. Worth deciding whether the harness should mirror the deployed layout.
+- Still open from earlier runs, unchanged: there is no error boundary in this app, now nineteen runs asked;
+  "Open right now near you" is computed once a visit; the checkout splash has no control of its own;
+  `docs/E2E-LOCAL.md` documents only the Neon branch and says nothing about the local cluster every run here
+  builds instead; a fresh container ships no `node_modules`; the 108 operators with hacked websites still
+  have not been told, and the next sync quarantines them; the 18 listings whose crawl published only closed
+  days claim with all seven shut; the phone's browse is not ranked while the desktop's is; the phone
+  confirmation offers no way to reach the shop; a guest cannot cancel a booking at all; the booking box asks
+  for ten digits of phone number where the route asks for seven; a price sort and a price filter compare two
+  dollars on six metros; the cards say "$" for a Canadian shop; `lasertag` does not search `paintball`; and
+  this container still injects a `GITHUB_TOKEN`, which the brief says must be empty (everything tonight ran
+  with it cleared). **Local `main` was detached again**, tenth run in a row, at `e848cb85`. Re-pointed with
+  `git checkout -B main` before committing.
+
 ## Coverage
 
 The catalog is 48,198 listings as of the 23 September sync, 1,873 of them Viator partner rows. Counts below
@@ -10817,7 +10911,9 @@ hop and on a redirect. `backend/src/lib/ipMetro.ts` and the `/where` route whole
 merge, encode and decode included. Every thread shape `loadChats` can hand the Inbox tab and the tab bar's
 badge. The shipped `explain` entries against `explainTerms` over all 61,614 services.
 
-**Not yet checked.** Whether `POST /auth/verify` should count a try it is about to find correct, which is
+Every address the product hands a person, now that the root is the Otto page and the marketplace is at `/activities`: every internal link, image, stylesheet, script and in-page anchor of the five new static pages against the files, the render.yaml routes and the vite dev rewrites; every `href` both page generators write; every URL the API, the mail and the scripts build, now a source sweep of its own; every root-relative link in `src`; and all seventeen doors into the app driven in a real Chromium at 1280px and 400px, the root with each of the seven legacy hashes among them, for where each lands, sideways scroll, anything past the edge and a throw. The three Google Fonts URLs the site loads. The sitemap index, `sitemap-pages.xml`, `robots.txt` and `llms.txt` against what the build publishes. Every `GUEST_AGENT` branch read against what is left on the screen behind it. The outreach pool's new send order (`poolCandidates`) run against a real Postgres: family order, escape rooms at the head of indoor, a named mailbox before a desk inbox, completeness last, an unknown family at the back, and `FAMILY_ORDER` against the eight families the taxonomy defines. The reply sweep's body decoder against a sentence that only looks like base64.
+
+**Not yet checked.** Whether the rehearsal should mirror the layout Render publishes rather than the one `vite build` leaves, which is what keeps the real home, its forward script and the route rewrites undriven (see this run's Needs Harshil). Whether `npm run build` and render.yaml should produce the same site at all, now that one runs `scripts/copy-operators.mjs` and the other does not. Whether a transactional email's wordmark should open the operator's page or the marketplace, which is one template serving both audiences (see this run's Needs Harshil). Whether the Inbox tab should stay in the tab bar at all while the guest agent is off, given that its list and its badge are now always empty by rule. Whether `SITE_PAGES` should be checked against the files that answer those paths, so a fifth business-type page added to the sitemap without its html cannot become a soft 404 under the catch-all. Whether `POST /auth/verify` should count a try it is about to find correct, which is
 what makes any client retry cost an owner one of five attempts (see this run's Needs Harshil). Whether a
 guest waiting out one of the two new deadlines should be told which wait they are in, 15 seconds on a
 stalled listing link and 20 on the card form, both of which say nothing until they end (see this run's Needs
