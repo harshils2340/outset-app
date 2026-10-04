@@ -1,4 +1,4 @@
-import type { Booking, ChatMessage, ChatRole } from "../data/types";
+import type { Booking, ChatMessage, ChatRole, UnclaimedOption } from "../data/types";
 
 const BOOKINGS_KEY = "outset.bookings.v2";
 const CHATS_KEY = "outset.chats.v2";
@@ -94,6 +94,34 @@ export function splitAddons(addons: string[] | undefined): { optionIdx: number |
   const list = addons || [];
   const idx = list.find((a) => /^\d+$/.test(a));
   return { optionIdx: idx == null ? null : Number(idx), extras: list.filter((a) => !/^\d+$/.test(a)) };
+}
+
+/**
+ * The menu row a booking is actually for.
+ *
+ * The index in `addons` points into the listing's live menu, and that menu moves. `toCatalog` in
+ * `operator.ts` rebuilds `options` from the operator's services every time they save, so reordering a
+ * service, hiding one, deleting one or adding a price tier shifts the index of every row after it. The
+ * dashboard was fixed for exactly this and then wrote what was booked into the booking itself: `service`,
+ * `variant`, `price` and `per`, as they read at confirm time.
+ *
+ * Both confirmation screens kept reading the index first, so the guest's own copy was the one that went
+ * wrong. An operator who dragged their second service to the top relabelled a booking already made: the
+ * desktop confirmation's "Booking" row and the phone ticket's "Service" row named the other service, and the
+ * price lines were recomputed from it. Deleting a service was worse, because the index then pointed past the
+ * end and the row vanished, so a guest reopening their trip was shown a confirmation that no longer said what
+ * they had booked.
+ *
+ * What the booking wrote down wins, which is what `guestBookingsFor` already does for the operator's feed.
+ * The index stays as the fallback for bookings made before those fields existed.
+ */
+export function bookedRow(
+  b: Pick<Booking, "service" | "variant" | "price" | "per" | "addons">,
+  options: UnclaimedOption[] | undefined,
+): UnclaimedOption | null {
+  if (b.service != null) return { name: b.service, detail: b.variant || "", price: b.price ?? null, ...(b.per ? { per: b.per } : {}) };
+  const { optionIdx } = splitAddons(b.addons);
+  return (optionIdx == null ? null : (options || [])[optionIdx]) || null;
 }
 
 /** The name, mobile and email the booking form remembers between trips. Empty when nobody has booked here. */

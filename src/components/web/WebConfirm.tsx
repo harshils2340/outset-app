@@ -4,7 +4,7 @@ import { ICONS } from "../../data/icons";
 import type { Booking } from "../../data/types";
 import { addressLine, contactFor, experienceById, fmtPhone, mapsHref, perPerson, publicRating, telHref } from "../../lib/catalog";
 import { addonPrice, pickedAddons, priceUnclaimed, serviceFeeLabel } from "../../lib/pricing";
-import { splitAddons } from "../../lib/storage";
+import { bookedRow, splitAddons } from "../../lib/storage";
 import { placeName } from "../../lib/listingDerive";
 import { arrivalNote, tidyAddress, tidyLength, tidyName } from "./WebListing";
 import { bookedName } from "../../lib/listingDerive";
@@ -38,8 +38,9 @@ export function WebConfirm({ booking, onDone, onOpen }: { booking: Booking; onDo
   const addressRaw = contact ? addressLine(contact) : null;
   const address = addressRaw ? tidyAddress(addressRaw) : null;
   const score = publicRating(item);
-  const { optionIdx, extras } = splitAddons(booking.addons);
-  const picked = optionIdx != null ? item.options[optionIdx] : null;
+  const { extras } = splitAddons(booking.addons);
+  // What the booking itself wrote down, not whatever now sits at the index it stored: see bookedRow.
+  const picked = bookedRow(booking, item.options);
   const [y, m, d] = booking.date.split("-").map(Number);
   // A trip in another year carries its year: bookings run up to a year ahead, and "Sunday, January 3" on a
   // confirmation written in December does not say which January.

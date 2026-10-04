@@ -9,7 +9,7 @@ import { fmtTime, money } from "./format";
 import { durationLabel as menuDuration, faqText, freeCancel } from "./listingDerive";
 import { itemWeek, parseWeek, type Week } from "./openNow";
 import { operatorNet, subtotalFromTotal } from "./pricing";
-import { splitAddons } from "./storage";
+import { bookedRow, splitAddons } from "./storage";
 
 /**
  * Operator side data. One profile per claimed business, saved on-device.
@@ -761,20 +761,21 @@ export function guestBookingsFor(p: OperatorProfile, guest: Booking[]): OpBookin
   return guest
     .filter((b) => b.listing === p.id)
     .map((b) => {
-      const { optionIdx, extras } = splitAddons(b.addons);
+      const { extras } = splitAddons(b.addons);
       // What the guest booked is what the booking wrote down at confirm time. The index in `addons` is only a
       // fallback for bookings made before that was recorded: it points into the live menu, so deleting or
       // reordering a service used to relabel every earlier booking row with whatever now sat at that position.
-      const opt = b.service == null && optionIdx != null && u ? u.options[optionIdx] : null;
+      // One reading, in `bookedRow`, which both guest confirmation screens now share.
+      const opt = bookedRow(b, u?.options);
       return {
         id: "g" + b.code,
         code: b.code,
         guest: b.guest?.name || "Guest " + b.code.slice(-2),
         email: b.guest?.email,
         phone: b.guest?.phone,
-        service: b.service || opt?.name || (u?.title ?? "Booking"),
-        variant: b.service != null ? b.variant || "" : opt?.detail || "",
-        price: b.service != null ? b.price ?? null : opt?.price ?? null,
+        service: opt?.name || (u?.title ?? "Booking"),
+        variant: opt?.detail || "",
+        price: opt?.price ?? null,
         qty: b.qty,
         total: b.total,
         addons: extras,

@@ -3,7 +3,7 @@ import { ICONS } from "../../data/icons";
 import { addressLine, contactFor, experienceById } from "../../lib/catalog";
 import { fmtDate, fmtTime, moneyIn } from "../../lib/format";
 import { countryOfArea } from "../../data/regions";
-import { splitAddons } from "../../lib/storage";
+import { bookedRow, splitAddons } from "../../lib/storage";
 import { useApp } from "../../state/AppProvider";
 import { Markup } from "../Markup";
 import { Fragment } from "react";
@@ -46,8 +46,14 @@ export function ConfirmView() {
      paid for it in the total and saw no dry bag anywhere on the screen that confirmed their booking. The
      desktop confirmation has named them all along. */
   const split = splitAddons(b.addons);
-  const o = !l && split.optionIdx != null ? u!.options[split.optionIdx] : null;
-  const serviceName = o ? (o.detail ? tidyName(o.name) + " · " + tidyLength(o.detail) : tidyName(o.name)) : (bookedName(b.service, title) || null);
+  // The row the booking wrote down at confirm time, with the stored index only as its fallback: see bookedRow.
+  // A hand-built listing stores its extras by id and has no menu to index into, so only the names a booking
+  // of one wrote down can speak for it.
+  const o = bookedRow(b, l ? undefined : u?.options);
+  // `bookedName` drops a service whose name is the business's own, so the ticket does not print the listing
+  // title twice. It used to reach only the bookings that carried no index; now it reads every row the same.
+  const named = o ? bookedName(o.name, title) : "";
+  const serviceName = named ? named + (o!.detail ? " · " + tidyLength(o!.detail) : "") : null;
   const extras = l
     ? (b.addons || []).map((id) => (l.addons || []).find((x) => x.id === id)?.name).filter((n): n is string => !!n)
     : split.extras;
