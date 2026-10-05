@@ -10779,6 +10779,100 @@ clean but for TS5097. The **rehearsal ran at the end, 57 of 57**, on a Postgres 
 on port 5433 with SSL on and the on-disk Playwright Chromium. `STRIPE_SECRET_KEY`, `RESEND_API_KEY` and
 `GITHUB_TOKEN` were empty throughout.
 
+## 5 October 2026, hundred and forty-fifth run (08:46 to 10:05 UTC)
+
+**Chosen, and why.** The one item on Not yet checked that the list itself calls "the one item here that
+would change what a guest sees the next time any reader faults": **this app had no error boundary**, asked
+by twenty-nine runs and never answered. Everything the product prints about 48,198 businesses is crawled
+from their own websites, which is the one input nobody here writes, so the question was never whether a
+reader could fault but what a guest would read when one did. Before touching it, the night was spent
+finding out what a boundary would actually be protecting against.
+
+**The rehearsal was skipped on arrival and run at the end.** The last entry says 57 of 57 and the only
+commit since it was that entry, so rule (b) did not fire on arrival; it fired on this run's own commits,
+which are in `src/`. Baseline: root `tsc --noEmit -p .` and `tsc -b` clean, backend `tsc` clean but for
+TS5097, backend 1,103 with 1,101 pass and 2 skipped, app 1,296 pass.
+
+**Found and fixed.** Two commits, pushed.
+
+- **A guest whose listing page faults reads a way back instead of a blank window** (`8e79b467`). React
+  unmounts the whole tree when a render throws and nothing catches it. Driven in a real Chromium against
+  the dev server with a throw put into `WebListing` on purpose, **`#root` held zero elements**: not a
+  listing missing a sentence, not a broken section, a blank window with nothing on it to press, with the
+  Trips tab holding a paid booking gone with it, and React's own console warning reading "Consider adding
+  an error boundary to your tree". `components/layout/ErrorBoundary.tsx` now sits inside `AppProvider`,
+  which is what `main.tsx` puts around the whole app, so every screen a guest or an operator can reach is
+  one of its children. The fault still reaches the console in full, with React's component stack, because
+  a crash swallowed quietly is worse than the white page. The one button on it goes through
+  `lib/crashRecovery.ts`: **the hash is the screen that faulted**, so a plain reload lands straight back on
+  the shop whose record broke and the only button looks like it did nothing. Measured in the browser:
+  `location.replace` to the same page minus its fragment is a same-document navigation and left the broken
+  tree up, so the URL is changed with `history.replaceState` and the reload after it rebuilds the app on
+  the clean one. A page carrying no hash is simply reloaded.
+- **One faulting dashboard page leaves an operator the other eight and the menu beside them**
+  (`88412987`). The app-wide boundary would catch a throw on the Calendar or the Services editor too, but
+  its only way out is that reload, and for an owner that is the guest home with their claim link gone from
+  the address bar. The nine page renders get a boundary of their own, keyed on the page so it resets when
+  they open another one rather than holding the whole dashboard at the fault. Driven in a real Chromium on
+  the demo dashboard with a throw in `OpCalendar`: the sidebar, the header and the Accepting switch stayed,
+  the alert sat where the calendar had been, and pressing Services drew the menu editor with no alert left
+  on the page. Nothing past the edge and no sideways scroll at 1280px, 400px or 360px, and the button is
+  113x51.
+
+**Measured and left.** What the boundary is insuring against is, today, nothing anybody has found: **54
+readers run over all 52,815 shipped detail files threw 0 times** (`itemWeek`, `durationLabel`, `placeName`,
+`minAge`, `groupCap`, `freeCancelBadge`, `shownReviews`, `bookableMenu`, `displayHours`, `addressOf`,
+`dialPhone`, `tidyRowName`, `cancelWindow`, `sayLength` and the rest, each against every string in every
+file). The search box took 48 adversarial queries, metacharacters, a 5,000 character query, a lone NUL, an
+RTL mark and full-width letters, through eight entry points over 52,816 rows with no throw and no hang.
+Not one shipped string holds a lone surrogate, escaped or raw, so `encodeURIComponent` on a title or a
+photo URL cannot throw. Every `decodeURIComponent` in the app already has its `catch`. So the boundary is
+a defence rather than a patch, which is exactly what thirty runs of asking was about. Separately, **217
+listings state a pre-booking notice** ("Reservations must be made at least 48 hours in advance"), and the
+picker honours none of it: read line by line, almost all are about one package rather than the shop
+(private tastings, group bookings of ten or more, alcohol catering, a gluten free meal), and 20 of them
+state a booking **horizon** rather than a floor ("Tee times may be made up to 7 days in advance"), which
+the ten day window overshoots. Both want a judgement, not a rule, so neither was changed.
+
+**Needs Harshil.**
+
+- **The crash screen's words are mine, and nobody chose them.** A guest reads "Something went wrong on this
+  screen. Nothing you have booked or saved is lost. Start again and the rest of Outset is still here." and
+  an owner reads "Your edits are saved on this device. Open another page from the menu, or start again."
+  Both are true. Neither was written by you, and this is the one screen in the product that only ever
+  appears on a bad day.
+- **Nothing reports a fault anywhere.** `componentDidCatch` writes the exception and the component stack to
+  the browser's own console, which is the guest's machine and not yours, so a reader that starts throwing in
+  production is now invisible rather than loud. The boundary makes that trade on purpose. Until this app
+  sends errors somewhere, the only sign will be a guest saying a page would not open.
+- **A guest's own listing page still only recovers by a reload.** The dashboard keeps its menu around a
+  faulting page; the two guest listing surfaces do not, because they are full-screen and their own close
+  handler would have to be threaded into the fallback. The outcome is the same place (the home) by a
+  slower route.
+- Still open from earlier runs, unchanged: "Open right now near you" is computed once a visit; the 108
+  operators with hacked websites still have not been told; the phone's browse is not ranked while the
+  desktop's is; the phone confirmation offers no way to reach the shop; a guest cannot cancel a booking at
+  all; a price sort and a price filter compare two dollars on six metros; the cards say "$" for a Canadian
+  shop; `lasertag` does not search `paintball`; `concierge/demand.ts` still filters its crawl queue by
+  category and region and not by the town its own comment names; a shop that unpublishes may not be able to
+  get back to the switch it flicked; `/voice/:id/availability` reads out a paused shop's vendor calendar;
+  the 290 listings with no way to claim; and no sync has run, so `kid`, `specs`, `gap` and `extraNote` are
+  still empty on every shipped row. **The brief's rehearsal path is `backend/scripts/e2e-local.mts`, not
+  `scripts/`**, eleventh run to say so. **Local `main` is still detached**, twenty-first run in a row.
+  `npm install` was needed at the root and in `backend/` before anything type-checked, and the Postgres 16
+  cluster still has to be built from scratch (as `ubuntu`, own socket directory, own generated certificate)
+  before the brief's command line works.
+
+**Verification.** App `npm test` 1,304 pass, up 8 in the new `crashRecovery.test.ts`. Backend 1,103 with
+1,101 pass and 2 skipped, unchanged. Every new test was run against the tree with its own rule disabled and
+goes red: the hash drop, the order of `replaceState` and `reload`, the provider's wrap, the boundary's own
+navigation, the `key` on the dashboard boundary, a page render moved outside it, and the fallback's default
+note. `tsc --noEmit -p .` and `tsc -b` clean at the root, backend's own `tsc` clean but for TS5097. The
+**rehearsal ran at the end, 57 of 57**, on a Postgres 16 cluster built from scratch on port 5433 with SSL on
+and the on-disk Playwright Chromium. `STRIPE_SECRET_KEY`, `RESEND_API_KEY` and `GITHUB_TOKEN` were empty
+throughout.
+
+
 ## Coverage
 
 The catalog is 48,198 listings as of the 23 September sync, 1,873 of them Viator partner rows. Counts below
@@ -11061,6 +11155,8 @@ booking sheet all answer alike, and every band boundary in both units. The group
 listing states, each read by the listing page and by Otto, over all 59,162 shipped detail files: that no
 listing anywhere reads two ways, and that a number beside a ceiling word which counts inches, minutes, days,
 miles, kilometres per hour, pounds or dollars is never quoted as a party size or an age.
+
+What a guest and an operator meet when a render throws, driven in a real Chromium with a fault put in on purpose: that there was no boundary at all and `#root` held nothing, that there is one now around the whole app and one around each of the dashboard's nine pages, which way out each offers, and that the way out actually leaves the screen that broke. Whether any reader can be made to throw at all, over all 52,815 shipped detail files through 54 of them, over the search box through eight entry points and 48 adversarial queries, and over every shipped string for a lone surrogate or an undecodable escape.
 
 The booking box against the facts the same page prints above it. The party the picker offers, over all 1,722
 shipped listings that state a group size: a stated floor, a thousands separator, a per service capacity an
@@ -12325,10 +12421,17 @@ earlier attempts at a listing whose first open day falls past a month boundary h
 which is this run's Needs Harshil and the one measured thing left of tonight's family of bugs: `useNearNow`
 memoises "Open right now near you" on `[near, catalogVersion]` and a card memoises its "Open now" pill on
 `[u]`, `itemOpenState` costs 9.8 ms per render of 60 cards so neither memo can simply go, and a ticker reorders
-a rail under a guest's pointer. Whether this app should have an error boundary at all, which is
-the hundred and fourteenth run's Needs Harshil and the one item here that would change what a guest sees the
-next time any reader faults: there is none, so a throw anywhere in render is a white page rather than a listing missing a
-sentence, over prose crawled from 48,198 other people's websites. Whether `lib/zone.ts`'s own `parts()`
+a rail under a guest's pointer. Whether a fault should be reported anywhere at all: the boundary added tonight writes the exception and
+React's component stack to the browser's own console, which is the guest's machine and not ours, so a reader
+that starts throwing in production is survivable and invisible rather than fatal and loud (see the hundred and
+forty-fifth run's Needs Harshil). Whether the two guest listing surfaces should keep the app around a faulting
+listing the way the dashboard now keeps its menu, which needs their own close handler threaded into the
+fallback and lands the guest in the same place by a faster route. Whether the words on the crash screen are
+the right ones, which is the one screen in the product that only ever appears on a bad day and the only one
+nobody has chosen the copy for. Whether a pre-booking notice a shop states should reach the picker, on the 217
+listings that state one: almost all are about one package rather than the shop, and 20 state a booking horizon
+rather than a floor ("Tee times may be made up to 7 days in advance") which the ten day window overshoots
+(see that run's Measured and left). Whether `lib/zone.ts`'s own `parts()`
 should catch the RangeError its nine neighbours catch, which is unreachable today because every zone
 reaching it comes from `zoneForArea`'s own table. Whether an entity naming no character should be dropped
 rather than left as the page wrote it, which is what the fix does and what every decoder here already does
