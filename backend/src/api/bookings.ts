@@ -8,7 +8,7 @@ import { agentMayCharge, OTTO_LIVE, WALLET_ID } from "../payments/wallet.ts";
 import { attachWalletFromSession } from "./wallet.ts";
 import { currencyForArea, priceBooking, releaseDate, splitBooking, type PricedOption, type Split } from "../payments/money.ts";
 import { mailDecision, mailNewBooking } from "./bookingMail.ts";
-import { slotOpen, weekOf, zoneOf } from "./openSlots.ts";
+import { runsForOf, slotOpen, weekOf, zoneOf } from "./openSlots.ts";
 import { fmtWhen } from "../lib/emailTemplate.ts";
 import { bookableMenu } from "../../../src/lib/menuRow.ts";
 import { GUEST_EMAIL_MAX, GUEST_NAME_MAX, GUEST_PHONE_MAX } from "../../../src/lib/guestForm.ts";
@@ -279,8 +279,10 @@ bookings.post("/bookings", rateLimit(20, 60 * 60 * 1000), async (c) => {
   // read as 1 PM on the server and refused as being in the past. Its published week comes with it, for the same
   // reason: an unclaimed listing's picker offers only the times its own site is open for, so this takes only
   // those too, rather than accepting a 7 AM at a brewery that opens at four.
-  const [zone, week] = await Promise.all([zoneOf(listing).catch(() => null), weekOf(listing).catch(() => null)]);
-  const room = slotOpen((profile?.profile as Parameters<typeof slotOpen>[0]) || null, existing, date, slot, clean(b.service, 120), qty, new Date(), zone, week);
+  // How long a booking here runs comes with them, for the same reason again: an unclaimed listing's picker
+  // drops a start its own stated length cannot finish by closing time, so this route drops it too.
+  const [zone, week, runsFor] = await Promise.all([zoneOf(listing).catch(() => null), weekOf(listing).catch(() => null), runsForOf(listing).catch(() => 0)]);
+  const room = slotOpen((profile?.profile as Parameters<typeof slotOpen>[0]) || null, existing, date, slot, clean(b.service, 120), qty, new Date(), zone, week, runsFor);
   if (!room.open) return c.json({ error: room.reason || "That time is not available", code: "slot_taken" }, 409);
   const rec: StoredBooking = {
     code,

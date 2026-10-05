@@ -4,6 +4,8 @@ import { readFileSync, readdirSync } from "node:fs";
 
 import { itemWeek } from "../openNow";
 import { noStartTimesNote, startTimesOn } from "../startTimes";
+import { minutesIn } from "../duration";
+import { durationLabel } from "../listingDerive";
 import { SLOT_TIMES } from "../../data/slots";
 import type { Unclaimed } from "../../data/types";
 import { weekIn } from "../../../backend/src/api/openSlots";
@@ -86,9 +88,9 @@ test("both booking surfaces read the one helper, so neither offers a time the ot
     ["the phone listing sheet", read("../../components/booking/Sheets.tsx")],
     ["the desktop listing page", read("../../components/web/WebListing.tsx")],
   ] as const) {
-    assert.match(src, /startTimesOn\(week \? week\[d\.getDay\(\)\] \?\? null : null, SLOT_TIMES\)/, name + " filters its fixed times");
+    assert.match(src, /startTimesOn\(week \? week\[d\.getDay\(\)\] \?\? null : null, SLOT_TIMES, runsFor\)/, name + " filters its fixed times");
   }
-  assert.match(read("../../../backend/src/api/openSlots.ts"), /startTimesOn\(week \? week\[d\.getDay\(\)\] \?\? null : null, DEFAULT_SLOTS\)/, "the API filters the same way");
+  assert.match(read("../../../backend/src/api/openSlots.ts"), /startTimesOn\(week \? week\[d\.getDay\(\)\] \?\? null : null, DEFAULT_SLOTS, runsFor\)/, "the API filters the same way");
 });
 
 test("an empty picker says why, and does not call next Saturday today", () => {
@@ -115,4 +117,51 @@ test("the API reads a shop's week the same way the page does, on every listing t
     if (mine) same++;
   }
   assert.ok(same > 10000, "read the shipped catalog, saw only " + same + " weeks");
+});
+
+/**
+ * A start the listing's own stated length cannot finish by closing time. The page prints the length in its
+ * key facts and the hours a few lines above that, so the picker under both may not contradict either.
+ */
+test("a start the shop's own stated length cannot finish by closing time is not offered", () => {
+  // o-a-bayfishing-com: 8 to 3 every day, and its own menu calls the trip 7 hours. The fixed grid offered
+  // 9, 11 and 1; only the eight o'clock the shop opens on can finish.
+  assert.deepEqual(startTimesOn({ open: 8 * 60, close: 15 * 60 }, SLOT_TIMES, 7 * 60), ["08:00"]);
+  // o-1620anglers-com: 8 to 6, an 8 hour charter. Nine is the last fixed time that lands.
+  assert.deepEqual(startTimesOn({ open: 8 * 60, close: 18 * 60 }, SLOT_TIMES, 8 * 60), ["09:00"]);
+  // A length that fits everywhere takes nothing away, and no length at all leaves the day exactly as it was.
+  assert.deepEqual(startTimesOn({ open: 9 * 60, close: 19 * 60 }, SLOT_TIMES, 60), startTimesOn({ open: 9 * 60, close: 19 * 60 }, SLOT_TIMES));
+  assert.deepEqual(startTimesOn({ open: 9 * 60, close: 19 * 60 }, SLOT_TIMES, 0), startTimesOn({ open: 9 * 60, close: 19 * 60 }, SLOT_TIMES));
+});
+
+test("a window too short to hold the shop's own trip keeps the times it had, rather than emptying", () => {
+  // Three hours open and a four hour trip: one of the two crawled facts is wrong, and neither is a reason to
+  // tell a guest the shop takes no bookings at all.
+  const short = { open: 12 * 60, close: 15 * 60 };
+  assert.deepEqual(startTimesOn(short, SLOT_TIMES, 4 * 60), startTimesOn(short, SLOT_TIMES));
+  assert.deepEqual(startTimesOn(short, SLOT_TIMES, 4 * 60), ["13:00"]);
+  // And a day that is closed, or that the site says nothing about, is unchanged by a length.
+  assert.deepEqual(startTimesOn({ open: 0, close: 0 }, SLOT_TIMES, 8 * 60), []);
+  assert.deepEqual(startTimesOn(null, SLOT_TIMES, 8 * 60), SLOT_TIMES);
+});
+
+test("no shipped listing loses every start time it had to its own stated length", () => {
+  let changed = 0;
+  const all = readdirSync(dir);
+  // Every seventh file: the catalog is alphabetical, so a slice off the front is all partner rows.
+  for (const f of all.filter((_x, i) => i % 7 === 0)) {
+    const u = detail(f.replace(/\.json$/, ""));
+    const week = itemWeek(u);
+    if (!week) continue;
+    const runsFor = minutesIn(u.dur || durationLabel(u) || "");
+    if (!runsFor) continue;
+    for (const day of week) {
+      const before = startTimesOn(day ?? null, SLOT_TIMES);
+      const after = startTimesOn(day ?? null, SLOT_TIMES, runsFor);
+      if (before.join() !== after.join()) changed++;
+      if (before.length) assert.ok(after.length, u.id + " kept no start time at all");
+      for (const t of after) assert.ok(before.includes(t) || !!day, u.id + " invented " + t);
+    }
+  }
+  assert.ok(changed > 100, "the rule bites on the shipped catalog: " + changed + " day lines");
 });

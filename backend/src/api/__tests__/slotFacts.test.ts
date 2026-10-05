@@ -50,12 +50,12 @@ test("a listing the store really has nothing for is remembered, so it is not re-
 });
 
 test("the last answer, however old, beats falling back to nothing", () => {
-  const known = { zone: "America/Los_Angeles", week: null };
+  const known = { zone: "America/Los_Angeles", week: null, runsFor: 0 };
   const failed = factsAfterRead(known, { detail: null, failed: true });
   assert.deepEqual(failed.facts, known, "a stale zone is still that shop's zone");
   assert.equal(failed.remember, false, "and the clock is not restarted, so the next request tries the read");
   const first = factsAfterRead(undefined, { detail: null, failed: true });
-  assert.deepEqual(first.facts, { zone: null, week: null }, "with nothing known yet there is nothing to keep");
+  assert.deepEqual(first.facts, { zone: null, week: null, runsFor: 0 }, "with nothing known yet there is nothing to keep");
   assert.equal(first.remember, false);
 });
 
@@ -63,8 +63,8 @@ test("a read that answered is remembered, file or no file", () => {
   const got = factsAfterRead(undefined, { detail: { area: "Tampa, FL", hrs: null as never }, failed: false });
   assert.equal(got.facts.zone, "America/New_York");
   assert.equal(got.remember, true);
-  const none = factsAfterRead({ zone: "America/Denver", week: null }, { detail: null, failed: false });
-  assert.deepEqual(none.facts, { zone: null, week: null }, "a listing the store has no file for keeps no borrowed zone");
+  const none = factsAfterRead({ zone: "America/Denver", week: null, runsFor: 0 }, { detail: null, failed: false });
+  assert.deepEqual(none.facts, { zone: null, week: null, runsFor: 0 }, "a listing the store has no file for keeps no borrowed zone");
   assert.equal(none.remember, true);
   assert.equal(weekIn(null), null);
 });

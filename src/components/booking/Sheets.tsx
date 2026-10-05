@@ -41,6 +41,7 @@ import { useApp } from "../../state/AppProvider";
 import { SIZES, srcSet, thumb } from "../../lib/images";
 import { embedAutoplay, listingMedia, photoCandidates, probePhotos, type Media } from "../../lib/media";
 import { cleanDesc, durationLabel, groupCap, meetPlace, minAge, notAlreadyShown, placeName, splitPolicies, variantPickLabel } from "../../lib/listingDerive";
+import { minutesIn } from "../../lib/duration";
 import { freeCancelBadge } from "../../lib/cancellation";
 import { DAY_SHORT, clock12, companySuggestions, currentDeals, dayLabel, todaysDeals } from "../../lib/companyAgent";
 import { bookableStart, clockIn, hourLines, itemWeek, zoneFor } from "../../lib/openNow";
@@ -512,11 +513,13 @@ function RequestBody({
   // With no API to ask, the fixed times still drop the ones this shop's own published hours are shut for, so
   // the picker and the "Closed today" row above it cannot say different things. Same rule the API applies.
   const week = useMemo(() => itemWeek(item), [item]);
+  // And a start the length printed over this picker cannot finish by closing time is dropped with them.
+  const runsFor = useMemo(() => minutesIn(item.dur || durationLabel(item) || ""), [item]);
   const chipsFor = (d: Date): TimeChip[] => {
     const k = dateKey(d);
     const later = (t: string) => stillOpen(k, t);
     if (live) return (liveDays.get(k) || []).filter((c) => later(c.time)).sort((a, b) => a.time.localeCompare(b.time));
-    const base = openMap ? openMap.get(k) || [] : startTimesOn(week ? week[d.getDay()] ?? null : null, SLOT_TIMES);
+    const base = openMap ? openMap.get(k) || [] : startTimesOn(week ? week[d.getDay()] ?? null : null, SLOT_TIMES, runsFor);
     return base.filter(later).map((t) => ({ key: t, time: t, label: fmtTime(t) }));
   };
   const chips = chipsFor(day);

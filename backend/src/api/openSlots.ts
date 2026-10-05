@@ -7,6 +7,7 @@ import { instantOf, todayIn, zoneForArea } from "../lib/zone.ts";
 import { readJson } from "../lib/store.ts";
 import { encodeWeek, isTradingHoursLine } from "../sync/hours.ts";
 import { startTimesOn, type StatedDay } from "../../../src/lib/startTimes.ts";
+import { durationFrom, minutesIn } from "../../../src/lib/duration.ts";
 
 /**
  * Which start times a guest may still book, and the one rule the booking route enforces so two guests cannot
@@ -100,7 +101,7 @@ function runOf(h: DayHours | undefined): { start: number; end: number } | null {
  * all, so a listing whose hours row read "Open until 12:00 AM" answered "No more start times today" on every
  * day of the year and neither the guest nor the operator was told why.
  */
-export function scheduledSlots(profile: DashboardProfile | null, date: string, now = new Date(), zone?: string | null, week?: PublishedWeek): string[] {
+export function scheduledSlots(profile: DashboardProfile | null, date: string, now = new Date(), zone?: string | null, week?: PublishedWeek, runsFor = 0): string[] {
   const d = dayOf(date);
   if (!d) return [];
   // A shop's opening times are wall clock times where it stands, so both "what day is it" and "has this time
@@ -119,7 +120,7 @@ export function scheduledSlots(profile: DashboardProfile | null, date: string, n
     // Nobody has claimed this listing, so the fixed times are all we have, minus the ones the shop's own
     // website says it is shut for. `startTimes.ts` has the rule and the phone and desktop pages read the same
     // one; a day the site says nothing about keeps all six.
-    return startTimesOn(week ? week[d.getDay()] ?? null : null, DEFAULT_SLOTS).filter(soonEnough);
+    return startTimesOn(week ? week[d.getDay()] ?? null : null, DEFAULT_SLOTS, runsFor).filter(soonEnough);
   }
   const window = Number.isFinite(profile.windowDays) && Number(profile.windowDays) > 0 ? Number(profile.windowDays) : 60;
   const from = dayOf(todayKey) || new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -173,8 +174,8 @@ export function bookedAt(list: StoredBooking[], date: string, slot: string, now 
 }
 
 /** Whether a time can still take `qty` more guests for `service`. */
-export function slotOpen(profile: DashboardProfile | null, bookings: StoredBooking[], date: string, slot: string, service: string, qty: number, now = new Date(), zone?: string | null, week?: PublishedWeek): { open: boolean; reason?: string } {
-  if (!scheduledSlots(profile, date, now, zone, week).includes(slot)) return { open: false, reason: "That time is not open for booking" };
+export function slotOpen(profile: DashboardProfile | null, bookings: StoredBooking[], date: string, slot: string, service: string, qty: number, now = new Date(), zone?: string | null, week?: PublishedWeek, runsFor = 0): { open: boolean; reason?: string } {
+  if (!scheduledSlots(profile, date, now, zone, week, runsFor).includes(slot)) return { open: false, reason: "That time is not open for booking" };
   const cap = capacityFor(profile, service);
   const taken = bookedAt(bookings, date, slot, now.getTime());
   if (cap == null) return taken.count ? { open: false, reason: "That time was just booked" } : { open: true };
@@ -206,7 +207,7 @@ export type OpenDay = { date: string; slots: string[] };
  *
  * Pure on purpose: everything it needs is passed in, so it can be tested without a database.
  */
-export function openDaysFor(profile: DashboardProfile | null, list: StoredBooking[], start: Date, days: number, service: string, guests: number, now: Date, zone?: string | null, week?: PublishedWeek): OpenDay[] {
+export function openDaysFor(profile: DashboardProfile | null, list: StoredBooking[], start: Date, days: number, service: string, guests: number, now: Date, zone?: string | null, week?: PublishedWeek, runsFor = 0): OpenDay[] {
   const cap = capacityFor(profile, service);
   const need = Math.max(1, guests);
   const nowMs = now.getTime();
@@ -222,7 +223,7 @@ export function openDaysFor(profile: DashboardProfile | null, list: StoredBookin
     const d = new Date(start.getFullYear(), start.getMonth(), start.getDate() + i);
     const date = iso(d);
     // Once per day, not once per slot.
-    const slots = scheduledSlots(profile, date, now, zone, week).filter((t) => {
+    const slots = scheduledSlots(profile, date, now, zone, week, runsFor).filter((t) => {
       const q = taken.get(date + "|" + t) || 0;
       return cap == null ? q === 0 : q + need <= cap;
     });
@@ -232,8 +233,18 @@ export function openDaysFor(profile: DashboardProfile | null, list: StoredBookin
 }
 
 const ZONE_TTL = 60 * 60 * 1000;
-export type DetailFile = { area?: string; lat?: number; lon?: number; hrs?: ([number, number] | null)[]; hoursText?: string[]; contact?: { hours?: string[] } | null };
-export type ListingFacts = { zone: string | null; week: PublishedWeek };
+export type DetailFile = {
+  area?: string;
+  lat?: number;
+  lon?: number;
+  hrs?: ([number, number] | null)[];
+  hoursText?: string[];
+  contact?: { hours?: string[] } | null;
+  dur?: string;
+  services?: { variants?: { label?: string }[] }[];
+  options?: { detail?: string }[];
+};
+export type ListingFacts = { zone: string | null; week: PublishedWeek; runsFor: number };
 const facts = new Map<string, { at: number; facts: ListingFacts }>();
 
 /**
@@ -280,9 +291,24 @@ function statedDay(d: [number, number] | null): StatedDay {
  * So a failed read is not remembered, and the last answer, however old, beats falling back to nothing.
  */
 export function factsAfterRead(prev: ListingFacts | undefined, read: { detail: DetailFile | null; failed: boolean }): { facts: ListingFacts; remember: boolean } {
-  if (read.failed) return { facts: prev || { zone: null, week: null }, remember: false };
+  if (read.failed) return { facts: prev || { zone: null, week: null, runsFor: 0 }, remember: false };
   const d = read.detail;
-  return { facts: { zone: zoneForArea(d?.area, d?.lat, d?.lon), week: weekIn(d) }, remember: true };
+  return { facts: { zone: zoneForArea(d?.area, d?.lat, d?.lon), week: weekIn(d), runsFor: runsForIn(d) }, remember: true };
+}
+
+/**
+ * How long a booking at this listing runs, in minutes, read the way the guest page reads it: the length the
+ * sync wrote, else the first one the menu states. 0 when the listing names none. An unclaimed listing may
+ * not offer a start its own stated length cannot finish by closing time, so the slot route needs the same
+ * number the page prints over the picker (`src/lib/startTimes.ts`).
+ */
+export function runsForIn(detail: DetailFile | null): number {
+  if (!detail) return 0;
+  const menu = [
+    ...(detail.services || []).flatMap((s) => (s?.variants || []).map((v) => String(v?.label || ""))),
+    ...(detail.options || []).map((o) => String(o?.detail || "")),
+  ];
+  return minutesIn(detail.dur || durationFrom(menu) || "");
 }
 
 /**
@@ -317,6 +343,11 @@ export async function weekOf(listing: string): Promise<PublishedWeek> {
   return (await factsOf(listing)).week;
 }
 
+/** How long a booking at this listing runs, for the start times an unclaimed listing may offer. */
+export async function runsForOf(listing: string): Promise<number> {
+  return (await factsOf(listing)).runsFor;
+}
+
 /** The run of dates this answer covers, with nothing open on any of them. */
 export function noDays(start: Date, days: number): OpenDay[] {
   const out: OpenDay[] = [];
@@ -328,7 +359,7 @@ export async function openSlots(listing: string, from: string, days: number, ser
   const [rec, list, known] = await Promise.all([
     getProfile<StoredProfile>(listing).catch(() => null),
     listBookings<StoredBooking>(listing).catch(() => [] as StoredBooking[]),
-    factsOf(listing).catch(() => ({ zone: null, week: null }) as ListingFacts),
+    factsOf(listing).catch(() => ({ zone: null, week: null, runsFor: 0 }) as ListingFacts),
   ]);
   const profile = (rec?.profile as DashboardProfile | null) || null;
   const zone = known.zone;
@@ -338,7 +369,7 @@ export async function openSlots(listing: string, from: string, days: number, ser
   // open times, every one of which that route would then turn away. Only the guest page asks today and it
   // hides its own picker for both, but this route is public and the next surface to read it would not know.
   if (bookingPause(rec)) return { known: true, claimed: !!profile, days: noDays(start, days) };
-  return { known: true, claimed: !!profile, days: openDaysFor(profile, list, start, days, service, guests, now, zone, known.week) };
+  return { known: true, claimed: !!profile, days: openDaysFor(profile, list, start, days, service, guests, now, zone, known.week, known.runsFor) };
 }
 
 export const openSlotsRoute = new Hono();

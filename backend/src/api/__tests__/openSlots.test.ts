@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { DEFAULT_SLOTS, capacityFor, openDaysFor, scheduledSlots, slotOpen } from "../openSlots.ts";
+import { DEFAULT_SLOTS, capacityFor, openDaysFor, runsForIn, scheduledSlots, slotOpen } from "../openSlots.ts";
 import type { StoredBooking } from "../bookings.ts";
 
 /**
@@ -163,6 +163,42 @@ test("hours none of the six land in still leave the shop bookable, on its own op
   assert.deepEqual(scheduledSlots(null, MONDAY, NOON, undefined, weekWith(1, { open: 18 * 60, close: 21 * 60 })), ["18:00", "20:00"]);
   // o-7cswimschool-com, 5:30 to 6:30 in the morning.
   assert.deepEqual(scheduledSlots(null, MONDAY, NOON, undefined, weekWith(1, { open: 5 * 60 + 30, close: 6 * 60 + 30 })), ["05:30"]);
+});
+
+test("a start the listing's own stated length cannot finish by closing time is not offered", () => {
+  // o-a-bayfishing-com: open 8 to 3, and its own menu calls the trip 7 hours. The picker offered 9, 11 and 1.
+  const week = weekWith(1, { open: 8 * 60, close: 15 * 60 });
+  assert.deepEqual(scheduledSlots(null, MONDAY, NOON, undefined, week), ["09:00", "11:00", "13:00"]);
+  assert.deepEqual(scheduledSlots(null, MONDAY, NOON, undefined, week, 7 * 60), ["08:00"]);
+  // And a shop whose own window is shorter than its stated trip keeps the times it had, rather than emptying.
+  const short = weekWith(1, { open: 12 * 60, close: 15 * 60 });
+  assert.deepEqual(scheduledSlots(null, MONDAY, NOON, undefined, short, 4 * 60), scheduledSlots(null, MONDAY, NOON, undefined, short));
+});
+
+test("the booking route refuses the start the picker dropped for the length", () => {
+  const week = weekWith(1, { open: 8 * 60, close: 15 * 60 });
+  const offered = scheduledSlots(null, MONDAY, NOON, undefined, week, 7 * 60);
+  assert.deepEqual(offered, ["08:00"]);
+  assert.equal(slotOpen(null, [], MONDAY, "08:00", "", 1, NOON, undefined, week, 7 * 60).open, true);
+  for (const t of ["09:00", "11:00", "13:00"]) {
+    const refused = slotOpen(null, [], MONDAY, t, "", 1, NOON, undefined, week, 7 * 60);
+    assert.equal(refused.open, false, t + " is offered by nothing and must be taken by nothing");
+    assert.equal(refused.reason, "That time is not open for booking");
+  }
+  // openDaysFor is the fast path the public route answers with: it has to say the same thing.
+  assert.deepEqual(openDaysFor(null, [], new Date(2026, 9, 5), 1, "", 1, NOON, undefined, week, 7 * 60)[0].slots, offered);
+});
+
+test("how long a booking runs is read off the detail file the way the guest page reads it", () => {
+  assert.equal(runsForIn({ dur: "7 hours" }), 420);
+  assert.equal(runsForIn({ dur: "90 min" }), 90);
+  // No `dur`: the first length the menu states, by the same rule the page falls back to.
+  assert.equal(runsForIn({ services: [{ variants: [{ label: "2 hour sunset sail" }] }] }), 120);
+  assert.equal(runsForIn({ options: [{ detail: "45 minutes" }] }), 45);
+  // A cancellation window is not a length, and a listing that names none answers nothing.
+  assert.equal(runsForIn({ options: [{ detail: "Cancellations prior to 72 hours" }] }), 0);
+  assert.equal(runsForIn({ dur: "" }), 0);
+  assert.equal(runsForIn(null), 0);
 });
 
 test("a claimed shop is untouched: its own dashboard hours still decide", () => {

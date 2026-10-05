@@ -15,7 +15,7 @@ import { clockOfMinutes, DAYS, dayPickLabel, fmtDate, fmtReviews, fmtTime, money
 import { srcSet, thumb } from "../../lib/images";
 import { embedAutoplay, isGif, listingMedia, photoCandidates, probePhotos, type Media } from "../../lib/media";
 import { arrivalWords, bringLine, cleanDesc, durationLabel, groupCap as readGroupCap, lengthWords, minAge, notAlreadyShown, placeName, splitIncluded, splitPolicies, tidyLength, tidyLine, tidyName, variantPickLabel } from "../../lib/listingDerive";
-import { sayLength } from "../../lib/duration";
+import { minutesIn, sayLength } from "../../lib/duration";
 import { freeCancelBadge, tidyCancel } from "../../lib/cancellation";
 import { reportDeadCover, useDeadCovers } from "../../lib/deadCovers";
 import { pickSimilar } from "../../lib/similar";
@@ -1072,13 +1072,15 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
   const chipsFor = useMemo(() => {
     const stillOpen = bookableStart(item);
     const listed = picked?.price != null ? picked.price : undefined;
+    // And a start the length printed in the key facts above cannot finish by closing time is dropped with them.
+    const runsFor = minutesIn(item.dur || durationLabel(item) || "");
     // With no API to ask, the fixed times still drop the ones this shop's own published hours are shut for, so
     // the picker and the hours row a few lines above it cannot say different things. Same rule the API applies.
     return (d: Date) => {
       const k = dateKey(d);
       const fromLive = liveDays.get(k);
       if (live) return (fromLive || []).filter((c) => stillOpen(k, c.time)).slice().sort((a, b) => a.time.localeCompare(b.time));
-      const base = openMap ? openMap.get(k) || [] : startTimesOn(week ? week[d.getDay()] ?? null : null, SLOT_TIMES);
+      const base = openMap ? openMap.get(k) || [] : startTimesOn(week ? week[d.getDay()] ?? null : null, SLOT_TIMES, runsFor);
       return base.filter((t) => stillOpen(k, t))
         .map((t) => ({ key: t, time: t, label: fmtTime(t), price: listed }));
     };

@@ -60,17 +60,42 @@ export function noStartTimesNote(day: StatedDay, weekday: string): string {
   return closedOnDay(day) ? "They are closed on " + weekday + "s. Pick another day." : "No more start times today. Pick another day.";
 }
 
-/** The start times `fixed` leaves standing on a day the operator's site states, in the order given. */
-export function startTimesOn(day: StatedDay, fixed: string[]): string[] {
+/**
+ * A start the listing's own stated length cannot finish by closing time.
+ *
+ * The page prints "7 hours" over the picker and the hours row over that reads "8:00 AM to 3:00 PM", and the
+ * picker underneath both offered 9 AM, 11 AM and 1 PM: a seven hour charter leaving at one o'clock from a
+ * shop that shuts at three. 625 of the 1,983 listings that publish a length and a readable week do this, on
+ * 3,437 day lines, most of them fishing charters and boat rentals whose trip is longer than the afternoon
+ * they are offered in. The operator can only decline, and the guest has read three facts on one screen that
+ * cannot all be true.
+ *
+ * The length is the one the page itself prints (`dur`, else the first the menu states), so the picker and the
+ * facts above it answer alike. A window too short to hold the shop's own trip states no honest start at all,
+ * so there the length is set aside and the day keeps the times it had: that is a listing whose crawled length
+ * or hours are wrong, not a day to empty.
+ */
+function fitsBefore(start: number, runsFor: number, open: number, close: number): boolean {
+  if (runsFor <= 0 || close - open < runsFor) return true;
+  return start + runsFor <= close;
+}
+
+/**
+ * The start times `fixed` leaves standing on a day the operator's site states, in the order given.
+ *
+ * `runsFor` is how long a booking here runs, in minutes, and 0 means the listing states no length.
+ */
+export function startTimesOn(day: StatedDay, fixed: string[], runsFor = 0): string[] {
   if (!day) return fixed;
   const close = Math.min(day.close, DAY_MIN);
   if (close <= day.open) return [];
+  const fits = (m: number) => fitsBefore(m, runsFor, day.open, close);
   const inside = fixed.filter((t) => {
     const m = minutesOf(t);
-    return Number.isFinite(m) && m >= day.open && m < close;
+    return Number.isFinite(m) && m >= day.open && m < close && fits(m);
   });
   if (inside.length) return inside;
   const out: string[] = [];
-  for (let m = day.open; m < close && out.length < MAX_STARTS; m += STEP_MIN) out.push(hhmm(m));
+  for (let m = day.open; m < close && out.length < MAX_STARTS; m += STEP_MIN) if (fits(m)) out.push(hhmm(m));
   return out;
 }
