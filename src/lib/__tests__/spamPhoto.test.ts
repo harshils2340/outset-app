@@ -27,6 +27,23 @@ test("every gambling banner the sync published is refused", () => {
 });
 
 /**
+ * Six more shipped listings carry a banner for a gambling brand the file-name list above never named: Mostbet,
+ * 1xbet, Bettilt, Melbet, 22bet and LeoVegas, each hotlinked onto a business with nothing to do with betting.
+ */
+test("a gambling brand name in a banner address is refused, whichever brand", () => {
+  for (const url of [
+    "https://clevelandtrainmuseum.com/assets/images/main/mostbet-registration-turkey.webp",
+    "https://calvartgallery.com/assets/brands/banners/1xbet-banner1.jpg",
+    "https://tr.casino-bettilt.live/images/og.jpg",
+    "https://www.graciebarraleeds.com/wp-content/uploads/melbet-1.png",
+    "https://www.foxdenyellowstone.com/wp-content/uploads/sites/261572/leovegas-banner-1245x315-optimized.webp",
+    "https://wwtguns.com/wp-content/uploads/2026/07/LeoVegas.jpg",
+  ]) {
+    assert.ok(spamImageUrl(url), url + " should not draw " + url);
+  }
+});
+
+/**
  * The rule reads a file name and a host, so it is held to word edges: a photograph of Judith, a file called
  * maxwindow.jpg and a slot of time in a booking widget's own URL are all photographs of a business.
  */

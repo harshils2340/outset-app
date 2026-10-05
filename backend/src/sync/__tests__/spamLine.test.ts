@@ -23,6 +23,30 @@ test("gambling SEO spam injected into a hacked page is recognised", () => {
   }
 });
 
+/**
+ * A gambling brand name reads as spam regardless of which language the hacked page wrote around it: a brand
+ * is never a real tour operator's own word. Martin & Sue King Railroad Museum's blurb was replaced outright by
+ * Turkish Mostbet marketing; 17 Frost Gallery's by the English equivalent. Neither mentions "casino" three
+ * times tightly enough for `hasRepeatedSuspectWord`, so the brand name itself is what has to catch them.
+ */
+test("a gambling brand name in a hacked page's own language is recognised as spam", () => {
+  for (const line of [
+    "Mostbet, Türkiye’de lisanslı ve güvenilir bir çevrim içi casino platformu olarak faaliyet göstermektedir.",
+    "Mostbet gives Bangladeshi players rapid entry to sports wagering and online casino fun.",
+  ]) {
+    assert.equal(SPAM_LINE.test(line), true, line + " should be recognised as spam");
+  }
+});
+
+/**
+ * America's Center Convention Complex in St. Louis genuinely has a bowling alley named "Pin-Up Bowl", so a
+ * betting-brand screen cannot fire on "pin-up" or "pinup" alone, only on brand names that never double as a
+ * real venue's own name.
+ */
+test("a real venue named for something else is left alone", () => {
+  assert.equal(SPAM_LINE.test("Pin-Up Bowl"), false);
+});
+
 test("an operator's own words about a real booking slot are left alone", () => {
   for (const line of [
     "Book your slot online, and you'll get a confirmation email with directions.",

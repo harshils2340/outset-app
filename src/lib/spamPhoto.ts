@@ -15,7 +15,7 @@
  * and nothing else.
  */
 const SPAM_IMAGE =
-  /togel|maxwin(?![a-z])|gacor|\bjudi\b|slot(?:777|88|99|gacor)(?![a-z])|(?:bandar|situs|daftar)[-_ ]?(?:togel|slot|judi)|\bpulsa\b/i;
+  /togel|maxwin(?![a-z])|gacor|\bjudi\b|slot(?:777|88|99|gacor)(?![a-z])|(?:bandar|situs|daftar)[-_ ]?(?:togel|slot|judi)|\bpulsa\b|\b(?:mostbet|1xbet|bettilt|melbet|22bet|leovegas)\b/i;
 
 /** True when this address should never be drawn, counted, or asked of the image proxy. */
 export function spamImageUrl(url: string | null | undefined): boolean {

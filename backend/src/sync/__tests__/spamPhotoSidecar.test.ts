@@ -67,6 +67,25 @@ test("a glued or hyphenated gambling banner in a file name is caught where the p
   }
 });
 
+/**
+ * Six more shipped listings carry a banner for a gambling brand the file-name list above never named:
+ * Mostbet, 1xbet, Bettilt, Melbet, 22bet and LeoVegas, each hotlinked onto a business with nothing to do
+ * with betting (a train museum, an art gallery, an RV campground, a gun store, a sloth sanctuary).
+ */
+test("a gambling brand name in a banner address is caught, whichever brand", () => {
+  for (const url of [
+    "https://clevelandtrainmuseum.com/assets/images/main/mostbet-registration-turkey.webp", // Martin & Sue King Railroad Museum, Cleveland, OH
+    "https://calvartgallery.com/assets/brands/banners/1xbet-banner1.jpg", // calvART Gallery, Fredericton, NB
+    "https://tr.casino-bettilt.live/images/og.jpg", // Sand Hollow RV Resort, Hurricane, UT
+    "https://www.graciebarraleeds.com/wp-content/uploads/melbet-1.png", // Sloth Encounters, hotlinked onto an unrelated domain
+    "https://www.foxdenyellowstone.com/wp-content/uploads/sites/261572/leovegas-banner-1245x315-optimized.webp", // Fox Den RV & Campground, West Yellowstone, MT
+    "https://wwtguns.com/wp-content/uploads/2026/07/LeoVegas.jpg", // Wild West Traders, a gun store
+  ]) {
+    assert.equal(isSpamImageAddress(url), true, url + " should be refused");
+    assert.equal(hasHackedSpam([], [], [url]), true, url + " should quarantine the operator");
+  }
+});
+
 test("an ordinary file name is not a casino", () => {
   for (const url of [
     "https://cdn.example.com/img/maxwindow-view.jpg",
