@@ -24,6 +24,9 @@ import { join } from "node:path";
 
 const store = mkdtempSync(join(tmpdir(), "outset-payout-e2e-"));
 process.env.STORE_DIR = store;
+// Every email that would have gone out is written here, so the sentence a guest reads about their money can
+// be read back rather than assumed. Only set when the caller has not named a directory of its own.
+process.env.MAIL_DUMP_DIR ||= join(store, "mail");
 if (!process.env.E2E_DATABASE_URL) {
   console.log("E2E_DATABASE_URL is not set; skipping the payout e2e (point it at a scratch Neon branch).");
   process.exit(0);
@@ -41,6 +44,13 @@ delete process.env.STRIPE_CURRENCY;
 
 type Call = { method: string; path: string; body: Record<string, string>; idem?: string };
 const calls: Call[] = [];
+/**
+ * Calls the recorder should refuse, as "capture:<intent>" or "refund:<intent>". Stripe saying no is not an
+ * exotic case: it releases an uncaptured authorization after seven days, so a shop that answers its requests
+ * once a week accepts a hold that has already gone, and a refund can fail on nothing worse than the twenty
+ * second timeout on the call itself. Both used to be logged and otherwise invisible.
+ */
+const refuse = new Set<string>();
 // A USD charge on the Canadian platform settles in CAD at this rate unless SETTLE_USD is set.
 let settleUsd = false;
 const realFetch = globalThis.fetch;
@@ -53,13 +63,17 @@ globalThis.fetch = (async (input: string | URL | Request, init?: RequestInit) =>
   calls.push({ method: init?.method || "GET", path, body, idem: headers["idempotency-key"] });
   const json = (o: unknown) => new Response(JSON.stringify(o), { status: 200, headers: { "content-type": "application/json" } });
   if (path === "checkout/sessions") return json({ id: "cs_" + body["metadata[code]"], url: "https://checkout.stripe.test/" + body["metadata[code]"], payment_intent: "pi_" + body["metadata[code]"] });
-  if (/^payment_intents\/[^/]+\/capture$/.test(path)) return json({ status: "succeeded", latest_charge: "ch_" + path.split("/")[1] });
+  const no = (code: string) => new Response(JSON.stringify({ error: { code, message: "the recorder was told to refuse this" } }), { status: 400, headers: { "content-type": "application/json" } });
+  if (/^payment_intents\/[^/]+\/capture$/.test(path)) {
+    if (refuse.has("capture:" + path.split("/")[1])) return no("payment_intent_unexpected_state");
+    return json({ status: "succeeded", latest_charge: "ch_" + path.split("/")[1] });
+  }
   if (/^payment_intents\/[^/]+\/cancel$/.test(path)) return json({ status: "canceled" });
   if (/^payment_intents\/[^/]+$/.test(path)) return json({ status: "succeeded", latest_charge: "ch_" + path.split("/")[1] });
   if (path.startsWith("charges/")) return json({ currency: "usd", balance_transaction: settleUsd ? { currency: "usd", exchange_rate: null } : { currency: "cad", exchange_rate: 1.36 } });
   if (path === "transfers") return json({ id: "tr_" + body["metadata[code]"] });
   if (/^transfers\/[^/]+\/reversals$/.test(path)) return json({ id: "trr_" + path.split("/")[1] });
-  if (path === "refunds") return json({ status: "succeeded" });
+  if (path === "refunds") return refuse.has("refund:" + body.payment_intent) ? no("charge_already_refunded") : json({ status: "succeeded" });
   if (path.startsWith("accounts/")) return json({ id: path.split("/")[1], payouts_enabled: true, details_submitted: true });
   return new Response(JSON.stringify({ error: { message: "recorder has no answer for " + path } }), { status: 400 });
 }) as typeof fetch;
@@ -245,6 +259,69 @@ console.log("\n15. A date in another year says which year");
   const now = new Date(2026, 11, 20);
   check("this year needs no year", fmtDay("2026-12-25", now) === "Friday, December 25", fmtDay("2026-12-25", now));
   check("next January carries its year", fmtDay("2027-01-03", now) === "Sunday, January 3, 2027", fmtDay("2027-01-03", now));
+}
+
+console.log("\n16. Stripe says no");
+{
+  const { readdirSync, readFileSync } = await import("node:fs");
+  const mailDir = process.env.MAIL_DUMP_DIR!;
+  const mailSaying = (needle: RegExp): string[] =>
+    readdirSync(mailDir)
+      .filter((f) => f.endsWith(".txt"))
+      .map((f) => readFileSync(join(mailDir, f), "utf8"))
+      .filter((t) => needle.test(t));
+
+  // (a) The hold has gone by the time the shop answers. The booking is confirmed either way, the guest's own
+  // email already said "You pay the business on the day", and nothing told the operator: the drawer read
+  // "you receive $194.75" for money no card had paid, and no payout row was ever written, so the payout run
+  // has nothing to find for it, for ever.
+  await book(FL, "E2E-006", 213);
+  await webhook("checkout.session.completed", "E2E-006", FL);
+  refuse.add("capture:pi_E2E-006");
+  const acc = await app.request(`/bookings/${FL}/E2E-006`, { method: "PATCH", headers: { "content-type": "application/json", "x-session": session(FL) }, body: JSON.stringify({ status: "accepted" }) });
+  const b6 = await bookingOf(FL, "E2E-006");
+  check("the accept still confirms the booking", acc.status === 200 && b6?.status === "accepted", b6?.status);
+  check("the card is recorded as never taken, not as captured", b6?.payment?.state === "authorized", b6?.payment);
+  check("no payout is scheduled, so the payout run can never send it", !b6?.payout, b6?.payout);
+  check("the guest is told they pay on the day, not that their card was charged", mailSaying(/Confirmed: Tampa Tours/).some((t) => /You pay Tampa Tours on the day/.test(t)));
+  // This is the state the dashboard's booking drawer now reads, with no new field to store.
+  const { cardNotCharged } = await import("../../src/lib/operator.ts");
+  check("the dashboard reads that state as a card that was not charged", cardNotCharged({ source: "remote", status: "accepted", payment: "authorized" } as Parameters<typeof cardNotCharged>[0]) === true);
+  refuse.delete("capture:pi_E2E-006");
+
+  // (b) A captured card whose refund does not go through. Both decision emails had words for a refund on its
+  // way and for a hold released, and everything else fell through to "Nothing was charged", so a guest who had
+  // paid in full was told their money was never taken and nothing retries.
+  await book(FL, "E2E-008", 213);
+  await webhook("checkout.session.completed", "E2E-008", FL);
+  await app.request(`/bookings/${FL}/E2E-008`, { method: "PATCH", headers: { "content-type": "application/json", "x-session": session(FL) }, body: JSON.stringify({ status: "accepted" }) });
+  const paid8 = await bookingOf(FL, "E2E-008");
+  check("the card is captured and the operator's share scheduled", paid8?.payment?.state === "captured" && paid8.payout?.state === "scheduled", paid8?.payout);
+  refuse.add("refund:pi_E2E-008");
+  await app.request(`/bookings/${FL}/E2E-008`, { method: "PATCH", headers: { "content-type": "application/json", "x-session": session(FL) }, body: JSON.stringify({ status: "cancelled" }) });
+  const b8 = await bookingOf(FL, "E2E-008");
+  check("the record still shows the money with us", b8?.status === "cancelled" && b8.payment?.state === "captured", b8?.payment);
+  check("the operator's scheduled share is cancelled all the same", b8?.payout?.state === "cancelled", b8?.payout);
+  const cancelled = mailSaying(/Cancelled: Tampa Tours/);
+  check("the guest is not told their card was never charged", cancelled.length > 0 && cancelled.every((t) => !/Nothing was charged/.test(t)), cancelled.length);
+  check("the guest is told what was taken and who to reply to", cancelled.some((t) => /charged \$213\.00 USD/.test(t) && /could not put the refund through/.test(t) && /Reply to this email/.test(t)));
+  refuse.delete("refund:pi_E2E-008");
+
+  // (c) Stripe signs each event with every secret the endpoint holds, so a header carries two signatures while
+  // one is being rolled. Reading only the last one made verification a coin toss and left paid bookings pending.
+  // 13:00 is the one start time this listing has free by now: every other one is held by a booking above, and
+  // E2E-008 has just let this one go.
+  await book(FL, "E2E-013", 213);
+  const payload = JSON.stringify({ type: "checkout.session.completed", data: { object: { id: "cs_E2E-013", payment_intent: "pi_E2E-013", metadata: { code: "E2E-013", listing: FL } } } });
+  const t = Math.floor(Date.now() / 1000);
+  const ours = createHmac("sha256", "whsec_recorder").update(t + "." + payload).digest("hex");
+  const theirs = createHmac("sha256", "whsec_the_one_being_rolled_in").update(t + "." + payload).digest("hex");
+  // Ours first, which is the order that used to fail: the old reader kept the last v1 and threw the rest away.
+  const rolled = await app.request("/stripe/webhook", { method: "POST", body: payload, headers: { "stripe-signature": `t=${t},v1=${ours},v1=${theirs}` } });
+  const b9 = await bookingOf(FL, "E2E-013");
+  check("a webhook signed during a secret roll still lands", rolled.status === 200 && b9?.status === "new" && b9.payment?.state === "authorized", b9?.status);
+  const forged = await app.request("/stripe/webhook", { method: "POST", body: payload, headers: { "stripe-signature": `t=${t},v1=${theirs},v1=${"0".repeat(64)}` } });
+  check("and a header with no signature of ours in it is still refused", forged.status === 400);
 }
 
 console.log(failures ? `\n${failures} check(s) failed` : "\nAll payout checks passed");
