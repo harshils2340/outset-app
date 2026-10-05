@@ -32,6 +32,7 @@ import { applyStoredProfiles } from "../lib/operator";
 import { loadBookings, loadChats, saveBookings, saveChats } from "../lib/storage";
 import { isHttpsUrlOnHost } from "../lib/urlSafety";
 import { AGENT_MODE_LIVE, guestWords } from "../lib/concierge";
+import { ErrorBoundary } from "../components/layout/ErrorBoundary";
 import { GUEST_AGENT } from "../lib/flags";
 
 export type AppState = {
@@ -1257,7 +1258,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
     [state, listing, thread, reqTarget],
   );
 
-  return <Ctx.Provider value={api}>{children}</Ctx.Provider>;
+  /**
+   * The app's last line of defence against a reader that throws, wrapped here because this provider is what
+   * `main.tsx` puts around the whole app: everything a guest or an operator can reach is one of these
+   * children. A throw in render used to unmount the lot and leave a white page with nothing to press on it.
+   *
+   * Inside the provider rather than outside, so the screen a guest lands on afterwards is drawn by an app
+   * whose state is intact. See `components/layout/ErrorBoundary.tsx`.
+   */
+  return (
+    <Ctx.Provider value={api}>
+      <ErrorBoundary where="the app">{children}</ErrorBoundary>
+    </Ctx.Provider>
+  );
 }
 
 export function useApp(): Api {
