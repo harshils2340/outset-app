@@ -193,6 +193,16 @@ async function withOperatorEdits(l: Listing): Promise<{ listing: Listing; taking
   }
 }
 
+/**
+ * What the agent is told when the operator's own Published or Accepting switch is down.
+ *
+ * One sentence in one place, because the two routes here have to agree about it. The facts route said "take a
+ * name and number" while the availability route beside it read the shop's vendor calendar out, departure by
+ * departure, each with its own booking link, having never looked at either switch.
+ */
+export const PAUSED_NOTE =
+  "This business is not taking bookings through Outset right now. Take a name and number instead of offering a time or sending the caller to a booking page.";
+
 function partnerRefusal(l: Listing): string | null {
   return l.affiliate ? "This experience is booked on " + (l.affiliate.label || "the partner's site") + ", not on Outset, so it has no Outset phone agent" : null;
 }
@@ -235,7 +245,7 @@ voice.get("/voice/:operatorId", rateLimit(120, 60 * 60 * 1000), async (c) => {
       // so a caller sent to that link is turned away at the end of it.
       takingBookings,
       bookingUrl: takingBookings ? `${SITE}activities#o=${encodeURIComponent(shop.id)}` : null,
-      bookingNote: takingBookings ? null : "This business is not taking bookings through Outset right now. Take a name and number instead of sending the caller to a booking page.",
+      bookingNote: takingBookings ? null : PAUSED_NOTE,
     },
     speak: {
       onlyPublishedFacts: true,
@@ -245,8 +255,11 @@ voice.get("/voice/:operatorId", rateLimit(120, 60 * 60 * 1000), async (c) => {
   });
 });
 
+export type SpeakableTime = { at: string; label: string; price: string | null; seatsLeft: number | null; bookUrl: string };
+export type SpeakableDay = { date: string; times: SpeakableTime[] };
+
 /**
- * The departures a voice agent may read out, on the shop's own clock.
+ * The departures a voice agent may read out, on the shop's own clock, and the open dates it must not call shut.
  *
  * `src/lib/liveTimes.ts` drops four kinds of row before a guest ever sees a chip on the page, and the phone
  * agent has to drop the same four or it says out loud what the page refuses to print:
@@ -254,23 +267,46 @@ voice.get("/voice/:operatorId", rateLimit(120, 60 * 60 * 1000), async (c) => {
  *  - a `timeUnknown` marker row, which exists only to say the date is open. Its `startsAt` carries a midnight
  *    that means nothing, so passing it through had the agent offering a caller a trip at 00:00.
  *  - a departure the vendor says has no seats left.
- *  - a price of nothing, which is a vendor that stated no price, not a free trip.
+ *  - a departure whose clock we cannot read, which now includes one out of range: the page's own `clockOf`
+ *    refuses an hour past 23 and a minute past 59, and this was the one reader that would have read a
+ *    vendor's "T25:00" out to a caller as a quarter past one in the morning.
  *  - a departure that has already left. The page asks this on the shop's clock; this route asked it on
  *    nobody's, defaulting `from` to the host's UTC date, so from early evening Eastern it skipped the rest of
  *    tonight entirely and every morning it offered departures that sailed hours ago.
+ *
+ * Dropping the first and third kinds silently is what made the route lie. `liveTimes.ts` keeps those dates as
+ * `unread`, because a date the vendor says is open and whose clock times we never got to is the opposite of a
+ * date the shop is shut, and the page prints "Their booking system has not listed times for this date" on it.
+ * Here they simply vanished, so the agent had no way to tell them from a closed day and said the business had
+ * nothing on. That is the common case rather than the rare one: Peek answers which dates are open in one call
+ * and a date's times in another, and the call budget stops after the first two or three, and every reader
+ * behind `fromConcierge` stops at the first day an activity has something free. 250 of the 1,911 shipped
+ * booking links are the second kind and 239 are Peek.
  */
-export function speakableDays(av: Availability, zone: string | null, now: Date = new Date()): { date: string; times: { at: string; label: string; price: string | null; seatsLeft: number | null; bookUrl: string }[] }[] {
+export function speakableRead(av: Availability, zone: string | null, now: Date = new Date()): { days: SpeakableDay[]; unread: string[] } {
   const here = zonedNow(zone, now);
-  const out: { date: string; times: { at: string; label: string; price: string | null; seatsLeft: number | null; bookUrl: string }[] }[] = [];
+  const days: SpeakableDay[] = [];
+  const unread: string[] = [];
   for (const d of av.days || []) {
     if (!d?.date || d.date < here.date) continue;
-    const times = [];
+    const times: SpeakableTime[] = [];
+    /** Whether anything on this date said the shop has something on without saying when. */
+    let lost = false;
     for (const s of d.slots || []) {
-      if (s.timeUnknown) continue;
+      if (s.timeUnknown) {
+        lost = true;
+        continue;
+      }
       if (typeof s.seatsLeft === "number" && s.seatsLeft <= 0) continue;
       const clock = /T(\d{2}):(\d{2})/.exec(s.startsAt || "");
-      if (!clock) continue;
-      if (d.date === here.date && Number(clock[1]) * 60 + Number(clock[2]) <= here.minutes) continue;
+      const hour = clock ? Number(clock[1]) : 0;
+      const minute = clock ? Number(clock[2]) : 0;
+      if (!clock || hour > 23 || minute > 59) {
+        // A departure we cannot put a clock on is a vendor shape we do not understand, not a closed shop.
+        lost = true;
+        continue;
+      }
+      if (d.date === here.date && hour * 60 + minute <= here.minutes) continue;
       times.push({
         at: `${clock[1]}:${clock[2]}`,
         label: s.label,
@@ -280,9 +316,36 @@ export function speakableDays(av: Availability, zone: string | null, now: Date =
       });
       if (times.length === 12) break;
     }
-    if (times.length) out.push({ date: d.date, times });
+    if (times.length) days.push({ date: d.date, times });
+    else if (lost) unread.push(d.date);
   }
-  return out;
+  return { days, unread };
+}
+
+/** The departures alone, for a caller with no use for the dates we could not time. */
+export function speakableDays(av: Availability, zone: string | null, now: Date = new Date()): SpeakableDay[] {
+  return speakableRead(av, zone, now).days;
+}
+
+/**
+ * The line the agent speaks about the window as a whole.
+ *
+ * "Nothing is open in this window" is only ever true of a read that covered the window. `liveEmptyNote` in
+ * `src/lib/liveTimes.ts` keeps that rule for the page and this route kept none of it: it said those words
+ * whenever no departure came back, on a read the vendor had answered in part, and on a shop whose every open
+ * date arrived as a marker row. A phone agent speaking that sentence tells a caller the business is shut for a
+ * fortnight while its own booking system says the opposite, which is the one thing an operator who bought Otto
+ * cannot have it do.
+ */
+export function windowNote(days: SpeakableDay[], unread: string[], partial: boolean): string | null {
+  if (!days.length) {
+    return unread.length || partial
+      ? "Their booking system has not listed times for this window, so this is not the whole picture: do not say the business is closed or has nothing open. Offer to have someone confirm a time, and take a name and number."
+      : "Nothing is open in this window; offer another date or take a callback.";
+  }
+  return unread.length
+    ? "These are the dates whose times their booking system listed. The dates under `unread` are open and their times are not listed, so do not say the business is closed on those."
+    : null;
 }
 
 voice.get("/voice/:operatorId/availability", rateLimit(120, 60 * 60 * 1000), async (c) => {
@@ -298,12 +361,30 @@ voice.get("/voice/:operatorId/availability", rateLimit(120, 60 * 60 * 1000), asy
   const from = fromRaw || zonedNow(zone).date;
   const days = Math.min(Math.max(Number(c.req.query("days")) || 14, 1), MAX_DAYS);
 
+  // The dashboard's Published and Accepting switches, which the facts route beside this one has always read
+  // and this one never did. An operator who hid their listing or paused bookings had their vendor calendar
+  // read out to callers here, departure by departure and each with its own booking link, while the same agent
+  // was told by the other route to take a name and number instead. Read before the vendor is called at all,
+  // because there is nothing to do with the answer.
+  const gate = l ? await withOperatorEdits(l) : null;
+  if (gate && !gate.takingBookings) return c.json({ live: false, takingBookings: false, note: PAUSED_NOTE, days: [] });
+
   const av = await getAvailability(id, from, days);
   // A speakable line for the agent, not the internal reason: when the calendar is not connected, the agent
   // should offer to have a person confirm the time and take a callback, never guess.
   if (!av.live) return c.json({ live: false, note: "This business's calendar is not connected, so a person confirms the time. Offer to take a name and number.", days: [] });
 
-  const openDays = speakableDays(av, zone);
+  const read = speakableRead(av, zone);
 
-  return c.json({ live: true, vendor: av.vendor, from, days: openDays, partial: av.partial || false, note: openDays.length ? null : "Nothing is open in this window; offer another date or take a callback." });
+  return c.json({
+    live: true,
+    vendor: av.vendor,
+    from,
+    days: read.days,
+    partial: av.partial || false,
+    // Open dates whose clock times their booking system never listed, kept apart from the shut ones the way
+    // the guest's own picker keeps them apart.
+    unread: read.unread,
+    note: windowNote(read.days, read.unread, !!av.partial),
+  });
 });

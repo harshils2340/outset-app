@@ -1,5 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 
 /**
  * The phone-agent data endpoints read the site's published o/<id>.json (the same record a listing page reads),
@@ -8,7 +9,7 @@ import assert from "node:assert/strict";
  */
 
 process.env.SITE_URL = "https://onoutset.com/";
-const { voice, speakableDays, applyEdits } = await import("../voice.ts");
+const { voice, speakableDays, speakableRead, windowNote, applyEdits, PAUSED_NOTE } = await import("../voice.ts");
 import type { Availability } from "../../enrich/availability.ts";
 import type { StoredProfile } from "../profiles.ts";
 
@@ -182,6 +183,81 @@ test("a sold-out departure is not offered, and a price of nothing is no price ra
   ] }]);
   const days = speakableDays(av, "America/New_York", new Date("2026-10-01T15:00:00Z"));
   assert.deepEqual(days[0].times, [{ at: "14:00", label: "Two left", price: null, seatsLeft: 2, bookUrl: "b" }]);
+});
+
+/**
+ * What the agent may say about the window as a whole.
+ *
+ * The page keeps an open date whose clock times a vendor never listed apart from a date the shop is shut
+ * (`liveTimes.ts`: `unread` against `closed`), and refuses to say "nothing open" on a read that only covered
+ * part of the window. This route dropped the first kind of date silently and said those words anyway, which is
+ * a phone agent telling a caller the business is shut for a fortnight while its own booking system says the
+ * opposite. 250 of the 1,911 shipped booking links come back `partial` every time by construction, and 239
+ * more are Peek, whose call budget times the first two or three open dates and marks the rest.
+ */
+test("an open date whose times were never listed is unread, not shut", () => {
+  const av = avail([
+    { date: "2026-10-02", slots: [{ startsAt: "2026-10-02T00:00", label: "Kayak tour", bookUrl: "x", timeUnknown: true }] },
+    { date: "2026-10-03", slots: [] },
+    { date: "2026-10-04", slots: [{ startsAt: "2026-10-04T09:30", label: "Morning reef trip", bookUrl: "y" }] },
+  ]);
+  const read = speakableRead(av, "America/New_York", new Date("2026-10-01T15:00:00Z"));
+  assert.deepEqual(read.days.map((d) => d.date), ["2026-10-04"], "only the date we could time is a date the agent offers");
+  assert.deepEqual(read.unread, ["2026-10-02"], "the marker date is open and untimed, and the empty one is shut");
+  // The old shape, unchanged for every caller that only wants departures.
+  assert.deepEqual(speakableDays(av, "America/New_York", new Date("2026-10-01T15:00:00Z")), read.days);
+});
+
+test("a departure whose clock is out of range is dropped, and leaves the date unread", () => {
+  // `clockOf` in src/lib/liveTimes.ts refuses an hour past 23 and a minute past 59; this was the one reader
+  // that would have read "T25:00" out to a caller as "25:00".
+  const av = avail([{ date: "2026-10-03", slots: [
+    { startsAt: "2026-10-03T25:00", label: "Late", bookUrl: "a" },
+    { startsAt: "2026-10-03T09:75", label: "Odd", bookUrl: "b" },
+  ] }]);
+  const read = speakableRead(av, "America/New_York", new Date("2026-10-01T15:00:00Z"));
+  assert.deepEqual(read.days, []);
+  assert.deepEqual(read.unread, ["2026-10-03"], "a shape we do not understand is not a closed shop");
+});
+
+test("the agent is never told nothing is open on a read that did not cover the window", () => {
+  assert.match(windowNote([], [], false) || "", /Nothing is open in this window/);
+  // Partial: the vendor answered part of what we asked.
+  const onPartial = windowNote([], [], true) || "";
+  assert.doesNotMatch(onPartial, /Nothing is open/);
+  assert.match(onPartial, /not the whole picture/);
+  assert.match(onPartial, /do not say the business is closed/);
+  // Every open date arrived as a marker row, which is Peek's ordinary answer past the call budget.
+  const onUnread = windowNote([], ["2026-10-02", "2026-10-03"], false) || "";
+  assert.doesNotMatch(onUnread, /Nothing is open/);
+  assert.match(onUnread, /do not say the business is closed/);
+  // Some dates timed and some not: the departures stand, and the untimed dates are still not shut days.
+  const day = { date: "2026-10-04", times: [{ at: "09:30", label: "Morning", price: null, seatsLeft: null, bookUrl: "y" }] };
+  assert.match(windowNote([day], ["2026-10-05"], true) || "", /not listed/);
+  assert.equal(windowNote([day], [], false), null, "a read that covered the window and found times needs no caveat");
+});
+
+/**
+ * The two routes here against the operator's own two switches. The facts route has always read them; the
+ * availability route read no profile at all, so a shop that had hidden its listing or paused bookings had its
+ * vendor calendar read out departure by departure, each carrying its own booking link, by the same agent the
+ * facts route had just told to take a name and number instead.
+ */
+test("the availability route reads the Published and Accepting switches the facts route reads", () => {
+  const src = readFileSync(new URL("../voice.ts", import.meta.url), "utf8");
+  const at = src.indexOf('voice.get("/voice/:operatorId/availability"');
+  assert.ok(at > 0, "the availability route moved");
+  const handler = src.slice(at);
+  assert.ok(/withOperatorEdits\(/.test(handler), "the availability handler never reads the operator's record");
+  assert.ok(/takingBookings/.test(handler), "the availability handler never reads the switches");
+  assert.ok(/PAUSED_NOTE/.test(handler), "the availability handler has its own words for a paused shop");
+  // One sentence, both routes, so they cannot drift apart again.
+  assert.equal(src.split("PAUSED_NOTE").length - 1, 3, "PAUSED_NOTE is one declaration read by both routes, not a sentence spelled twice");
+  assert.match(PAUSED_NOTE, /not taking bookings through Outset right now/);
+  assert.ok(!PAUSED_NOTE.includes("\u2014"), "no em dash");
+  // The decision itself is `applyEdits`, which is what the facts route already turns into `takingBookings`.
+  assert.equal(applyEdits(reel, profile({}, { published: false })).takingBookings, false);
+  assert.equal(applyEdits(reel, profile({ accepting: false })).takingBookings, false);
 });
 
 test.after(() => {

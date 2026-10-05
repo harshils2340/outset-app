@@ -31,6 +31,11 @@ export type StoredProfile = {
  * calendar of open times, every one of which the booking route would then refuse. The guest page hides its own
  * picker for both, which is why nobody met it, but the page is not the only client and this route is public.
  *
+ * There was a fourth, and a per-file check could not see it: `/voice` is two routes, and only the facts one
+ * read this. `GET /voice/:operatorId/availability` read no profile at all, so the same phone agent that had
+ * just been told to take a name and number was handed the shop's live vendor calendar, departure by departure
+ * and each with its own booking link. So the check in `__tests__/voice.test.ts` is per handler, not per file.
+ *
  * `patch` wins over `profile`, because the patch is what the dashboard publishes to guests. It is guarded for
  * shape first: an array is an object, and a patch stored as one would read its numbered keys.
  */
