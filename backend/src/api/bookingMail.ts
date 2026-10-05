@@ -216,7 +216,28 @@ export async function mailNewBooking(rec: StoredBooking, profile: StoredProfile 
 
 /* ---------- when the operator decides ---------- */
 
-export async function mailDecision(rec: StoredBooking, profile: StoredProfile | null, status: "accepted" | "declined" | "cancelled", opts: { refunded?: boolean; released?: boolean } = {}): Promise<void> {
+/**
+ * What a declined or cancelled booking's email says about the guest's money, which is the one line in it they
+ * will read twice.
+ *
+ * There used to be no case for a refund that did not go through: `opts.refunded` said "a refund is on its
+ * way", `opts.released` said "the hold was released", and everything else said "Nothing was charged." A guest
+ * whose card had been captured and whose refund failed, which a twenty second timeout on a call Stripe may
+ * well have acted on is enough to produce, was told their money was never taken, and nothing retries, so that
+ * was the last they heard of it. A captured card that is still captured is now named as what it is, with the
+ * one thing the guest can do about it: this address is answered by a person.
+ */
+export function refundSentence(rec: StoredBooking, currency: string, opts: { refunded?: boolean; released?: boolean; owed?: boolean }): string {
+  const m = moneyOf(rec);
+  if (opts.refunded && m) return `A refund of ${fmtMoney(m.total, currency)} is on its way back to your card. It usually shows within 5 to 10 business days.`;
+  if (opts.released || rec.payment?.state === "released") return "The hold on your card was released and nothing was charged.";
+  // Only ever said when the record still shows the money with us, so it cannot contradict a refund that worked.
+  if (opts.owed && m && rec.payment?.state === "captured")
+    return `Your card was charged ${fmtMoney(m.total, currency)} and we could not put the refund through automatically. Reply to this email and we will send it back by hand.`;
+  return m ? "Nothing was charged." : "";
+}
+
+export async function mailDecision(rec: StoredBooking, profile: StoredProfile | null, status: "accepted" | "declined" | "cancelled", opts: { refunded?: boolean; released?: boolean; owed?: boolean } = {}): Promise<void> {
   if (!rec.guest.email) return;
   const ctx = await bookingContext(rec, profile);
   const m = moneyOf(rec);
@@ -243,7 +264,7 @@ export async function mailDecision(rec: StoredBooking, profile: StoredProfile | 
     const e = renderEmail({
       eyebrow: "Not available",
       heading: `${ctx.title} can't take ${fmtDay(rec.date)}`,
-      intro: [`Sorry, they cannot take your booking for ${when}.`, opts.released || rec.payment?.state === "released" ? "The hold on your card was released and nothing was charged." : m ? "Nothing was charged." : "", ...note].filter(Boolean),
+      intro: [`Sorry, they cannot take your booking for ${when}.`, refundSentence(rec, ctx.currency, opts), ...note].filter(Boolean),
       rows: bookingRows(rec, ctx, { where: false }),
       cta: { label: "Pick another time", url: ctx.listingUrl },
     });
@@ -254,7 +275,7 @@ export async function mailDecision(rec: StoredBooking, profile: StoredProfile | 
   const e = renderEmail({
     eyebrow: "Cancelled",
     heading: `${ctx.title} cancelled your booking`,
-    intro: [`Your booking for ${when} was cancelled by the business.`, opts.refunded && m ? `A refund of ${fmtMoney(m.total, ctx.currency)} is on its way back to your card. It usually shows within 5 to 10 business days.` : opts.released ? "The hold on your card was released and nothing was charged." : m ? "Nothing was charged." : "", ...note].filter(Boolean),
+    intro: [`Your booking for ${when} was cancelled by the business.`, refundSentence(rec, ctx.currency, opts), ...note].filter(Boolean),
     rows: bookingRows(rec, ctx, { where: false }),
     cta: { label: "Pick another time", url: ctx.listingUrl },
   });

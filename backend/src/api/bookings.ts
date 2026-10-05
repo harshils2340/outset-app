@@ -69,9 +69,15 @@ export async function captureBooking(listing: string, code: string, intent: stri
 /**
  * Refund or release the guest, and take back the operator's share if it was already sent. Says which one
  * happened so the guest's email can say "refunded" or "the hold was released" rather than guessing.
+ *
+ * `owed` is the third answer, and the one the email used to get wrong: a card that was captured and whose
+ * refund did not go through. `mailDecision` had two cases, "refunded" and anything else, and anything else
+ * reads "Nothing was charged." So a guest who had paid in full and whose refund failed, which a twenty second
+ * timeout on an otherwise successful call is enough to produce, was told their money was never taken. Nothing
+ * retries, so that sentence was also the last the guest heard about it.
  */
-async function refundBooking(listing: string, b: StoredBooking): Promise<{ refunded: boolean; released: boolean }> {
-  const out = { refunded: false, released: false };
+async function refundBooking(listing: string, b: StoredBooking): Promise<{ refunded: boolean; released: boolean; owed: boolean }> {
+  const out = { refunded: false, released: false, owed: false };
   if (!b.payment?.intent) return out;
   if (b.payment.state === "authorized" || b.payment.state === "captured") {
     const ok = await releaseIntent(b.payment.intent).catch((e) => {
@@ -82,6 +88,10 @@ async function refundBooking(listing: string, b: StoredBooking): Promise<{ refun
       if (b.payment.state === "captured") out.refunded = true;
       else out.released = true;
       await updateBooking<StoredBooking>(listing, b.code, (x) => ({ ...x, payment: { ...x.payment!, state: "released" as const } }));
+    } else if (b.payment.state === "captured") {
+      // Loud, because this is money of a guest's that is sitting with us and no job comes back for it.
+      console.error(`[payments] ${b.code}: the card was captured and the refund did not go through; the guest is owed ${b.total}`);
+      out.owed = true;
     }
   }
   if (b.payout?.state === "paid" && b.payout.transfer) {
@@ -475,7 +485,7 @@ bookings.patch("/bookings/:listing/:code", rateLimit(300, 60 * 60 * 1000), async
   }
   if (unchanged) return c.json({ ok: true, booking: found, unchanged: true });
   const f = found;
-  let money = { refunded: false, released: false };
+  let money = { refunded: false, released: false, owed: false };
   if (f.payment?.intent && stripeEnabled()) {
     if (status === "accepted" && f.payment.state === "authorized") await captureBooking(id, code, f.payment.intent);
     if (status === "declined" || status === "cancelled") money = await refundBooking(id, f);
