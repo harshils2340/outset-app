@@ -10600,6 +10600,102 @@ but for TS5097. The **rehearsal ran twice, 57 of 57 both times**, at the start a
 and again at the end, on a Postgres 16 cluster built from scratch on port 5433 with SSL on and the on-disk
 Playwright Chromium. `STRIPE_SECRET_KEY`, `RESEND_API_KEY` and `GITHUB_TOKEN` were empty throughout.
 
+## 5 October 2026, hundred and forty-third run (07:26 to 08:05 UTC)
+
+**Chosen, and why.** Every area the brief names is already on Verified, so this run went to the Not yet
+checked list for the one item there shaped like a defect rather than a judgement: `readBinary` in
+`backend/src/api/uploads.ts`. Reading it opened an axis no run has swept, which became the night's work:
+**what the long-running API reads whole, and what that costs the 512 MB instance it shares with every guest**.
+Three files reach it that way. Two were wrong.
+
+**The rehearsal was skipped at the start and run at the end.** The last entry says 57 of 57 green and no
+commit had landed since it, so rule (b) did not fire on arrival; it fired on this run's own commits, which
+are in the claim gate and the uploads route the rehearsal drives. Baseline: root `tsc --noEmit -p .` and
+`tsc -b` clean, backend `tsc` clean but for TS5097, backend 1,094 with 1,092 pass and 2 skipped, app 1,293
+pass.
+
+**Found and fixed.** Three commits, pushed.
+
+- **A photo between 1 MB and 1.8 MB read back as "not found"** (`b0fa190f`). `GET /uploads/:id/:file` is what
+  stands in for the site in the minutes between an upload and the deploy that publishes it, and it read the
+  bytes through GitHub's contents API under the JSON media type. That media type carries `content` only up to
+  1 MB: above it GitHub answers 200 with `"content": ""` and `"encoding": "none"`. The route's own cap is
+  1.8 MB and the browser's resize passes aim at 1.7 MB, so every photograph between the two came back empty
+  and the route called it a miss. `Photo`'s fallback chain then has nowhere left to go, so the dashboard's
+  gallery tile printed "Couldn't load this photo" and disabled "Make cover": the exact failure this route was
+  written to prevent, on the operator's biggest photos only. It asks for the raw media type now, which serves
+  up to 100 MB, and still reads a JSON answer if one arrives.
+- **The metrics page parsed the 33.8 MB claim index whole** (`a061761a`). `catalogCounts` streams
+  `catalog.json` because a 23 MB parse is too much for this instance, then read `claim-index.json` beside it
+  with `readJson`, which is the larger of the two: 33.8 MB, 423,187 entries. Measured on the shipped file,
+  that cost **215 MB of resident memory and 149 MB of heap**; the stream costs 53 MB and 44 MB. The caller is
+  an admin opening the metrics page and the price of losing that bet is the API process killed under every
+  guest holding a listing open. Over the shipped index the stream and a whole parse agree entry for entry,
+  224,116 both ways, and on an arbitrary half of the ids as well.
+- **The claim gate left 145 MB resident for ever, on a public route** (`76fed3da`). `claimIndex.ts` parsed the
+  same 33.8 MB file on the first lookup and kept the object: measured inside the real API path, **114 MB of
+  heap retained and 274 MB resident, from a peak of 305 MB**. The first caller is `GET /claims/:id/rule`,
+  which any claim screen opens and which needs no session, so one request bought it for the life of the
+  process. It is streamed into one short string per row now and parsed on the one lookup that wants it:
+  77 MB retained, 206 MB peak, and lookups stay O(1), which that route being public requires, because a scan
+  of 33.8 MB per call would block the loop for everybody. The gate's own rules are untouched, and all
+  **423,187 shipped rows** were read both ways and agree on `known`, on an address being on file and on the
+  masked hint.
+
+**Measured and left.** `imageSanitize.ts`, which the log had never named, read whole against the upload route
+and found sound: the JPEG walker bails to the original bytes on anything not well-formed rather than risk a
+truncated photo, the PNG walker drops only `tEXt`/`zTXt`/`iTXt`/`eXIf`/`tIME`, and `dimensionsTooLarge`
+refusing a header that will not parse is fail-closed. The bridge route is wired up after all: `uploadFallback`
+in `src/lib/images.ts` and `Photo`'s `viaApi` branch point at it, its id shape matches `auth.ts`'s `ID`
+exactly, `img-src` in the CSP is wide enough, and the API sets no `cross-origin-resource-policy` that would
+block the tag. `store.ts`'s `readJson` has the same 1 MB blind spot and no file it is asked for is near it:
+the largest shipped detail file is 39 KB. **Two sweeps closed with nothing in them**: every `.replace()` in
+both trees whose replacement string is not a literal, for a `$&`, `$1` or `$'` out of catalog or operator text
+reaching a guest (there are none: every non-literal replacement is a module constant); and every
+`toLocaleString`, `toLocaleDateString` and `Intl` call with no locale, for a string a guest reads that would
+differ with the host's own locale (all of them are in the browser, on counts, where the guest's locale is the
+right one). `SITE_PAGES` is honest today: all four files exist under `public/` and all four have a
+`render.yaml` rewrite, so no page in the sitemap is a soft 404.
+
+**Needs Harshil.**
+
+- **The two memory fixes are measurements, not guesses, and the instance is still the question.** With both
+  landed, one claim lookup leaves the API around 206 MB resident on a 512 MB plan before Postgres pooling,
+  the ip-metro table and the Otto and slot caches are counted. Nothing here can see the real instance's
+  figures. If Render has ever restarted `outset-api` on its own, the old 274 MB floor plus a 305 MB spike is
+  the first place to look.
+- **The uploads fix cannot be driven from here.** `GITHUB_TOKEN` must be empty, so the raw media type is
+  exercised against a stubbed fetch and the real contents API has never answered this container. The
+  behaviour it relies on (`"content": ""` above 1 MB, raw up to 100 MB) is GitHub's documented one and the
+  hundred and thirty-seventh run recorded the same reading.
+- Still open from earlier runs, unchanged: there is no error boundary in this app, twenty-eight runs asked;
+  "Open right now near you" is computed once a visit; the 108 operators with hacked websites still have not
+  been told; the phone's browse is not ranked while the desktop's is; the phone confirmation offers no way to
+  reach the shop; a guest cannot cancel a booking at all; a price sort and a price filter compare two dollars
+  on six metros; the cards say "$" for a Canadian shop; `lasertag` does not search `paintball`;
+  `concierge/demand.ts` still filters its crawl queue by category and region and not by the town its own
+  comment names; a shop that unpublishes may not be able to get back to the switch it flicked;
+  `/voice/:id/availability` reads out a paused shop's vendor calendar; the 290 listings with no way to claim;
+  a resend can open an address the fresh queue cannot see; and no sync has run, so `kid`, `specs`, `gap` and
+  `extraNote` are still empty on every shipped row.
+  **The brief's rehearsal path is `backend/scripts/e2e-local.mts`, not `scripts/`**, ninth run to say so.
+  **Local `main` is still detached**, nineteenth run in a row: the sandbox refuses `git checkout -B main`, so
+  the work was committed on the detached head and pushed with `git push origin HEAD:main`. The Postgres
+  cluster still has to be built as `ubuntu`, with its own socket directory and its certificate generated,
+  before the brief's command line works; it is otherwise exactly right.
+
+**Verification.** Backend `npm test` 1,098 with 1,096 pass and 2 skipped, up 4: 1 in `uploads.test.ts`, 2 in
+`metrics.test.ts`, 1 in `claimShared.test.ts`. App 1,293 pass, unchanged. Each new test was run against the
+tree with its own fix reverted: the uploads one goes red on the empty `content`, and the "no claim index in
+the checkout" one goes red on the old note. The two that guard a stream cannot go red on the code they
+replaced, because a whole parse never had the fault they are written for, so each was proved against a
+deliberately broken carry instead: with the chunk tail dropped, the claim test fails and the metrics one
+does not, which is why the claim test walks all 423,187 rows rather than a sample (only about one row in
+twelve thousand lands across a 1 MB boundary). `tsc --noEmit -p .` and `tsc -b` clean at the root, backend's
+own `tsc` clean but for TS5097. The **rehearsal ran at the end, 57 of 57**, on a Postgres 16 cluster built
+from scratch on port 5433 with SSL on and the on-disk Playwright Chromium. `STRIPE_SECRET_KEY`,
+`RESEND_API_KEY` and `GITHUB_TOKEN` were empty throughout.
+
 ## Coverage
 
 The catalog is 48,198 listings as of the 23 September sync, 1,873 of them Viator partner rows. Counts below
@@ -11725,13 +11821,21 @@ families, every subject and first line diffed before and after; the subject a re
 the repo does for it. `POST /auth/verify` counting a try before it compares the code, read through and settled
 as a shape question with no reachable cost.
 
+What this long-running API reads whole, and what that costs the 512 MB instance it shares with guests: the
+three files that reach it that way, measured rather than read. `public/claim-index.json`, 33.8 MB and 423,187
+rows, read twice over, by the metrics page's reachable count and by the claim gate, both now streamed, with
+all 423,187 rows read both ways and agreeing on who may claim what. The bytes an uploaded photo reads back as,
+over the 1 MB ceiling the GitHub contents API puts on a JSON answer against the 1.8 MB this route takes.
+`imageSanitize.ts` and the upload route whole, with the browser's fallback chain, the CSP and the API's own
+headers behind them. Every non-literal `.replace()` replacement in both trees, for a `$&` or `$1` out of
+crawled text, and every locale-free `Intl` and `toLocaleString` call, for a guest-visible string that reads
+differently on another host.
+
 **Not yet checked.** Whether the app should carry a copy of the sync's phrase screen as well as its brand
 list, which would be a fourth hand-kept list and whose whole job a sync would do (see this run's Needs
 Harshil). Whether a field that is one short phrase repeated and nothing else should be refused, which is
 Scene75's three services against a Quebec boat rental's rate card, a charter's policy list and a scout camp's
-class schedule (see this run's Measured and left). Whether `readBinary` in `backend/src/api/uploads.ts` should
-read a photo back through the GitHub blob API rather than the contents API, which answers an empty body above
-1 MB while the route's own cap is 1.8 MB. Whether the CORS preflight should carry the security headers and a cache-control, which it alone does not,
+class schedule (see this run's Measured and left). Whether the CORS preflight should carry the security headers and a cache-control, which it alone does not,
 because Hono's `cors` answers `OPTIONS` before the middleware that sets them and covering it means putting the
 body limit behind CORS (see the hundred and thirty-seventh run's Needs Harshil). Whether `GET /profiles/:id`,
 the one public read route with no per-caller limit, should have one, given that it is what every guest's
