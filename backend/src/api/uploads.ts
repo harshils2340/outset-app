@@ -51,14 +51,36 @@ export const uploads = new Hono();
 
 const FILE = /^[a-f0-9]{20}\.(jpg|png)$/;
 
-/** Read the bytes back, from the repository when there is a token, from disk otherwise. */
-async function readBinary(relPath: string): Promise<Buffer | null> {
-  if (process.env.GITHUB_TOKEN) {
-    const res = await github(`public/${relPath}?ref=${BRANCH}`).catch(() => null);
-    if (!res || !res.ok) return null;
+/**
+ * The file's bytes out of a contents API answer, whichever media type the host actually served.
+ *
+ * The JSON media type carries the file base64 in `content`, but only up to 1 MB: above that GitHub answers
+ * `"content": ""` with `"encoding": "none"` and expects the raw or object media type instead. This route's own
+ * cap is 1.8 MB and the browser's resize passes aim at 1.7 MB, so a detailed photograph came back empty here
+ * and the route called it "not found". The operator who had just uploaded it saw the broken image this route
+ * exists to prevent, and only on their biggest photos. Raw is asked for first; the JSON branch stays because
+ * nothing but the `accept` header decides which one arrives.
+ */
+export async function bytesFromGithub(res: Response): Promise<Buffer | null> {
+  if ((res.headers.get("content-type") || "").includes("json")) {
     const j = (await res.json().catch(() => null)) as { content?: string } | null;
     return j?.content ? Buffer.from(j.content, "base64") : null;
   }
+  const body = await res.arrayBuffer().catch(() => null);
+  const buf = body ? Buffer.from(body) : null;
+  return buf && buf.length ? buf : null;
+}
+
+/** The uploaded bytes out of the site repository. Exported so the media type it asks for has a test. */
+export async function readFromRepo(relPath: string): Promise<Buffer | null> {
+  const res = await github(`public/${relPath}?ref=${BRANCH}`, { headers: { accept: "application/vnd.github.raw" } }).catch(() => null);
+  if (!res || !res.ok) return null;
+  return bytesFromGithub(res).catch(() => null);
+}
+
+/** Read the bytes back, from the repository when there is a token, from disk otherwise. */
+async function readBinary(relPath: string): Promise<Buffer | null> {
+  if (process.env.GITHUB_TOKEN) return readFromRepo(relPath);
   const local = join(publicDir, relPath);
   return existsSync(local) ? readFileSync(local) : null;
 }
