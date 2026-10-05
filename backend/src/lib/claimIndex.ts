@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { createReadStream, existsSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { db } from "../db/client.ts";
@@ -133,14 +133,80 @@ export function writeClaimIndex(): { path: string; count: number; withEmail: num
     idx[id] = entry;
   }
   writeFileSync(indexPath, JSON.stringify(idx));
-  cache = idx;
+  // Keep the same one-string-per-entry shape the reader holds, so a sync in this process and a fresh read
+  // of the file it just wrote cannot answer differently.
+  cache = new Map(Object.entries(idx).map(([id, e]) => [id, JSON.stringify(e).slice(1, -1)]));
   return { path: indexPath, count: rows.length, withEmail };
 }
 
-let cache: Index | null = null;
-function loadIndex(): Index {
-  if (!cache) cache = existsSync(indexPath) ? (JSON.parse(readFileSync(indexPath, "utf8")) as Index) : {};
-  return cache;
+/**
+ * The index as one short string per listing, rather than as 423,187 parsed objects.
+ *
+ * `public/claim-index.json` is 33.8 MB and holds a row for every operator we have ever crawled, published or
+ * not. Reading and parsing it whole, which is what this did, retained 145 MB of heap for the life of the
+ * process and spiked resident memory to 262 MB on the way, measured on the shipped file. The API runs on a
+ * 512 MB instance that is also serving guests, and the first caller is `GET /claims/:id/rule`, which is a
+ * public route any claim screen opens: one request and the process carries that for ever. Streamed into one
+ * string per entry it retains 75 MB and peaks at 174 MB, and the lookups stay O(1), which they have to be
+ * because that route is public and a scan of 33.8 MB per call would block the loop for everyone.
+ *
+ * The body is kept verbatim and parsed on the one lookup that wants it, so what `Entry` means here is still
+ * exactly what `JSON.parse` makes of what `writeClaimIndex` wrote. An entry is a flat object by that
+ * function's own type (a hash, a list of domains and a masked hint), so it carries no nested brace; one that
+ * somehow did would be missed rather than misread, and a listing missing from the index already falls back
+ * to its detail file, which is the narrower rule.
+ */
+let cache: Map<string, string> | null = null;
+let loading: Promise<Map<string, string>> | null = null;
+
+async function readIndex(): Promise<Map<string, string>> {
+  const out = new Map<string, string>();
+  if (!existsSync(indexPath)) return out;
+  // `"<id>":{...}` with no brace inside. The longest entry in the shipped file is 191 characters; a chunk
+  // boundary can fall inside one, so the tail past the last whole entry is carried into the next chunk.
+  const ENTRY = /"([a-z0-9-]{1,120})":\{([^{}]*)\}/g;
+  let carry = "";
+  for await (const chunk of createReadStream(indexPath, { encoding: "utf8", highWaterMark: 1 << 20 })) {
+    const text = carry + (chunk as string);
+    ENTRY.lastIndex = 0;
+    let end = 0;
+    for (let m = ENTRY.exec(text); m; m = ENTRY.exec(text)) {
+      end = m.index + m[0].length;
+      out.set(m[1], m[2]);
+    }
+    carry = text.slice(Math.max(end, text.length - 1024));
+  }
+  return out;
+}
+
+function loadIndex(): Promise<Map<string, string>> {
+  if (cache) return Promise.resolve(cache);
+  // Two claim screens opening at once must not each read the file.
+  if (!loading) {
+    loading = readIndex().then(
+      (m) => {
+        cache = m;
+        loading = null;
+        return m;
+      },
+      (e) => {
+        loading = null;
+        throw e;
+      },
+    );
+  }
+  return loading;
+}
+
+/** The one entry a lookup wants, parsed where it sits. */
+function entryOf(index: Map<string, string>, id: string): Entry | undefined {
+  const body = index.get(id);
+  if (body === undefined) return undefined;
+  try {
+    return JSON.parse("{" + body + "}") as Entry;
+  } catch {
+    return undefined;
+  }
 }
 
 export type ClaimRule = {
@@ -168,7 +234,7 @@ export type ClaimRule = {
  * say so; this is the first item on that list and it was the one still open.
  */
 export async function claimRule(id: string): Promise<ClaimRule> {
-  const e = loadIndex()[id];
+  const e = entryOf(await loadIndex(), id);
   // Read each domain on the row rather than trust the file. The index was written by whichever sync last ran,
   // which may have been built before a host was known to be one nobody owns, and a stale row granting
   // `@aim.com` a listing cannot wait for the next sync to stop granting it.
@@ -184,7 +250,7 @@ export async function emailMayClaim(id: string, email: string): Promise<{ ok: bo
   const rule = await claimRule(id);
   const em = email.trim().toLowerCase();
   if (rule.partner || !EMAIL.test(em)) return { ok: false, rule };
-  const e = loadIndex()[id];
+  const e = entryOf(await loadIndex(), id);
   if (e?.k && emailKey(em) === e.k) return { ok: true, rule };
   const host = em.split("@")[1] || "";
   const ok = rule.domains.some((d) => host === d || host.endsWith("." + d));

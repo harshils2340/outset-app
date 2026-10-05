@@ -106,3 +106,34 @@ test("a shipped row stops granting a shared host without waiting for the next sy
   }
   assert.ok(checked > 100, "too few rows checked: " + checked);
 });
+
+/**
+ * The index is 33.8 MB and 423,187 rows, and it is read off a stream rather than parsed whole, because
+ * parsing it retained 145 MB of heap and spiked resident memory to 262 MB on a 512 MB instance for the life
+ * of the process, on the first call to a public route. What a stream can get wrong that a parse cannot is a
+ * row that lands across a read boundary, so this walks the shipped file end to end and asks the gate about
+ * every thousandth row, the first and the last among them.
+ */
+test("every row of the shipped index reads the same off the stream as it does out of a whole parse", async () => {
+  const { readFileSync } = await import("node:fs");
+  const { dirname, join: j } = await import("node:path");
+  const { fileURLToPath } = await import("node:url");
+  const here = dirname(fileURLToPath(import.meta.url));
+  const idx = JSON.parse(readFileSync(j(here, "../../../../public/claim-index.json"), "utf8")) as Record<string, { k?: string; d?: string[]; h?: string }>;
+  const ids = Object.keys(idx);
+  assert.ok(ids.length > 400000, "the shipped index should hold every operator row: " + ids.length);
+  // Every row, not a sample: only about one row in twelve thousand lands across a 1 MB boundary, so a
+  // sample is exactly the thing that would miss the one fault a stream can have that a parse cannot.
+  let withEmail = 0;
+  for (const id of ids) {
+    const want = idx[id];
+    const rule = await claimRule(id);
+    assert.ok(rule.known, id + " is in the file and unknown to the gate");
+    assert.equal(rule.hasEmail, !!want.k, id + " disagrees about an address on file");
+    assert.equal(rule.hint, want.h || null, id + " disagrees about the masked hint");
+    if (want.k) withEmail += 1;
+  }
+  // The domains are the half that hands out a dashboard, so they are read field by field on a spread sample.
+  for (const id of ids.filter((_, i) => i % 1000 === 0)) assert.deepEqual((await claimRule(id)).domains, ownDomains(idx[id].d), id + " disagrees about the domains");
+  assert.ok(withEmail > 100000, "the file should span rows with an address on file: " + withEmail);
+});
