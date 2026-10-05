@@ -120,14 +120,8 @@ if (state.ranDays.includes(today) && !dry && !resume) {
   process.exit(0);
 }
 
-// Saturday and Sunday are an activity business's busiest days: a pitch that lands then is read on Monday under the
-// weekend's pile, if at all (the first two batches in Primary went out on 3 and 4 October, a Saturday and a Sunday,
-// and drew nothing). The bounce and reply sweeps above still run every day. --weekend sends anyway.
-const weekday = new Intl.DateTimeFormat("en-US", { timeZone: TZ, weekday: "short" }).format(new Date());
-if (!dry && (weekday === "Sat" || weekday === "Sun") && !process.argv.includes("--weekend")) {
-  console.log(`otto-cloud: ${weekday} in ${TZ}, no pitches on a weekend; replies and bounces were read above`);
-  process.exit(0);
-}
+// Every day of the week (Harshil, 2 October 2026, and again 5 October: a weekend skipped is unused reach-out).
+// A 4 October change had skipped Saturday and Sunday; it is gone.
 
 const asCopy = (r: PoolRow, style: CopyStyle = "full") => draftOttoCopy(
   { id: r.operator_id, domain: r.domain, name: r.name, email: r.email, phone: r.phone, city: r.city, region: r.region, calendar_vendor: r.calendar_vendor, family: r.family },
