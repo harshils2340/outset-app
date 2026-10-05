@@ -10401,6 +10401,103 @@ clean but for TS5097. The **rehearsal ran once at the end, 57 of 57**, on a Post
 from scratch on port 5433 with SSL on and the on-disk Playwright Chromium. `STRIPE_SECRET_KEY`,
 `RESEND_API_KEY` and `GITHUB_TOKEN` were empty throughout.
 
+## 5 October 2026, hundred and forty-first run (05:15 to 07:10 UTC)
+
+**Chosen, and why.** Five commits landed after the hundred and fortieth run's entry (`b7bf59db`), in
+`backend/src/outreach`, `backend/src/sync`, `src/lib/spamPhoto.ts` and the desktop branding, so by the brief's
+rule (b) the **rehearsal ran**: once at the start, green at 57 of 57, and again at the end. Baseline after
+`npm install` on both sides: root `tsc --noEmit -p .` and `tsc -b` clean, backend `tsc` clean but for TS5097,
+backend 1,087 with 1,085 pass and 2 skipped, app 1,276 pass.
+
+Target: **what a sync already published, against the guest-side guards that are supposed to catch it**. Every
+area the brief lists is on Verified, so the pick came from the one division this codebase keeps deliberately:
+the durable screen is in the sync, and `spamPhoto.ts` and `ownWords.ts` are the guards for what a sync has
+already shipped. No sync has run since 23 September, so that half is load-bearing right now. The 4 October
+security sweep had just mirrored its new banner list into `spamPhoto.ts` and left the prose half alone, which
+is where I started.
+
+**Found and fixed.** Three commits, pushed. Every rule measured over all 52,815 shipped detail files first.
+
+- **Two museums describe themselves as an online casino** (`adf5f80c`). The sweep added six gambling brands to
+  the sync's screen and to `spamPhoto.ts`, so their hotlinked banners stopped being drawn. Two of the same
+  hacked pages had also rewritten the shop's words, and `offLanguageMarketing` in `ownWords.ts` only reads
+  Indonesian and Malay: **17 Frost Gallery in Brooklyn opens "Mostbet gives Bangladeshi players rapid entry to
+  sports wagering and online casino fun", and the Martin & Sue King Railroad Museum in Cleveland, Mississippi,
+  says the same in Turkish**. Both pages now draw no casino picture and still read the casino's copy, which is
+  the worse half: the words are the page. `notTheirWords` refuses a description naming one of the six, which is
+  the narrow signal, since "casino" on its own is a word a real venue writes about the one up the road. 27
+  matches across the shipped catalog, 25 of them the banner addresses `spamPhoto.ts` already refuses and 2 of
+  them these blurbs, and nothing else.
+- **Six shops describe themselves in their site builder's words** (`81977150`). `ownWords.ts` refuses the
+  Latin filler a WordPress theme ships; the English half went straight through. **Green Valley Ranch Golf
+  Course's whole description is "This is a paragraph. Writing in paragraphs lets visitors find what they are
+  looking for quickly and easily"**; Rent My Boat Oahu's is "Edit this text and tell your site visitors who you
+  are"; Bones Fishing's Cove Fishing trip is "Double-click the video to edit it and enter a short description
+  of the video here", four times over; Norton's Rental Application is a Squarespace FAQ demo. Taken out as
+  sentences rather than refused as a field, because it comes three ways round: on its own there is nothing
+  behind it, in front of real copy it is a heading (the MD of Opportunity's "Your Content Goes Here" stands in
+  front of a campground's season, site count and nightly rate), and at the end of real copy it is a block
+  filled in above and not below (Littlefield's private events, Norton's pickleball trial). 7 of all 1,365,236
+  shipped strings change, on 6 listings, four to nothing and three to the shop's own words.
+- **A Wyoming museum sells a hand of blackjack and the page calls it a pontoon boat** (`c7a11364`). Wright
+  Centennial Museum publishes one bookable row, **"Pontoon (البريطاني)"**, with Arabic prose about the house
+  edge on a card game under it, and the listing's own glossary then explains "Pontoon" to the guest as "A flat,
+  steady boat on two floats, good for relaxed groups". The sync's `foreignScriptCompromised` quarantines it and
+  names this listing as the one it was written for; nothing on the guest side did. `hijackedMenu` in
+  `menuRow.ts` is the app's half, applied in `asPublished`. The test is the whole menu rather than one row,
+  because Kailua Beach Adventures and Heeia Kea Harbor both state some of their own kayak trips in Japanese for
+  their own guests, and a shop named in that script keeps its menu too. One listing of the 19,116 that publish
+  a menu.
+
+**Measured and left.** `backend/src/api/profiles.ts` and `uploads.ts`, neither named in this log before, came
+back clean: `mayEdit` holds `ID.test` itself, so the one route that does not re-check the id is still gated,
+and the upload path checks magic bytes, byte size, pixel size and strips EXIF before anything is committed. One
+thing there is latent: `readBinary` reads a stored photo back through the GitHub contents API, which answers
+`content: ""` above 1 MB, so a photo between 1 MB and the 1.8 MB cap would 404 from the route written to cover
+the minutes before a deploy; it cannot be exercised here because `GITHUB_TOKEN` must stay empty. Four shipped
+fields are one short phrase repeated and nothing else, 3 of them Scene75's own services ("LASER TAG" 31 times,
+"MINI BOWLING" 23, "LASER MAZE" 28) and one an hours line; the sync's `isKeywordStuffed` sees them, but it
+deliberately does not run on menu rows, and of the 8 fields it would catch there 3 are real (a Quebec boat
+rental's rate card, a charter's policy list, a scout camp's class schedule), so a rule for one arcade would
+cost three honest ones. No sort comparator in the app can misorder a list: the Infinity-minus-Infinity cases
+`similar.ts` guards against are read as equal by the language, not as nonsense. The "more like this" rail,
+which the switched-off sweep's list of surfaces does not name, reads `getCatalog()` and so already drops an
+unpublished listing. Of the 43 strings in the shipped files that the sync's phrase screen refuses, 41 were
+already caught by `ownWords`; the 2 that were not are the first fix above.
+
+**Needs Harshil.**
+
+- **Nothing the guest app shows is screened a second time by anything but these three guards**, and the gap
+  between them and the sync is now three hand-kept lists plus two parallel rules (`SPAM_IMAGE` in
+  `spamPhoto.ts`, `BETTING_BRAND` and `TEMPLATE_FILLER` in `ownWords.ts`, `FOREIGN_SCRIPT_RUN` in
+  `menuRow.ts`). Each is held in step by a test, which is the cheap answer. The real one is a sync: all three
+  of tonight's listings would have been quarantined weeks ago.
+- **17 Frost Gallery, the Martin & Sue King Railroad Museum and Wright Centennial Museum are real businesses
+  whose own websites are serving somebody else's gambling copy**, which is now thirteen runs of asking whether
+  the 108 operators in that state should be told. We hold their addresses.
+- Still open from earlier runs, unchanged: there is no error boundary in this app, now twenty-six runs asked;
+  "Open right now near you" is computed once a visit; the phone's browse is not ranked while the desktop's is;
+  the phone confirmation offers no way to reach the shop; a guest cannot cancel a booking at all; a price sort
+  and a price filter compare two dollars on six metros; the cards say "$" for a Canadian shop; `lasertag` does
+  not search `paintball`; `POST /auth/verify` counts a try it is about to find correct; `concierge/demand.ts`
+  filters its crawl queue by category and region and not by the town its own comment names; a shop that
+  unpublishes may not be able to get back to the switch it flicked; `/voice/:id/availability` reads out a
+  paused shop's vendor calendar; and the 290 listings with no way to claim at all still have none. **The
+  brief's rehearsal path is `backend/scripts/e2e-local.mts`, not `scripts/`**, seventh run to say so. **Local
+  `main` is still detached**, seventeenth run in a row: the sandbox refuses `git checkout -B main`, so the work
+  was committed on the detached head and pushed with `git push origin HEAD:main`. The Postgres cluster still
+  needs building as `ubuntu` with its own socket directory and its own SSL certificate before the brief's
+  command line works; it is otherwise exactly right.
+
+**Verification.** App `npm test` 1,293 pass, up 17, in `src/lib/__tests__/ownWordsBrand.test.ts` (6),
+`ownWordsTemplate.test.ts` (6) and `hijackedMenu.test.ts` (5); backend 1,087 with 1,085 pass and 2 skipped,
+unchanged. Each new file was run against the tree with its own fix reverted and fails there: 4 of 5, 5 of 6 and
+2 of 5, and in each case the tests that still pass are the ones holding a real operator's words or menu, which
+must not change. `tsc --noEmit -p .` and `tsc -b` clean at the root, backend's own `tsc` clean but for TS5097.
+The **rehearsal ran twice, 57 of 57 both times**, on a Postgres 16 cluster built from scratch on port 5433 with
+SSL on and the on-disk Playwright Chromium. `STRIPE_SECRET_KEY`, `RESEND_API_KEY` and `GITHUB_TOKEN` were empty
+throughout.
+
 ## Coverage
 
 The catalog is 48,198 listings as of the 23 September sync, 1,873 of them Viator partner rows. Counts below
@@ -11508,7 +11605,19 @@ suffix, and for a string that is not a hostname at all; the detail-file fallback
 against the 6,492 partner rows it serves; and both sign-in routes against which listings an address gets. Every
 answer the paid-booking read can give, against the word each guest surface has for it.
 
-**Not yet checked.** Whether the CORS preflight should carry the security headers and a cache-control, which it alone does not,
+What a sync already published, against the three guards that are supposed to catch it, over all 52,815 shipped
+detail files and all 1,365,236 strings in them: a hacked page's prose in a language the off-language screen
+cannot read, a site builder's own placeholder copy standing on its own, in front of the shop's facts and behind
+them, and a whole menu written in a script the listing's own name and town are not, each held against the real
+operators who write a second language, a casino or the word "paragraph" for reasons of their own.
+
+**Not yet checked.** Whether the app should carry a copy of the sync's phrase screen as well as its brand
+list, which would be a fourth hand-kept list and whose whole job a sync would do (see this run's Needs
+Harshil). Whether a field that is one short phrase repeated and nothing else should be refused, which is
+Scene75's three services against a Quebec boat rental's rate card, a charter's policy list and a scout camp's
+class schedule (see this run's Measured and left). Whether `readBinary` in `backend/src/api/uploads.ts` should
+read a photo back through the GitHub blob API rather than the contents API, which answers an empty body above
+1 MB while the route's own cap is 1.8 MB. Whether the CORS preflight should carry the security headers and a cache-control, which it alone does not,
 because Hono's `cors` answers `OPTIONS` before the middleware that sets them and covering it means putting the
 body limit behind CORS (see the hundred and thirty-seventh run's Needs Harshil). Whether `GET /profiles/:id`,
 the one public read route with no per-caller limit, should have one, given that it is what every guest's
