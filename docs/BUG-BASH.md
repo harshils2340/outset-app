@@ -10696,6 +10696,89 @@ own `tsc` clean but for TS5097. The **rehearsal ran at the end, 57 of 57**, on a
 from scratch on port 5433 with SSL on and the on-disk Playwright Chromium. `STRIPE_SECRET_KEY`,
 `RESEND_API_KEY` and `GITHUB_TOKEN` were empty throughout.
 
+## 5 October 2026, hundred and forty-fourth run (08:16 to 09:40 UTC)
+
+**Chosen, and why.** Every area the brief names sits on Verified, so this run went looking for an axis no
+sweep had asked about inside the brief's own first area, the guest listing page and its booking box. The one
+it found: **how long a booking runs, against the hours the same page prints above the picker**. Every earlier
+hours sweep asked which times fall inside a shop's day; none asked whether the thing being booked can finish
+before the shop shuts.
+
+**The rehearsal was skipped on arrival and run at the end.** The last entry says 57 of 57 and the only commit
+since it was that entry, so rule (b) did not fire on arrival; it fired on this run's own commits, which are in
+the slot engine and the booking route the rehearsal drives. Baseline: root `tsc --noEmit -p .` and `tsc -b`
+clean, backend `tsc` clean but for TS5097, backend 1,098 with 1,096 pass and 2 skipped, app 1,293 pass.
+
+**Found and fixed.** Three commits, pushed.
+
+- **A seven hour charter offered at one o'clock by a shop that shuts at three** (`fd7c74aa`). The page prints
+  the length in its key facts, the hours row above reads "8:00 AM to 3:00 PM", and the picker under both
+  offered 9 AM, 11 AM and 1 PM. **716 of the shipped listings that publish a length and a readable week do
+  this, on 3,915 day lines and 6,002 start times**, most of them fishing charters and boat rentals whose trip
+  is longer than the afternoon they are offered in. The operator can only decline, and the guest has read
+  three facts on one screen that cannot all be true. `startTimesOn` takes how long a booking runs now and
+  drops a start that cannot finish by closing time; the length is the one the page itself prints (`dur`, else
+  the first the menu states) so the picker and the facts above it answer alike, and all three surfaces that
+  read the rule pass it, with `POST /bookings` refusing exactly the starts the picker dropped. A window too
+  short to hold the shop's own trip states no honest start at all, so there the length is set aside and the
+  day keeps what it had: that is a listing whose crawled length or hours are wrong, not a day to empty.
+  Measured over the whole catalog, **no listing loses every start time it had**, and one day gains one,
+  because a shop whose fixed times all overran now falls back to a run from its own opening time.
+- **How long a booking runs is read in one file** (`f4a765bc`). `minutesIn` sat in `src/lib/operator.ts`,
+  which reaches the API, the catalog overlay and localStorage on its way in, so the slot route could not ask
+  it. It lives in `duration.ts` with the rest of that one fact now, re-exported under the name its callers
+  use. No behaviour changes.
+- **A guest's own mailbox written into the API's logs in clear** (`c6168be4`). Every line in the API that
+  names an address ran it through `maskEmail` but one: the Resend suppression webhook's
+  "suppressed <address>". That webhook is the whole Resend account's and not outreach's alone, so a guest's
+  booking confirmation that bounces, or that they mark as spam, arrives there too. The first letter and the
+  domain survive the mask, which is what a rising count is read by. The sweep behind it is a test of its own:
+  every console line under `backend/src/api` interpolating a name this API holds a mailbox under.
+
+**Measured and left.** The **claimed** path is untouched on purpose: a shop that has claimed sets its own
+hours, slot length and notice in the dashboard, so a 16:00 on a 17:30 close is the operator's own grid and
+nothing is invented. Otto never quoted the fixed grid at all: `liveSlots` reads the vendor's own calendar, so
+the fix did not need to reach it, and the three remaining `SLOT_TIMES` readers (`DetailView.tsx`,
+`inventory.ts` and `AppProvider`'s agent branch) are the hand-built `LISTINGS` branch, which is empty and does
+not run. A looser reading of the same question, using the **shortest** length anywhere on a shop's menu rather
+than the one the page prints, flags 625 listings and 3,437 day lines: 91 fewer listings, and a second reader
+of a fact that already has one, which is why the page's own length won.
+
+**Needs Harshil.**
+
+- **One app test failed once and has not failed since.** The first of twelve full runs of `npm test` came back
+  `# fail 1`; the output was piped through `tail` and the name was lost, and eleven runs since (three before
+  any edit, eight after) are green. Nothing in `src/lib/__tests__` asserts on a clock reading, so it is not
+  the usual morning-after date test. Worth watching: if it recurs, capture the whole run rather than its tail.
+- **The length this rule reads is a crawled fact, and on a charter the hours often are too.** A shop writing
+  "8:00 to 18:00" may mean the office rather than the boat. The rule only ever removes a start, never adds
+  one, and never empties a day, so the cost of being wrong is a time an operator would probably have taken;
+  the cost of the old behaviour was a booking they could only decline. If a shop says a late departure has
+  gone, the fix is its own `dur`, not this rule.
+- Still open from earlier runs, unchanged: there is no error boundary in this app, twenty-nine runs asked;
+  "Open right now near you" is computed once a visit; the 108 operators with hacked websites still have not
+  been told; the phone's browse is not ranked while the desktop's is; the phone confirmation offers no way to
+  reach the shop; a guest cannot cancel a booking at all; a price sort and a price filter compare two dollars
+  on six metros; the cards say "$" for a Canadian shop; `lasertag` does not search `paintball`;
+  `concierge/demand.ts` still filters its crawl queue by category and region and not by the town its own
+  comment names; a shop that unpublishes may not be able to get back to the switch it flicked;
+  `/voice/:id/availability` reads out a paused shop's vendor calendar; the 290 listings with no way to claim;
+  and no sync has run, so `kid`, `specs`, `gap` and `extraNote` are still empty on every shipped row.
+  **The brief's rehearsal path is `backend/scripts/e2e-local.mts`, not `scripts/`**, tenth run to say so.
+  **Local `main` is still detached**, twentieth run in a row: committed on the detached head and pushed with
+  `git push origin HEAD:main`. The Postgres cluster still has to be built as `ubuntu`, with its own socket
+  directory and its certificate generated, before the brief's command line works; `npm install` was also
+  needed at the root and in `backend/` before anything type-checked at all.
+
+**Verification.** Backend `npm test` 1,103 with 1,101 pass and 2 skipped, up 5: 3 in `openSlots.test.ts`, 2 in
+the new `logAddresses.test.ts`. App 1,296 pass, up 3 in `publishedStarts.test.ts`. Every new test was run
+against the tree with its own rule disabled and goes red: the two duration tests on each half of the rule
+separately (the filter, and the guard that keeps a day from emptying), the catalog-wide one on both, and the
+two log tests on the unmasked line. `tsc --noEmit -p .` and `tsc -b` clean at the root, backend's own `tsc`
+clean but for TS5097. The **rehearsal ran at the end, 57 of 57**, on a Postgres 16 cluster built from scratch
+on port 5433 with SSL on and the on-disk Playwright Chromium. `STRIPE_SECRET_KEY`, `RESEND_API_KEY` and
+`GITHUB_TOKEN` were empty throughout.
+
 ## Coverage
 
 The catalog is 48,198 listings as of the 23 September sync, 1,873 of them Viator partner rows. Counts below
@@ -11831,7 +11914,23 @@ headers behind them. Every non-literal `.replace()` replacement in both trees, f
 crawled text, and every locale-free `Intl` and `toLocaleString` call, for a guest-visible string that reads
 differently on another host.
 
-**Not yet checked.** Whether the app should carry a copy of the sync's phrase screen as well as its brand
+How long a booking runs against the hours the same page prints above the picker, over all 52,815 shipped
+detail files: every start an unclaimed listing offers on every day of every readable week, held against the
+length the page states in its own key facts, on the desktop listing, the phone sheet, the public slot route
+and `POST /bookings` alike, with the window too short to hold a shop's own trip told apart from the window
+that simply ends too early, and no listing anywhere left with no start time at all. Which readers of the
+fixed slot grid are live and which are the empty `LISTINGS` branch. What this API writes into its own logs
+about a person: every console line under `backend/src/api` that names a mailbox, against the mask the rest of
+them already ran it through, now a sweep of its own.
+
+**Not yet checked.** Whether a claimed shop's own calendar should refuse a start its service cannot finish
+by closing time, the way an unclaimed listing's now does: the operator set those hours and that slot length
+themselves, so nothing there is invented, and a 16:00 on a 17:30 close is their own grid rather than our
+guess (see this run). Whether the shortest length anywhere on a shop's menu, rather than the one its page
+prints, should decide which starts it may offer, which is 91 more listings and a second reader of a fact
+that already has one (see this run's Measured and left). Whether a charter's posted hours are the office or
+the boat, which is what decides whether the 716 listings this run narrowed were narrowed rightly (see this
+run's Needs Harshil). Whether the app should carry a copy of the sync's phrase screen as well as its brand
 list, which would be a fourth hand-kept list and whose whole job a sync would do (see this run's Needs
 Harshil). Whether a field that is one short phrase repeated and nothing else should be refused, which is
 Scene75's three services against a Quebec boat rental's rate card, a charter's policy list and a scout camp's
