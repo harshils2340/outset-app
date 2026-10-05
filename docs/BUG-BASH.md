@@ -10973,6 +10973,125 @@ structurally cannot be.
   `ubuntu`, own socket directory, own generated certificate) before the brief's command line works.
 
 
+## 5 October 2026, hundred and forty-seventh run (11:25 to 12:40 UTC)
+
+**Chosen, and why.** Not an entry off Not yet checked, because what is left there is product questions rather
+than defects: the brief's own guest and operator list is all under Verified, and the one defect-shaped leftover
+(`concierge/demand.ts` scoping its crawl queue by region while its comment says town) was read again tonight and
+is still the supply judgement four runs have called it. So the frontier was picked by a different cut: **what
+each side is told when Stripe says no.** Three code paths in this product ask Stripe for money and carry on
+regardless of the answer, and the Verified list covers the money split, the fee tiers, the payout cycles and the
+emails, but never once the unhappy answer. Reading those three turned up three bugs, one in each.
+
+**The rehearsal was skipped on arrival and run at the end.** The last entry says 57 of 57 and the only commit
+since it was that entry, so rule (b) did not fire on arrival; it fired on this run's own commits, which are in
+`backend/src` and `src/`. Baseline: root `tsc --noEmit -p .` and `tsc -b` clean, backend `tsc` clean but for
+TS5097, backend 1,110 with 1,108 pass and 2 skipped, app 1,304 pass.
+
+**Found and fixed.** Four commits, pushed: three bugs and the harness that now drives all three.
+
+- **A paid booking is not left pending by a webhook signed with the secret Stripe is rolling out** (`6b80e203ea`).
+  `verifyWebhook` read the Stripe-Signature header through `Object.fromEntries`, which keeps **one** `v1`, the
+  last. Stripe signs each event with **every** secret the endpoint currently holds, so during a signing-secret
+  roll the header carries two signatures and only one was made with the secret this service has. Whether an
+  event verified therefore came down to which signature Stripe happened to put last: measured both ways tonight,
+  ours-last verifies and ours-first does not. The half that failed answered 400, Stripe retried them into the
+  same refusal, and a `checkout.session.completed` that never lands leaves a **paid booking at "pending"**: no
+  capture, no operator email, no founder alert, and the row still holding the time. `GET /bookings/paid` saves
+  the guest who is still on the page; a guest who closed the tab is left with a hold and no booking.
+  `verifySvix` next door in `webhooks.ts` already reads every signature in its own header **for exactly this
+  reason**, which is what made this one a one-file gap rather than a judgement. Every `v1` is read now, a wrong
+  signature is still refused however many are offered, `v0` is never read as `v1`, and the fields may arrive in
+  any order (the old reader also refused a header with a space after the comma, which it should not).
+- **An operator is told when a confirmed booking's card was never charged** (`94269b0540`). Every path that
+  confirms a booking captures the card straight afterwards: the webhook and the Stripe return for an
+  instant-book shop, `PATCH /bookings/:listing/:code` for everybody else. `captureBooking` logs a failure and
+  returns false, and **all three callers throw that answer away.** So a failed capture leaves the booking
+  confirmed, the payment recorded as a live hold, and **no payout row at all**, which means the payout run has
+  nothing to find for it, for ever. The reason is ordinary rather than exotic: **Stripe releases an uncaptured
+  authorization after seven days**, so a shop that answers its requests once a week is accepting a hold that has
+  already gone. The guest's own confirmation was already right about it, because `mailDecision` reads the
+  payment state after the attempt and says "You pay the business on the day". **The operator was told nothing**
+  and read "Guest pays $121.00 · you receive $110.20" in the booking drawer for money no card had paid. A
+  confirmed, completed or no-show booking still sitting on an authorization now says so in the drawer, under the
+  money line, and says to collect on the day; whether the guest was told is read from `guestHearsBack`, because
+  email is the only channel and the booking form does not require an address. No schema change: a settled
+  booking whose payment is still `authorized` is itself the record of a capture that did not happen.
+- **A guest whose refund did not go through is not told their card was never charged** (`3237c57dd1`).
+  `refundBooking` has three outcomes and the two decision emails had words for two: a refund on its way, a hold
+  released, and **everything else fell through to "Nothing was charged."** A guest whose card had been captured
+  and whose refund failed was therefore told their money was never taken, and since **nothing retries a failed
+  refund**, that sentence was the last they heard about it. It does not take an exotic failure: the twenty
+  second timeout on `releaseIntent`'s own HTTP call is enough, on a call Stripe may well have acted on. The
+  declined email had the same hole one step earlier, reading the released state and never `refunded`, so a
+  captured booking declined through the API said "Nothing was charged" even when the refund worked. Both now
+  read one exported sentence (`refundSentence`), which names a captured card that is still captured, gives the
+  guest the reply address a person answers, and cannot be made to say it by a stale flag: the record has to
+  still show the money with us. The API logs the amount a guest is owed.
+
+- **The money path is driven with Stripe saying no** (`4bf7423cb1`). The Stripe recorder behind
+  `payout-e2e.mts` answered yes to everything, which is why none of the three above had ever been driven. It can
+  now be told to refuse one call, and the harness drives all three end to end against a real Postgres: the
+  refused capture (booking confirmed, card recorded as never taken, no payout row, guest's own email saying they
+  pay on the day, and the dashboard's reader agreeing), the refused refund (money still with us, the operator's
+  scheduled share cancelled anyway, and the guest's email naming the charge and the reply address), and a
+  webhook carrying two signatures with **ours first**, which is the order that used to fail. Every email the
+  harness produces is written to `MAIL_DUMP_DIR`, so the sentence a guest reads about their money is read back
+  rather than assumed. 43 payout checks to 55.
+
+**Verification.** Backend `npm test` 1,117 with 1,115 pass and 2 skipped, up 7; app `npm test` 1,307 pass, up 3.
+Every new rule was run against the tree with itself disabled and goes red, in the unit tests and in the harness
+both: the two-signature header (both orders, three secrets, and a roll we are not part of), where the harness
+reports the old behaviour as the booking left at `"pending"`; the drawer's line; and the owed-refund sentence.
+`tsc --noEmit -p .` and `tsc -b` clean at the root, backend's own `tsc` clean but for TS5097. The **rehearsal
+ran at the end, 57 of 57**, on a Postgres 16 cluster built from scratch on port 5433 with SSL on and the on-disk
+Playwright Chromium; its cancel step (h3) exercises the rewritten decision email and the sentence it prints for
+a pay-on-site booking is unchanged to the byte. `STRIPE_SECRET_KEY`, `RESEND_API_KEY` and `GITHUB_TOKEN` were
+empty throughout.
+
+**Measured and left.** The **lock-held recheck in `POST /bookings` drops `runsFor`** (both the wallet and the
+Checkout branch) and the **reinstate in `PATCH` drops `week` and `runsFor`**, where the first check of the same
+request passes all three. Nothing was changed: both omissions only loosen a second check on a booking the first
+check already allowed, so neither is reachable as a wrong answer. A **booking whose card was never charged is
+still counted as money in Home's "On the books" tile and the Calendar's week total**, which sum every accepted
+booking's payout; the drawer is where an operator looks at one booking and is the smallest honest place to say
+it, and changing what those two tiles count is a choice about whether they mean "money owed to me" or "value of
+my week". A **guest's own bounced booking confirmation is recorded in `outreach_log` as an outreach bounce**
+(the Resend webhook is the whole account's), so the bounce rate the metrics page reads has guests' dead
+mailboxes in its numerator and no guests in its denominator; left because it is the same question as the open
+one about what "emailed" on that funnel counts. `SITE_PAGES` was checked against the files that answer those
+paths, which was on Not yet checked: **all four exist** (`features`, `integrations`, `pricing`,
+`for/escape-rooms`), so there is no soft 404 there today; what the list does not carry is `/about` and the
+marketplace's own `/activities`, which its comment claims it does.
+
+**Needs Harshil.**
+
+- **Nothing ever comes back for money a capture or a refund failed on.** Both are now visible, to the operator
+  in the drawer and to the guest in their email, and both are still one-shot: no job re-attempts a capture, no
+  job re-attempts a refund, and the only record is a log line on a free Render service. A booking whose capture
+  failed is the operator's to collect on the day, which is workable. A refund that failed is **a guest's money
+  sitting with us**, and the sentence they now get asks them to reply to `hello@onoutset.com`.
+- **The refund sentence is new copy and it is mine.** "Your card was charged $121.00 USD and we could not put
+  the refund through automatically. Reply to this email and we will send it back by hand." It replaces a false
+  statement, so it is a fix either way, but the words are a choice.
+- **The drawer's line is new copy too**, and it leaves the "you receive" figure above it standing: the guest
+  does owe that money, the shop will now collect it directly, and what they collect is arguably the guest's
+  whole total rather than the total less Outset's 5%, since Outset never took it. That is a pricing decision.
+- Still open from earlier runs, unchanged: the crash screen's words are nobody's choice and nothing reports a
+  fault anywhere; "Open right now near you" is computed once a visit; the 108 operators with hacked websites
+  have not been told; the phone's browse is not ranked while the desktop's is; the phone confirmation offers no
+  way to reach the shop; a guest cannot cancel a booking at all; a price sort and a price filter compare two
+  dollars on six metros; the cards say "$" for a Canadian shop; `concierge/demand.ts` still filters its crawl
+  queue by category and region and not by the town its own comment names; a shop that unpublishes may not be
+  able to get back to the switch it flicked; the 290 listings with no way to claim; money scheduled to a shop
+  that then releases its listing is skipped for ever; and no sync has run, so `kid`, `specs`, `gap` and
+  `extraNote` are still empty on every shipped row. **The brief's rehearsal path is
+  `backend/scripts/e2e-local.mts`, not `scripts/`**, thirteenth run to say so. **Local `main` was detached
+  again** and was reattached to `origin/main` before committing, twenty-third run in a row. `npm install` was
+  needed at the root and in `backend/`, and the Postgres 16 cluster still has to be built from scratch (as
+  `ubuntu`, own socket directory, own generated certificate) before the brief's command line works.
+
+
 ## Coverage
 
 The catalog is 48,198 listings as of the 23 September sync, 1,873 of them Viator partner rows. Counts below
@@ -12128,6 +12247,14 @@ fixed slot grid are live and which are the empty `LISTINGS` branch. What this AP
 about a person: every console line under `backend/src/api` that names a mailbox, against the mask the rest of
 them already ran it through, now a sweep of its own.
 
+What each side is told when Stripe says no, which is the one answer the money path had never been driven
+against: a webhook signed during a secret roll, where Stripe sends two signatures and only one is ours; a
+capture refused on accept, against the booking's own status, its payout row, the payout run, the guest's
+confirmation and the operator's booking drawer; and a refund refused on cancel, against both decision emails and
+the operator's scheduled share. All three driven end to end against a real Postgres with a Stripe recorder that
+can be told to refuse one call, with every email read back out of the outbox. That `SITE_PAGES` names a file
+that exists, on all four.
+
 **Not yet checked.** Whether a claimed shop's own calendar should refuse a start its service cannot finish
 by closing time, the way an unclaimed listing's now does: the operator set those hours and that slot length
 themselves, so nothing there is invented, and a 16:00 on a 17:30 close is their own grid rather than our
@@ -12645,4 +12772,19 @@ sheet should have a word for `paddleboard`, the one `ArtKind` of 64 it has none 
 `GUIDES` holds 14 blocks and the guide section is gated on one. Whether the hand-built `LISTINGS` branch
 (`src/lib/agent.ts`, `src/lib/inventory.ts`, `src/data/slots.ts`, `DetailView.tsx`) should still ship at all:
 `LISTINGS` is empty, so none of it runs, and `inventory.ts`'s `capacity()` fabricates a seat count from a hash
-of the id, the date and the time, which is the one thing `AGENTS.md` says never to invent. Whether the Otto campaign's own three kinds should share one address cool-off, which is what would stop a resend sent to a mailbox the owners lookup found from leaving that address open to a first touch for the next business on it: `POOL_UNTOUCHED` reads `kind = 'otto'` alone, `seen` in `sendBatch` catches it inside one run and nothing catches it across two, and the wider version of the same question (whether Otto and the listing pitch share a cool-off at all, `spacing.ts`) is still open (see the hundred and forty-second run's Needs Harshil). Whether `busyLine`'s words for `play` and `food` are the right ones, which is copy.
+of the id, the date and the time, which is the one thing `AGENTS.md` says never to invent. Whether the Otto campaign's own three kinds should share one address cool-off, which is what would stop a resend sent to a mailbox the owners lookup found from leaving that address open to a first touch for the next business on it: `POOL_UNTOUCHED` reads `kind = 'otto'` alone, `seen` in `sendBatch` catches it inside one run and nothing catches it across two, and the wider version of the same question (whether Otto and the listing pitch share a cool-off at all, `spacing.ts`) is still open (see the hundred and forty-second run's Needs Harshil). Whether `busyLine`'s words for `play` and `food` are the right ones, which is copy. Whether a booking whose card was never
+charged should still be counted as money in the dashboard's "On the books" tile and the Calendar's week total,
+which sum every accepted booking's payout: the booking drawer names it now, and what those two tiles should
+mean, money owed to me or the value of my week, is a choice (see the hundred and forty-seventh run). Whether
+anything should come back for a capture or a refund that failed: both are visible now and both are still
+one-shot, with no job re-attempting either and the only record a log line, and a failed refund is a guest's
+money sitting with us (see that run's Needs Harshil). Whether the drawer's "you receive" figure should still be
+the price less Outset's 5% on a booking the shop now has to collect in cash, since Outset never took the 5% (see
+that run). Whether a guest's own bounced booking confirmation should be counted in `outreach_log` as an outreach
+bounce, which the Resend webhook does because it is the whole account's, so the bounce rate the metrics page
+reads has guests' dead mailboxes in its numerator and no guests in its denominator. Whether `SITE_PAGES` should
+carry `/about` and the marketplace's own `/activities`, which its comment says it does and which have real files
+and real rewrites behind them. Whether the lock-held recheck in `POST /bookings` should pass `runsFor` and the
+reinstate in `PATCH` should pass `week` and `runsFor`, which the first check of the same request does: both
+omissions only loosen a second check on a booking the first already allowed, so neither is reachable as a wrong
+answer today.
