@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { LIVE_CALENDAR, catalogId, vendorLabel } from "./drafts.ts";
+import { LIVE_CALENDAR, vendorLabel } from "./drafts.ts";
 import { mailPostal, unsubPageUrl } from "../lib/unsub.ts";
 import { bestAddress, greeting } from "./owner.ts";
 import { db, nowIso } from "../db/client.ts";
@@ -53,17 +53,8 @@ function whatOttoDoes(id: string | null): string {
   // Harshil, 2 October 2026: say it answers only from the business's own info, booking system and terms, so
   // an owner knows it never makes things up. "Booking system" is said only where Otto really reads one.
   if (id && LIVE_CALENDAR.has(id) && name)
-    return "It answers only from your own info, prices and policies, so it never makes anything up, checks what's actually open in " + name + " and sends the caller the link to book that exact slot.";
-  return "It answers only from your own info, prices and policies, so it never makes anything up, and takes the booking down for you.";
-}
-
-/**
- * An escape room: the queue leads with them (touches.ts), so they get their own words. "Escape" alone is not
- * enough outside the indoor family: 106 day spas, a fishing charter and a campground use the word too.
- */
-function isEscapeRoom(op: Pick<OttoOp, "name" | "domain" | "family">): boolean {
-  const s = op.name + " " + op.domain;
-  return /escape\s*(room|game)s?|escaperoom|escapegame|room\s*escape/i.test(s) || (op.family === "indoor" && /escape/i.test(s));
+    return "It picks up those calls and answers only from your own company info, " + name + " booking system and terms, so it never makes anything up. It tells the caller what's actually open and sends them the link to book that exact slot.";
+  return "It picks up those calls and answers only from your own company info, prices and terms, so it never makes anything up, then takes the booking down for you.";
 }
 
 /**
@@ -83,100 +74,88 @@ export function plainName(name: string): string {
 }
 
 /**
- * What the team is doing when the phone rings, in the owner's own day rather than a generic "busy with guests":
- * an escape room's game masters are running rooms, a karting crew is on the track. By outreach_pool.family.
- *
- * Every family the taxonomy has (backend/src/taxonomy/catalog.ts, eight of them) needs a line of its own, or
- * the generic one this function exists to replace is what goes out. `play` and `food` had none, and between
- * them they are 21,424 of the 46,324 operator listings the catalog ships: `play` is bowling, mini golf,
- * arcades, trampoline parks, laser tag, rinks, karaoke, zoos, aquariums, museums, theatres, gymnastics,
- * billiards and party venues, all of them a front desk with a queue at it, and `play` is third in the send
- * order (touches.ts), straight after the 1,086 indoor and motorsport shops. `food` is breweries, wineries,
- * distilleries and cooking classes, so the line names the room and not the tasting: 267 of the 4,934 are a
- * class.
- */
-export function busyLine(op: Pick<OttoOp, "name" | "domain" | "family">): string {
-  if (isEscapeRoom(op)) return "your game masters are running rooms";
-  switch (op.family) {
-    case "indoor": return "your team is out on the floor";
-    case "motorsport": return "your crew is out on the track";
-    case "water": return "your crew is out on the water";
-    case "air": return "your pilots are up flying";
-    case "outdoor": return "your guides are out with a group";
-    case "wellness": return "you're with a client";
-    case "play": return "your front desk has a line at it";
-    case "food": return "the room is full";
-    default: return "your team is busy with guests";
-  }
-}
-
-/**
  * Which copy a send carried, stored on outreach_sends.variant (touches.ts) so replies can be read against the
  * version that earned them. Bump it whenever the body changes.
  */
 // 2026-10-03: the product is named Outset in the body ("I built Outset"); Otto stays the assistant's name on calls.
-// 2026-10-05: the first line is the owner's own day by kind of business (game masters running rooms, a crew out on
-// the track), the ask is "Can I set one up for {name}?", the shape of the 23 September subject ("Can I build
-// Area 53 Laser Tag a free booking page?") that drew a "What is the cost for this?", and the take-down line is
-// plain words instead of "Don't want your free Outset page?", which read as a page built without asking: the
-// complaint both angry replies (Sandbox VR, Capt. Dave's) made. Two links in the footer, not three lines of them.
-export const COPY_VERSION = "2026-10-05";
+// 2026-10-05: first line by kind of business, "Can I set it up for X? ... It's free", recording merged into the
+// pitch paragraph. Gmail filed it under Promotions (3 of 3 on the 5 October canary, batch held).
+// 2026-10-06: back to the 10-02 body, which a side-by-side test on 5 October still put in Primary 3 of 3 while the
+// 10-05 body went to Promotions in every variant tried (the old offer, no "Founder" line, the old pitch
+// paragraph, the old sign-off: each still Promotions on at least two of three). The trigger was the opening
+// and the pitch wording, not HTML (plain text did the same), the links or the sign-off. The take-down line is
+// gone from every email (Harshil, 5 October 2026: "remove this from emails"); the unsubscribe link, the
+// reply-"no" opt-out and the postal address stay.
+export const COPY_VERSION = "2026-10-06";
+
+/**
+ * The pitch in decreasing length, all of it approved wording. The daily run (scripts/otto-cloud.mts) tests every
+ * rung between the sending inboxes and sends with the first one Gmail puts in Primary, so a copy that drifts into
+ * Promotions falls back on its own instead of holding the batch. Never generated text: only these.
+ *
+ *   full    the 10-02 note: question, pain, what it does, the 40-second recording, the free offer
+ *   nolink  the same without the recording paragraph (one link fewer)
+ *   min     three sentences and the sign-off
+ */
+export type CopyStyle = "full" | "nolink" | "min";
+export const COPY_LADDER: { style: CopyStyle; version: string }[] = [
+  { style: "full", version: COPY_VERSION },
+  { style: "nolink", version: COPY_VERSION + "-nolink" },
+  { style: "min", version: COPY_VERSION + "-min" },
+];
 
 /**
  * The 2 October 2026 pitch. 596 sends of the 1 October copy earned one human reply, and a placement test
  * between the three sending inboxes showed why: Gmail filed it under Promotions every time, with or without
  * the logo, the footer, the links or the HTML. The long, salesy wording was the trigger. A short note that
- * opens on a question landed in Primary in every inbox, still did with one recording link, the postal address
- * and the opt-out, and this is that note with Harshil's asks folded in (24/7 customer service, the recording).
- * scripts/otto-cloud.mts re-runs the same placement test before every daily batch and holds the batch if
- * Gmail starts filing it as Promotions, so a later edit here cannot silently undo this.
+ * opens on a question landed in Primary in every inbox, and this is that note.
  *
  * Keep it short and personal. Every paragraph added, every extra link and every marketing phrase is a step
- * back toward the Promotions tab. The required lines (postal address, unsubscribe, the one-click take-down of
- * the operator's Outset page from backend/src/outreach/AGENTS.md) stay as one plain small block at the end.
+ * back toward the Promotions tab, and the 5 October canary proved a reworded opening alone can do it. Change
+ * the wording only with a placement test of the new copy beside this one (placementMatrix in placement.ts).
  */
-export function draftOttoCopy(op: OttoOp, email?: string, opts?: { greet?: string | null }): { subject: string; body: string; html: string; variant: string } {
+export function draftOttoCopy(op: OttoOp, email?: string, opts?: { greet?: string | null; style?: CopyStyle }): { subject: string; body: string; html: string; variant: string } {
   const to = (email || "").trim().toLowerCase();
-  const variant = COPY_VERSION;
+  const style: CopyStyle = opts?.style || "full";
+  const variant = COPY_LADDER.find((r) => r.style === style)!.version;
   // "Hi Ron," only when the shop's own site names Ron as the owner and the mailbox is his by that same word
   // (owner.ts, from the owners crawl's facts): never a guessed first name, which is the one mistake an owner
   // cannot miss. A caller with no catalog at hand (the cloud sender, from the published pool) passes the name
   // that was found for it, or null for "Hi,".
   const hi = opts && "greet" in opts ? (opts.greet ? "Hi " + opts.greet + "," : "Hi,") : to ? greeting(op, to) : "Hi,";
-  const SITE = "https://onoutset.com/";
-  const OTTO = SITE + "#call";
-  const escape = isEscapeRoom(op);
+  const OTTO = "https://onoutset.com/otto";
   const name = plainName(op.name);
   const subject = "Missed calls at " + name;
-  // "the phone at X", never "X's phone": 220 of the next 600 names end in a plural s ("Escape Rooms's phone").
-  const question = "When " + busyLine(op) + " or after you close, who picks up the phone at " + name + "?";
-  const pain = escape
-    ? "For most escape rooms it's voicemail, and the caller books the next room on their list."
-    : "For most places it's voicemail, and the caller books with the next one that picks up.";
-  const what = "I built Outset to pick up those calls. " + whatOttoDoes(op.calendar_vendor) + " You get a summary of every call.";
-  const hearText = "Here's a 40-second recording of a real call: " + OTTO;
-  const hearHtml = "Here's a 40-second recording of a real call: " + link(OTTO, "give it a listen") + ".";
-  const offer = "Can I set it up for " + name + "? I'll build it from your own info so you can call it and test it yourself. It's free, and you only keep it if it books you guests.";
-  const lines = [hi, "", question, "", pain, "", what + " " + hearText, "", offer, "", ...signOff(op, to).lines];
-  const html = '<div dir="ltr">' + [
-    "<p>" + esc(hi) + "</p>",
-    "<p>" + esc(question) + "</p>",
-    "<p>" + esc(pain) + "</p>",
-    "<p>" + esc(what) + " " + hearHtml + "</p>",
-    "<p>" + esc(offer) + "</p>",
-    signOff(op, to).html,
-  ].join("") + "</div>";
-  return { subject, body: lines.join("\n"), html, variant };
+  const question = "When everyone at " + name + " is busy with guests or you've closed for the day, where do the calls go?";
+  const pain = "For most operators it's voicemail, and the caller hangs up and books with the next place that picks up.";
+  const what = "I built Outset, a 24/7 customer service line for your phone. " + whatOttoDoes(op.calendar_vendor) + " You get a summary of every call.";
+  const hearText = "Here's a 40-second recording of it on a real call: " + OTTO;
+  const hearHtml = "Here's a 40-second recording of it on a real call: " + link(OTTO, "give it a listen");
+  const offer = "I'll set it up on your line for free, and you only keep it if it books you a guest. Worth a quick reply?";
+  const minWhat = "I built Outset, a 24/7 customer service line that picks up when your team can't, answers only from your own info, and takes the booking down for you.";
+  const minOffer = "I'll set it up for " + name + " for free. Worth a quick reply?";
+  const paras: { text: string; html: string }[] =
+    style === "min" ? [{ text: question, html: esc(question) }, { text: minWhat, html: esc(minWhat) }, { text: minOffer, html: esc(minOffer) }]
+    : [
+      { text: question, html: esc(question) },
+      { text: pain, html: esc(pain) },
+      { text: what, html: esc(what) },
+      ...(style === "full" ? [{ text: hearText, html: hearHtml }] : []),
+      { text: offer, html: esc(offer) },
+    ];
+  const off = signOff(to);
+  const body = [hi, "", ...paras.flatMap((p) => [p.text, ""]), ...off.lines].join("\n");
+  const html = '<div dir="ltr"><p>' + esc(hi) + "</p>" + paras.map((p) => "<p>" + p.html + "</p>").join("") + off.html + "</div>";
+  return { subject, body, html, variant };
 }
 
 /**
- * The sign-off every Otto mail ends with: who wrote it, the postal address CAN-SPAM and CASL require, a way to
- * stop, and the one-click way off the business's Outset listing that backend/src/outreach/AGENTS.md requires,
- * said plainly rather than as "Don't want your free Outset page?".
+ * The sign-off every Otto mail ends with: who wrote it, the postal address CAN-SPAM and CASL require, and a way
+ * to stop. No take-down line for the business's Outset listing (Harshil, 5 October 2026); a listing is still
+ * removable from its own page.
  */
-function signOff(op: OttoOp, to: string): { lines: string[]; html: string } {
+function signOff(to: string): { lines: string[]; html: string } {
   const SITE = "https://onoutset.com/";
-  const remove = SITE + "activities#remove=" + catalogId(op.domain);
   const stop = to ? unsubPageUrl(to) : SITE + "unsubscribe.html";
   const postal = mailPostal();
   const where = postal ? postal.replace(/^Outset,\s*/i, "") : "";
@@ -186,11 +165,9 @@ function signOff(op: OttoOp, to: string): { lines: string[]; html: string } {
       "Founder, Outset",
       ...(where ? [where] : []),
       'Not a fit? Reply "no" and I won\'t email again, or unsubscribe: ' + stop,
-      "Remove " + plainName(op.name) + " from Outset's listings: " + remove,
     ],
     html: '<p style="color:#777">Harshil<br>Founder, Outset' + (where ? "<br>" + esc(where) : "") +
-      "<br>Not a fit? Reply \"no\" and I won't email again, or " + link(stop, "unsubscribe") + "." +
-      "<br>" + link(remove, "Remove " + plainName(op.name) + " from Outset's listings") + ".</p>",
+      "<br>Not a fit? Reply \"no\" and I won't email again, or " + link(stop, "unsubscribe") + ".</p>",
   };
 }
 
@@ -208,7 +185,7 @@ export function draftOttoBump(op: OttoOp, email: string, opts: { greet?: string 
   const subject = /^re:/i.test(opts.subject) ? opts.subject : "Re: " + opts.subject;
   const ask = "Following up in case this got buried. Would it help if I set up a free test line for " + plainName(op.name) +
     ", built from your own info, so you can call it and hear how it handles your callers?";
-  const off = signOff(op, to);
+  const off = signOff(to);
   const body = [hi, "", ask, "", ...off.lines].join("\n");
   const html = '<div dir="ltr"><p>' + esc(hi) + "</p><p>" + esc(ask) + "</p>" + off.html + "</div>";
   return { subject, body, html, variant: BUMP_VERSION };

@@ -22,18 +22,34 @@ export async function placementTest(
   samples: { subject: string; text: string; html?: string }[],
   opts: { waitMs?: number; replyTo?: string } = {},
 ): Promise<PlacementResult[]> {
+  const out = await placementMatrix([{ key: "only", samples }], opts);
+  return out.get("only") || [];
+}
+
+/**
+ * The same test for several candidate copies at once: every candidate goes from every sending mailbox to the next
+ * one, one wait covers them all, and the results come back per candidate. This is what lets the daily run fall
+ * back to a copy Gmail still puts in Primary instead of holding the batch (scripts/otto-cloud.mts).
+ */
+export async function placementMatrix(
+  candidates: { key: string; samples: { subject: string; text: string; html?: string }[] }[],
+  opts: { waitMs?: number; replyTo?: string } = {},
+): Promise<Map<string, PlacementResult[]>> {
   const ids = smtpIdentities();
-  if (ids.length < 2 || !samples.length) return [];
-  const sent: { tag: string; from: SmtpIdentity; to: SmtpIdentity; subject: string }[] = [];
-  for (let i = 0; i < ids.length; i++) {
-    const from = ids[i], to = ids[(i + 1) % ids.length], s = samples[i % samples.length];
-    const tag = "pt" + Math.random().toString(36).slice(2, 9);
-    const res = await sendMail({ to: to.user, subject: s.subject + " " + tag, text: s.text, html: s.html, replyTo: opts.replyTo, commercial: true, via: from.user });
-    if (res.sent) sent.push({ tag, from, to, subject: s.subject });
-    else console.error(`placement: ${from.user} could not send its test: ${res.error}`);
+  const out = new Map<string, PlacementResult[]>(candidates.map((c) => [c.key, []]));
+  if (ids.length < 2) return out;
+  const sent: { key: string; tag: string; from: SmtpIdentity; to: SmtpIdentity; subject: string }[] = [];
+  for (const c of candidates) {
+    if (!c.samples.length) continue;
+    for (let i = 0; i < ids.length; i++) {
+      const from = ids[i], to = ids[(i + 1) % ids.length], s = c.samples[i % c.samples.length];
+      const tag = "pt" + Math.random().toString(36).slice(2, 9);
+      const res = await sendMail({ to: to.user, subject: s.subject + " " + tag, text: s.text, html: s.html, replyTo: opts.replyTo, commercial: true, via: from.user });
+      if (res.sent) sent.push({ key: c.key, tag, from, to, subject: s.subject });
+      else console.error(`placement: ${from.user} could not send its test: ${res.error}`);
+    }
   }
   await new Promise((r) => setTimeout(r, opts.waitMs ?? 100_000));
-  const out: PlacementResult[] = [];
   for (const to of ids) {
     const mine = sent.filter((s) => s.to.user === to.user);
     if (!mine.length) continue;
@@ -48,7 +64,7 @@ export async function placementTest(
             const hit = (await c.search({ gmraw: `subject:${s.tag} ${q}` } as never, { uid: true })) || [];
             if (hit.length) { placement = label; break; }
           }
-          out.push({ from: s.from.user, to: to.user, placement, subject: s.subject });
+          out.get(s.key)!.push({ from: s.from.user, to: to.user, placement, subject: s.subject });
           const all = (await c.search({ gmraw: `subject:${s.tag} in:anywhere` } as never, { uid: true })) || [];
           if (all.length) await c.messageDelete(all, { uid: true });
         }
@@ -57,7 +73,7 @@ export async function placementTest(
       }
     } catch (e) {
       console.error(`placement: could not read ${to.user}: ${(e as Error).message.slice(0, 120)}`);
-      for (const s of mine) out.push({ from: s.from.user, to: to.user, placement: "unknown", subject: s.subject });
+      for (const s of mine) out.get(s.key)!.push({ from: s.from.user, to: to.user, placement: "unknown", subject: s.subject });
     } finally {
       await c.logout().catch(() => undefined);
     }
@@ -71,4 +87,25 @@ export function placementVerdict(results: PlacementResult[]): { hold: boolean; s
   const bad = n("promotions") + n("spam");
   const summary = `primary ${n("primary")}, promotions ${n("promotions")}, spam ${n("spam")}, updates ${n("updates")}, unknown ${n("unknown")}`;
   return { hold: bad >= 2 && bad >= n("primary"), summary };
+}
+
+/**
+ * Which rung of the copy ladder to send with, in ladder order. Strict first: Primary in at least two inboxes and
+ * nowhere in Promotions or Spam. Failing that, the first rung that still reached Primary in two inboxes with no
+ * Spam. Null when nothing qualifies, which holds the batch.
+ */
+export function pickRung(rungs: { key: string; results: PlacementResult[] }[]): { key: string; summary: string; strict: boolean } | null {
+  const tally = (rs: PlacementResult[]) => {
+    const n = (p: Placement) => rs.filter((r) => r.placement === p).length;
+    return { primary: n("primary"), bad: n("promotions") + n("spam"), spam: n("spam"), summary: placementVerdict(rs).summary };
+  };
+  for (const r of rungs) {
+    const t = tally(r.results);
+    if (t.primary >= 2 && t.bad === 0) return { key: r.key, summary: t.summary, strict: true };
+  }
+  for (const r of rungs) {
+    const t = tally(r.results);
+    if (t.primary >= 2 && t.spam === 0) return { key: r.key, summary: t.summary, strict: false };
+  }
+  return null;
 }

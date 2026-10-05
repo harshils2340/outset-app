@@ -21,18 +21,11 @@ const op: OttoOp = {
 
 const TO = "info@seabreezejetski.com";
 
-test("the mail carries a take-it-down link and a way to stop, per the outreach folder's own rule", () => {
+test("the mail carries a way to stop", () => {
   const c = draftOttoCopy(op, TO);
-  // Every recipient already has an unclaimed page in the catalog, so the way off it goes in the mail.
-  assert.ok(c.body.includes("#remove=o-seabreezejetski-com"), c.body);
-  assert.ok(c.html.includes("#remove=o-seabreezejetski-com"), c.html);
   assert.ok(c.body.includes("/unsubscribe.html?t="), c.body);
   assert.ok(c.html.includes("/unsubscribe.html?t="), c.html);
-});
-
-test("the take-it-down line sits after the sign-off, not in the middle of the pitch", () => {
-  const c = draftOttoCopy(op, TO);
-  assert.ok(c.body.indexOf("#remove=") > c.body.indexOf("Harshil"), c.body);
+  assert.ok(c.body.indexOf("unsubscribe") > c.body.indexOf("Harshil"), "after the sign-off, not in the pitch");
 });
 
 test("nothing is offered as already claimable: no claim link", () => {
@@ -80,12 +73,9 @@ test("the vendor line is generic when no booking system is on file", () => {
   assert.ok(known.body.includes("FareHarbor"), known.body);
 });
 
-test("a draft with no address still carries a way to unsubscribe and the take-down", () => {
+test("a draft with no address still carries a way to unsubscribe", () => {
   // AGENTS.md: a draft with no to_email is kept so a human can find a contact, so it still has to read right.
-  // Terms and Privacy links left the pitch on 2 October 2026: the newsletter-style footer helped Gmail file it
-  // under Promotions (ottoDrafts.ts), and neither is legally required in a cold email.
   const c = draftOttoCopy(op);
   assert.ok(c.body.includes("unsubscribe.html"), c.body);
   assert.ok(!c.body.includes("/unsubscribe.html?t="), "no address means no address to sign an unsubscribe for");
-  assert.ok(c.body.includes("#remove="), "the take-it-down link needs no address, so it is there either way");
 });

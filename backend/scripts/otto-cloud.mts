@@ -3,12 +3,12 @@ import { sendMail, smtpIdentities } from "../src/lib/mail.ts";
 import { emailHash, loadSuppression, mailPostal, unsubPageUrl } from "../src/lib/unsub.ts";
 import { outreachBlockers, UNREADABLE_ADDRESS } from "../src/outreach/guards.ts";
 import { isDeliverable, siteResolves } from "../src/outreach/deliverable.ts";
-import { COPY_VERSION, draftOttoBump, draftOttoCopy } from "../src/outreach/ottoDrafts.ts";
+import { COPY_LADDER, COPY_VERSION, draftOttoBump, draftOttoCopy, type CopyStyle } from "../src/outreach/ottoDrafts.ts";
 import { recordSend } from "../src/lib/outreachLog.ts";
 import { recordRun, rungFor, type RampState } from "../src/outreach/ramp.ts";
 import { MAILBOX_ERROR, NETWORK_ERROR, dayStartIso, pickIdentity } from "../src/outreach/mailboxes.ts";
 import { collectBounces, collectReplies, markRedirect, markReplied, suppressBounce } from "../src/outreach/bounceSweep.ts";
-import { placementTest, placementVerdict } from "../src/outreach/placement.ts";
+import { pickRung, placementMatrix } from "../src/outreach/placement.ts";
 import {
   BUMP_KIND, RESEND_KIND, bumpCandidates, handedOffOperators, loadRamp, mailedIndex, poolCandidates, recordTouch, repliedOperators, resendCandidates, saveRamp, sentTodayByMailbox, type PoolRow,
 } from "../src/outreach/touches.ts";
@@ -39,9 +39,6 @@ type OttoState = RampState & {
   /** The last inbox-placement check: when, against which copy, what Gmail did with it. */
   placement?: { day: string; version: string; summary: string; hold: boolean };
 };
-/** Placement is re-checked every other day (Harshil, 2 October 2026), and always after the copy changes. */
-// Daily since 3 October 2026 (Harshil: keep checking that the emails land in Primary, not Promotions).
-const PLACEMENT_EVERY_DAYS = 1;
 const notifyTo = (process.env.OUTREACH_ALERT_TO || "harshils2340@gmail.com").trim();
 
 const suppression = await loadSuppression();
@@ -132,32 +129,48 @@ if (!dry && (weekday === "Sat" || weekday === "Sun") && !process.argv.includes("
   process.exit(0);
 }
 
-const asCopy = (r: PoolRow) => draftOttoCopy(
+const asCopy = (r: PoolRow, style: CopyStyle = "full") => draftOttoCopy(
   { id: r.operator_id, domain: r.domain, name: r.name, email: r.email, phone: r.phone, city: r.city, region: r.region, calendar_vendor: r.calendar_vendor, family: r.family },
-  r.email, { greet: r.greet });
+  r.email, { greet: r.greet, style });
 
-// Inbox placement: is today's copy still landing in Gmail's Primary tab? Checked every other day and
-// whenever the copy changes; a clear Promotions/Spam verdict holds the whole batch and tells Harshil, since
-// sending 100 emails into Promotions is how 596 sends earned one reply (src/outreach/placement.ts).
-const last = state.placement;
-const daysSince = last ? Math.round((Date.parse(today) - Date.parse(last.day)) / 86_400_000) : Infinity;
-if (!dry && (!last || last.version !== COPY_VERSION || daysSince >= PLACEMENT_EVERY_DAYS)) {
-  const sample = (await poolCandidates(ids.length)).map(asCopy).map((c) => ({ subject: c.subject, text: c.body, html: c.html }));
-  const results = await placementTest(sample, { replyTo: process.env.MAIL_REPLY_TO || undefined });
-  const verdict = placementVerdict(results);
-  for (const r of results) console.log(`placement: ${r.from} -> ${r.to}: ${r.placement}`);
-  console.log(`otto-cloud: placement check for copy ${COPY_VERSION}: ${verdict.summary}${verdict.hold ? " - HOLDING TODAY'S BATCH" : ""}`);
-  state.placement = { day: today, version: COPY_VERSION, summary: verdict.summary, hold: verdict.hold };
-  if (verdict.hold) {
+// Inbox placement, every sending day: every rung of the approved copy ladder (ottoDrafts.ts COPY_LADDER) and the
+// follow-up go from each sending inbox to the next, and Gmail's tab for each is read back
+// (src/outreach/placement.ts). The batch goes out with the first rung Gmail puts in Primary, so a copy that drifts
+// into Promotions falls back on its own; the whole batch is held only when no rung lands, and follow-ups are
+// skipped for the day when theirs does not. Until 5 October 2026 one copy was checked and a Promotions verdict
+// held the batch until someone rewrote the copy by hand (Harshil: "this shouldn't keep happening").
+let style: CopyStyle = "full";
+let bumpsOk = true;
+if (!dry) {
+  const pool = await poolCandidates(ids.length);
+  const bumpSamples = pool.map((r) => {
+    const op = { id: r.operator_id, domain: r.domain, name: r.name, email: r.email, phone: r.phone, city: r.city, region: r.region, calendar_vendor: r.calendar_vendor, family: r.family };
+    const c = draftOttoBump(op, r.email, { greet: r.greet, subject: asCopy(r).subject });
+    return { subject: c.subject, text: c.body, html: c.html };
+  });
+  const matrix = await placementMatrix([
+    ...COPY_LADDER.map((rung) => ({ key: rung.style, samples: pool.map((r) => asCopy(r, rung.style)).map((c) => ({ subject: c.subject, text: c.body, html: c.html })) })),
+    { key: "bump", samples: bumpSamples },
+  ], { replyTo: process.env.MAIL_REPLY_TO || undefined });
+  const report = [...matrix].map(([k, rs]) => `${k}: ${rs.map((r) => `${r.from} -> ${r.to}: ${r.placement}`).join("; ")}`);
+  for (const line of report) console.log("placement: " + line);
+  const pick = pickRung(COPY_LADDER.map((rung) => ({ key: rung.style, results: matrix.get(rung.style) || [] })));
+  bumpsOk = pickRung([{ key: "bump", results: matrix.get("bump") || [] }])?.strict === true;
+  const version = pick ? COPY_LADDER.find((r) => r.style === pick.key)!.version : COPY_VERSION;
+  state.placement = { day: today, version, summary: pick ? pick.summary : "no rung reached Primary", hold: !pick };
+  if (!pick) {
     await saveRamp("otto", state);
-    await notify("Otto outreach held: Gmail is filing the pitch under Promotions/Spam",
-      `Today's batch was not sent. The placement check sent copy ${COPY_VERSION} between the sending inboxes and Gmail filed it as: ${verdict.summary}.\n\n` +
-      results.map((r) => `${r.from} -> ${r.to}: ${r.placement}`).join("\n") +
-      "\n\nShorten the copy in backend/src/outreach/ottoDrafts.ts (fewer links, less sales language) and redeploy outset-otto. The next run re-checks before sending.");
+    await notify("Otto outreach held: Gmail put every approved copy in Promotions/Spam",
+      "Today's batch was not sent. Every rung of the copy ladder was tested between the sending inboxes and none reached Primary:\n\n" +
+      report.join("\n") + "\n\nThis usually means the sending accounts' reputation, not the wording: check bounces and complaints first. The next run re-checks before sending.");
     process.exit(0);
   }
-} else if (last) {
-  console.log(`otto-cloud: placement last checked ${last.day} (copy ${last.version}): ${last.summary}`);
+  style = pick.key as CopyStyle;
+  console.log(`otto-cloud: sending copy ${version} (${pick.summary})${bumpsOk ? "" : "; follow-ups skipped today, their copy did not reach Primary"}`);
+  if (style !== "full" || !bumpsOk)
+    await notify(`Otto outreach fell back to copy ${version}`,
+      `The full pitch did not reach Primary today, so the batch went out with the "${style}" rung, which did.${bumpsOk ? "" : " Follow-ups were skipped today: theirs did not reach Primary."}\n\n` +
+      report.join("\n") + "\n\nNothing to do unless this repeats for several days.");
 }
 const mailboxes = (state.mailboxes ||= {});
 const before = await sentTodayByMailbox(dayStart);
@@ -192,7 +205,7 @@ async function sendBatch(limit: number, quota: Record<string, number>): Promise<
   // Up to 40% of today's allowance to the follow-up (businesses that already saw a first email in Primary, so
   // the likeliest to answer), up to 20% to the resend (whose first email went to Promotions; mostly water, out of
   // season), and the rest to businesses never mailed; taking turns so a cut-short day still does some of each.
-  const bumps: Row[] = (await bumpCandidates(Math.ceil(limit * 0.4) * 2)).map((r) => ({ ...r, kind: BUMP_KIND }));
+  const bumps: Row[] = bumpsOk ? (await bumpCandidates(Math.ceil(limit * 0.4) * 2)).map((r) => ({ ...r, kind: BUMP_KIND })) : [];
   const resends: Row[] = (await resendCandidates(Math.ceil(limit * 0.2) * 2)).map((r) => ({ ...r, kind: RESEND_KIND }));
   const fresh: Row[] = (await poolCandidates(limit * 2)).map((r) => ({ ...r, kind: "otto" }));
   const budget: Record<string, number> = {
@@ -242,7 +255,7 @@ async function sendBatch(limit: number, quota: Record<string, number>): Promise<
     const thread = bump && !dry ? await threads.find(from, to, new Date(r.last_at || Date.now())) : null;
     const copy = bump
       ? draftOttoBump(op, to, { greet, subject: thread?.subject || draftOttoCopy(op, to).subject })
-      : draftOttoCopy(op, to, { greet });
+      : draftOttoCopy(op, to, { greet, style });
     if (dry) {
       console.log("would " + (bump ? "FOLLOW UP with " : r.kind === RESEND_KIND ? "RESEND to " : "send to ") + to + (greet ? " (Hi " + greet + ")" : "") + " [variant " + copy.variant + "]: " + copy.subject);
       out.sent++;
