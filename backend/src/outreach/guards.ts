@@ -40,7 +40,10 @@ export function publicHttpsLink(url: string): boolean {
  * Addresses no owner reads: a site builder's robot inbox, a monitoring relay, a sample address, and a template's
  * placeholder left on a live site (jdoe123@blackstonegc.com bounced on 3 October 2026).
  */
-export const UNREADABLE_ADDRESS = /noreply|no-reply|donotreply|example\.com|sentry|wixpress|godaddy|^(j|john|jane)[._-]?doe\d*@|^(your|my)[._-]?(name|email|mail|address)@|^(firstname|lastname|first[._-]?last|username|user|someone|sample|placeholder|test)@|@(yourdomain|yoursite|yourcompany|domain)\.(com|net|org)$/;
+// `you@` is a site's "you@yourbusiness" placeholder, and a phone number glued to the front of the local part
+// ("352-533-2151dunnellonescaperoom@gmail.com") is a scrape that ran the number into the address: both bounced
+// in the first week of October 2026, and a bounce costs the sending inbox reputation the next pitch needs.
+export const UNREADABLE_ADDRESS = /^you@|^\+?1?[-. ]?\d{3}[-. ]?\d{3}[-. ]?\d{4}[a-z]|noreply|no-reply|donotreply|example\.com|sentry|wixpress|godaddy|^(j|john|jane)[._-]?doe\d*@|^(your|my)[._-]?(name|email|mail|address)@|^(firstname|lastname|first[._-]?last|username|user|someone|sample|placeholder|test)@|@(yourdomain|yoursite|yourcompany|domain)\.(com|net|org)$/;
 
 /** Why a row was passed over. */
 export type SkipReason = "in-batch" | "unreadable" | "unsubscribed" | "undeliverable";

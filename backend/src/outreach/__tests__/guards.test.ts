@@ -109,3 +109,12 @@ test("the addresses nobody reads are one list, so the two campaigns cannot drift
   }
   for (const a of ["jeff@shop.com", "joe.doherty@shop.com", "doe@shop.com", "testarossa@shop.com", "jdoerr@shop.com".replace("jdoerr", "jdorr")]) assert.ok(!UNREADABLE_ADDRESS.test(a), a);
 });
+
+test("a placeholder you@ and a phone number glued to the address are unreadable, a real address with digits is not", () => {
+  assert.ok(UNREADABLE_ADDRESS.test("you@gmail.com"));
+  assert.ok(UNREADABLE_ADDRESS.test("352-533-2151dunnellonescaperoom@gmail.com"));
+  assert.ok(UNREADABLE_ADDRESS.test("3525332151dunnellon@gmail.com"));
+  assert.ok(!UNREADABLE_ADDRESS.test("youth@campx.com"));
+  assert.ok(!UNREADABLE_ADDRESS.test("escape2020@gmail.com"));
+  assert.ok(!UNREADABLE_ADDRESS.test("info@4005551234.com"));
+});
