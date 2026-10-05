@@ -1,5 +1,6 @@
 import { pgConfigured, query } from "../db/pg.ts";
 import { emailHash } from "../lib/unsub.ts";
+import { plainName } from "./ottoDrafts.ts";
 import type { RampState } from "./ramp.ts";
 
 /**
@@ -336,6 +337,19 @@ export async function repliedOperators(): Promise<Set<string>> {
   return new Set(rows.map((r) => r.operator_id));
 }
 
+/**
+ * The keys a business's name is matched on when a reply names it in its subject (bounceSweep.ts).
+ *
+ * Both spellings, because the subject carries the one the owner reads and the pool holds the one the registry
+ * wrote: the pitch is addressed to `plainName(name)`, so "House of Clues, LLC" went out as "Missed calls at
+ * House of Clues" and a reply naming that matched nothing. 645 of the 46,324 operator listings the catalog
+ * ships differ that way, and each one was an owner who answered from a mailbox we never wrote to, was never
+ * counted, and was followed up three days later with "in case this got buried".
+ */
+export function nameKeys(name: string): string[] {
+  return [...new Set([name, plainName(name)].map((s) => s.trim().toLowerCase()).filter(Boolean))];
+}
+
 /** Every address and domain mailed so far, mapped back to its businesses, for matching replies. */
 export async function mailedIndex(): Promise<{ byEmail: Map<string, Set<string>>; byDomain: Map<string, Set<string>>; byName: Map<string, Set<string>> }> {
   await ensureTouchTables();
@@ -345,7 +359,7 @@ export async function mailedIndex(): Promise<{ byEmail: Map<string, Set<string>>
       where s.kind in ('otto', $1, $2) and s.status = 'sent'`, [RESEND_KIND, BUMP_KIND]);
   const byEmail = new Map<string, Set<string>>(), byDomain = new Map<string, Set<string>>(), byName = new Map<string, Set<string>>();
   // The business by name, for a reply whose subject names it but whose sender we never wrote to (bounceSweep.ts).
-  for (const r of rows) if (r.name) (byName.get(r.name.trim()) || byName.set(r.name.trim(), new Set()).get(r.name.trim())!).add(r.operator_id);
+  for (const r of rows) if (r.name) for (const k of nameKeys(r.name)) (byName.get(k) || byName.set(k, new Set()).get(k)!).add(r.operator_id);
   const FREE = /^(gmail|googlemail|yahoo|hotmail|outlook|live|icloud|me|aol|msn|comcast|proton|protonmail|shaw|rogers|sympatico|bell)\./;
   for (const r of rows) {
     (byEmail.get(r.email) || byEmail.set(r.email, new Set()).get(r.email)!).add(r.operator_id);

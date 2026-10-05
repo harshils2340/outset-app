@@ -2,6 +2,8 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { bodyText, classifyReply, subjectBusinesses } from "../bounceSweep.ts";
 import { newestThread } from "../thread.ts";
+import { draftOttoCopy, type OttoOp } from "../ottoDrafts.ts";
+import { nameKeys } from "../touches.ts";
 
 const own = new Set(["harshils2340@gmail.com", "outset.founder@gmail.com", "hs20041230@gmail.com"]);
 const ORIGINAL = "\n\n-------- Original Message --------\nHi, I'm Harshil. I built Otto, the AI front desk for local businesses like yours.";
@@ -104,6 +106,24 @@ test("a reply is matched to its business by subject when it comes from an addres
   assert.deepEqual(subjectBusinesses("RE[2]: Missed calls at Escape 618"), ["escape 618"]);
   assert.deepEqual(subjectBusinesses("Your order has shipped"), []);
   assert.deepEqual(subjectBusinesses(""), []);
+});
+
+/**
+ * The subject match only works if the index holds the name the subject actually carries. The pitch addresses
+ * the business as `plainName(name)` and the pool holds the registry's spelling, so every name whose legal
+ * suffix the copy drops has to be indexed both ways. 645 of the 46,324 operator listings are one.
+ */
+test("a reply naming the business as the pitch addressed it finds the business", () => {
+  const op: OttoOp = {
+    id: "op-1", domain: "x.com", name: "", email: "info@x.com", phone: "(208) 555-0100",
+    city: "Tampa", region: "FL", calendar_vendor: null, family: "indoor",
+  };
+  for (const name of ["House of Clues, LLC", "Harbour Cruises Ltd", "Divers Incorporated", "Barrio Brewing Co", "Escape 618"]) {
+    const subject = "Re: " + draftOttoCopy({ ...op, name }, "info@x.com").subject;
+    const keys = nameKeys(name);
+    const named = subjectBusinesses(subject);
+    assert.ok(named.some((n) => keys.includes(n)), `a reply titled ${JSON.stringify(subject)} reaches none of ${JSON.stringify(keys)}`);
+  }
 });
 
 test("the follow-up answers the newest email sent to that address", () => {
