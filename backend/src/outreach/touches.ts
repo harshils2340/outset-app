@@ -148,12 +148,24 @@ export async function touched(kind = "otto"): Promise<{ operators: Set<string>; 
 
 /**
  * Sent today, per mailbox, from the shared record; `dayStart` is the campaign day's first instant as ISO.
- * Counts first touches and resends together: both come out of the same mailbox's daily allowance, so a
- * resend day must never let a mailbox go over its cap.
+ *
+ * Every send out of a mailbox counts, whatever kind of mail it was: the first pitch, the resend and the
+ * follow-up all leave the same Gmail and all come out of its daily allowance, which is what the warm-up ramp
+ * is protecting. This used to name the kinds it counted ('otto' and the resend), and the follow-up landed on
+ * 4 October 2026 without being added to the list, so ten emails out of one mailbox read as six: a `--resume`
+ * or a second round was handed the difference again, 40% over the rung on a day the follow-up took its full
+ * share, and a day spent entirely on follow-ups recorded as a day that sent nothing, so the rung never moved.
+ * Counting every kind is also what `sentToday` in sendOtto.ts does, and it cannot go stale when a kind is
+ * added. `kinds` narrows it for a caller that really wants one campaign's count.
  */
-export async function sentTodayByMailbox(dayStart: string, kinds: string[] = ["otto", RESEND_KIND]): Promise<Record<string, number>> {
+export const SENT_TODAY_BY_MAILBOX = `select mailbox, count(*)::int as n from outreach_sends
+      where status = 'sent' and at >= $1::timestamptz group by mailbox`;
+
+export async function sentTodayByMailbox(dayStart: string, kinds?: string[]): Promise<Record<string, number>> {
   await ensureTouchTables();
-  const rows = await query<{ mailbox: string | null; n: number }>("select mailbox, count(*)::int as n from outreach_sends where kind = any($1::text[]) and status = 'sent' and at >= $2::timestamptz group by mailbox", [kinds, dayStart]);
+  const rows = kinds
+    ? await query<{ mailbox: string | null; n: number }>("select mailbox, count(*)::int as n from outreach_sends where kind = any($2::text[]) and status = 'sent' and at >= $1::timestamptz group by mailbox", [dayStart, kinds])
+    : await query<{ mailbox: string | null; n: number }>(SENT_TODAY_BY_MAILBOX, [dayStart]);
   const out: Record<string, number> = {};
   for (const r of rows) out[r.mailbox || ""] = r.n;
   return out;
