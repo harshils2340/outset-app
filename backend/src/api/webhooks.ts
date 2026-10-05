@@ -3,6 +3,7 @@ import { Hono } from "hono";
 import { rateLimit } from "./auth.ts";
 import { recordUnsub, type SuppressReason } from "../lib/unsub.ts";
 import { recordOutreachEvent } from "../lib/outreachLog.ts";
+import { maskEmail } from "../lib/claimIndex.ts";
 
 /**
  * Delivery feedback from Resend.
@@ -99,8 +100,12 @@ webhooks.post("/webhooks/resend", rateLimit(600, 60 * 60 * 1000), async (c) => {
     // Counted as well as suppressed: the suppression list says "do not mail this again", the log says how many
     // of the emails that went out came back, which is the number that says whether outreach is working.
     if (reason !== "unsubscribe") await recordOutreachEvent(address, reason);
-    // Loud on purpose: a rising count here is the early warning that sending is going wrong.
-    console.warn(`[mail:${reason}] suppressed ${address}`);
+    // Loud on purpose: a rising count here is the early warning that sending is going wrong. Masked, because
+    // this webhook is the whole Resend account's and not outreach's alone: a guest's booking confirmation that
+    // bounces, or that they mark as spam, arrives here too, and their own address would have been the one
+    // line in this API's logs to carry a person's mailbox in clear. The domain survives the mask, which is
+    // what a rising count is read by.
+    console.warn(`[mail:${reason}] suppressed ${maskEmail(address)}`);
   }
   return c.json({ ok: true, suppressed: addresses.length });
 });
