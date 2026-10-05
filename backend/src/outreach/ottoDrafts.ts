@@ -93,12 +93,15 @@ export const COPY_VERSION = "2026-10-06";
  * rung between the sending inboxes and sends with the first one Gmail puts in Primary, so a copy that drifts into
  * Promotions falls back on its own instead of holding the batch. Never generated text: only these.
  *
+ *   ask     no link at all: the question, one line on what it is, and "can I send you the recording?", modeled on a
+ *           cold note Harshil found worked on him (5 October 2026). Its stop is a reply, not a link.
  *   full    the 10-02 note: question, pain, what it does, the 40-second recording, the free offer
  *   nolink  the same without the recording paragraph (one link fewer)
  *   min     three sentences and the sign-off
  */
-export type CopyStyle = "full" | "nolink" | "min";
+export type CopyStyle = "ask" | "full" | "nolink" | "min";
 export const COPY_LADDER: { style: CopyStyle; version: string }[] = [
+  { style: "ask", version: COPY_VERSION + "-ask" },
   { style: "full", version: COPY_VERSION },
   { style: "nolink", version: COPY_VERSION + "-nolink" },
   { style: "min", version: COPY_VERSION + "-min" },
@@ -134,6 +137,16 @@ export function draftOttoCopy(op: OttoOp, email?: string, opts?: { greet?: strin
   const offer = "I'll set it up on your line for free, and you only keep it if it books you a guest. Worth a quick reply?";
   const minWhat = "I built Outset, a 24/7 customer service line that picks up when your team can't, answers only from your own info, and takes the booking down for you.";
   const minOffer = "I'll set it up for " + name + " for free. Worth a quick reply?";
+  if (style === "ask") {
+    const pitch = "I built Outset, a 24/7 customer service line that picks up those calls, answers only from your own info, and takes the booking down for you.";
+    const ask = "Can I send you a 40-second recording of it on a real call?";
+    const postal = mailPostal();
+    const sig = ["Harshil", "Founder, Outset" + (postal ? ", " + postal.replace(/^Outset,\s*/i, "") : "")];
+    const ps = "PS. If you're not interested, just reply \"stop\" and I won't email you again.";
+    const body = [hi, "", question, "", pitch + " " + ask, "", "--", ...sig, "", ps].join("\n");
+    const html = '<div dir="ltr"><p>' + esc(hi) + "</p><p>" + esc(question) + "</p><p>" + esc(pitch + " " + ask) + "</p><p>--<br>" + sig.map(esc).join("<br>") + "</p><p>" + esc(ps) + "</p></div>";
+    return { subject, body, html, variant };
+  }
   const paras: { text: string; html: string }[] =
     style === "min" ? [{ text: question, html: esc(question) }, { text: minWhat, html: esc(minWhat) }, { text: minOffer, html: esc(minOffer) }]
     : [

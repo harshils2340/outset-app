@@ -140,6 +140,10 @@ const asCopy = (r: PoolRow, style: CopyStyle = "full") => draftOttoCopy(
 // skipped for the day when theirs does not. Until 5 October 2026 one copy was checked and a Promotions verdict
 // held the batch until someone rewrote the copy by hand (Harshil: "this shouldn't keep happening").
 let style: CopyStyle = "full";
+// The A/B (Harshil, 5 October 2026: "if this works then we can keep it"): when both the no-link ask and the full
+// pitch reach Primary, the batch alternates between them, and outreach_sends.variant says which one each business
+// got, so the reply rate decides which stays.
+let abStyles: CopyStyle[] = [];
 let bumpsOk = true;
 if (!dry) {
   const pool = await poolCandidates(ids.length);
@@ -166,10 +170,12 @@ if (!dry) {
     process.exit(0);
   }
   style = pick.key as CopyStyle;
-  console.log(`otto-cloud: sending copy ${version} (${pick.summary})${bumpsOk ? "" : "; follow-ups skipped today, their copy did not reach Primary"}`);
-  if (style !== "full" || !bumpsOk)
+  abStyles = (["ask", "full"] as CopyStyle[]).filter((k) => pickRung([{ key: k, results: matrix.get(k) || [] }]));
+  if (abStyles.length < 2) abStyles = [];
+  console.log(`otto-cloud: sending copy ${abStyles.length ? "A/B " + abStyles.join(" + ") : version} (${pick.summary})${bumpsOk ? "" : "; follow-ups skipped today, their copy did not reach Primary"}`);
+  if (!["ask", "full"].includes(style) || !bumpsOk)
     await notify(`Otto outreach fell back to copy ${version}`,
-      `The full pitch did not reach Primary today, so the batch went out with the "${style}" rung, which did.${bumpsOk ? "" : " Follow-ups were skipped today: theirs did not reach Primary."}\n\n` +
+      `Neither the no-link ask nor the full pitch reached Primary today, so the batch went out with the "${style}" rung, which did.${bumpsOk ? "" : " Follow-ups were skipped today: theirs did not reach Primary."}\n\n` +
       report.join("\n") + "\n\nNothing to do unless this repeats for several days.");
 }
 const mailboxes = (state.mailboxes ||= {});
@@ -200,6 +206,7 @@ async function planToday(): Promise<{ limit: number; quota: Record<string, numbe
 
 type Row = PoolRow & { kind: string; sent_to?: string; sent_from?: string | null; last_at?: string };
 
+let abTurn = 0;
 async function sendBatch(limit: number, quota: Record<string, number>): Promise<{ sent: number; resent: number; bumped: number; skipped: number; failed: number; retired: { mailbox: string; error: string }[] }> {
   const out = { sent: 0, skipped: 0, failed: 0, resent: 0, bumped: 0, retired: [] as { mailbox: string; error: string }[] };
   // Up to 40% of today's allowance to the follow-up (businesses that already saw a first email in Primary, so
@@ -255,7 +262,7 @@ async function sendBatch(limit: number, quota: Record<string, number>): Promise<
     const thread = bump && !dry ? await threads.find(from, to, new Date(r.last_at || Date.now())) : null;
     const copy = bump
       ? draftOttoBump(op, to, { greet, subject: thread?.subject || draftOttoCopy(op, to).subject })
-      : draftOttoCopy(op, to, { greet, style });
+      : draftOttoCopy(op, to, { greet, style: abStyles.length ? abStyles[(abTurn++) % abStyles.length] : style });
     if (dry) {
       console.log("would " + (bump ? "FOLLOW UP with " : r.kind === RESEND_KIND ? "RESEND to " : "send to ") + to + (greet ? " (Hi " + greet + ")" : "") + " [variant " + copy.variant + "]: " + copy.subject);
       out.sent++;

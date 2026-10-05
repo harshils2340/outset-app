@@ -7,7 +7,7 @@ const op: OttoOp = {
   id: "op-1", domain: "clockwiseescape.com", name: "Clockwise Escape Room Boise", email: "info@clockwiseescape.com",
   phone: "(208) 555-0100", city: "Boise", region: "ID", calendar_vendor: null,
 };
-const copy = (o: Partial<OttoOp> = {}, style?: "full" | "nolink" | "min") => draftOttoCopy({ ...op, ...o }, "info@clockwiseescape.com", style ? { style } : undefined);
+const copy = (o: Partial<OttoOp> = {}, style?: "ask" | "full" | "nolink" | "min") => draftOttoCopy({ ...op, ...o }, "info@clockwiseescape.com", style ? { style } : undefined);
 
 /**
  * The 2 October body reached Gmail's Primary tab; the 1 October and 5 October copies went to Promotions. On 5
@@ -31,8 +31,8 @@ test("the ladder steps down: the recording goes, then everything but three sente
   const words = (b: string) => b.split("\nHarshil\n")[0].split(/\s+/).length;
   assert.ok(words(full.body) > words(nolink.body) && words(nolink.body) > words(min.body) && words(min.body) < 70, "each rung shorter");
   assert.ok(min.body.includes("I'll set it up for " + op.name + " for free. Worth a quick reply?"), min.body);
-  assert.deepEqual(COPY_LADDER.map((r) => r.version), [COPY_VERSION, COPY_VERSION + "-nolink", COPY_VERSION + "-min"]);
-  assert.deepEqual([full, nolink, min].map((c) => c.variant), COPY_LADDER.map((r) => r.version), "each send records its rung");
+  assert.deepEqual(COPY_LADDER.map((r) => r.version), [COPY_VERSION + "-ask", COPY_VERSION, COPY_VERSION + "-nolink", COPY_VERSION + "-min"]);
+  assert.deepEqual([copy({}, "ask"), full, nolink, min].map((c) => c.variant), COPY_LADDER.map((r) => r.version), "each send records its rung");
   for (const c of [full, nolink, min]) {
     assert.equal(c.subject, full.subject);
     assert.ok(c.body.includes("/unsubscribe.html?t=") && c.body.includes('Reply "no"'), c.body);
@@ -50,7 +50,7 @@ test("the recording is the only link above the sign-off, hyperlinked as a phrase
 
 test("no take-down line in any email (Harshil, 5 October 2026)", () => {
   const b = draftOttoBump(op, "info@clockwiseescape.com", { subject: "Missed calls at X" });
-  for (const c of [copy(), copy({}, "nolink"), copy({}, "min"), b]) {
+  for (const c of [copy({}, "ask"), copy(), copy({}, "nolink"), copy({}, "min"), b]) {
     assert.ok(!/remove=|take it down|Take it down|from Outset's listings/i.test(c.body + c.html), c.body);
   }
 });
@@ -120,4 +120,15 @@ test("the daily run picks the first rung Gmail put in Primary, and holds only wh
   assert.equal(pick(r("primary", "primary", "spam"), r("promotions", "promotions", "promotions")), null, "Spam never sends");
   assert.equal(pick(r("promotions", "promotions", "primary"), r("promotions", "unknown", "unknown"), r("unknown", "unknown", "unknown")), null);
   assert.equal(pick(r("primary", "primary", "promotions"), r("primary", "primary", "primary")), "nolink", "a clean rung beats an earlier mixed one");
+});
+
+test("ask: no link at all, asks before sending the recording, and the stop is a reply", () => {
+  const c = copy({}, "ask");
+  assert.equal(c.subject, "Missed calls at " + op.name);
+  assert.ok(!/https?:\/\//.test(c.body) && !c.html.includes("<a "), "not one link: " + c.body);
+  assert.ok(c.body.includes("When everyone at " + op.name + " is busy with guests or you've closed for the day, where do the calls go?"), c.body);
+  assert.ok(c.body.includes("Can I send you a 40-second recording of it on a real call?"), c.body);
+  assert.ok(c.body.includes('PS. If you\'re not interested, just reply "stop" and I won\'t email you again.'), c.body);
+  assert.ok(c.body.split("--")[0].split(/\s+/).length < 75, "a short note");
+  assert.ok(!c.body.includes("—") && !/!/.test(c.body));
 });
