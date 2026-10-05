@@ -1,10 +1,10 @@
 import type { Booking, CategoryId, OperatorContact, Unclaimed, UnclaimedOption, UnclaimedService } from "../data/types";
+import { minutesIn } from "./duration";
 import { forgetClaim, saveRemoteProfile, type RemoteBooking } from "./api";
 import { addressLine, contactFor, experienceById, rememberOverlay, setOperatorOverride, siteUrl } from "./catalog";
 import { callablePhone } from "./phone";
 import { contactEmail } from "./email";
 import { dateKey, startOfToday } from "./dates";
-import { withoutNoticeWindows } from "./duration";
 import { fmtTime, money } from "./format";
 import { durationLabel as menuDuration, faqText, freeCancel } from "./listingDerive";
 import { itemWeek, parseWeek, type Week } from "./openNow";
@@ -572,17 +572,11 @@ function servicesFrom(u: Unclaimed): OpService[] {
 }
 
 /**
- * "1.5 hours", "90 min", "2 hr" as minutes; 0 when the text names none. A notice or refund window is not a
- * length (see duration.ts), so a service imported from "Cancellations prior to 72 hours" no longer opens the
- * dashboard as a booking a whole day long.
+ * "1.5 hours", "90 min", "2 hr" as minutes. It lives in `duration.ts` with the rest of this one fact, and is
+ * re-exported here because the dashboard, the menu importer and this file's own callers have always asked for
+ * it by this name.
  */
-export function minutesIn(text: string | null | undefined): number {
-  const m = withoutNoticeWindows(text || "").match(/(\d+(?:\.\d+)?)\s*(?:-|to)?\s*(\d+(?:\.\d+)?)?\s*(hours?|hrs?|h\b|minutes?|mins?|m\b)/i);
-  if (!m) return 0;
-  const n = Number(m[2] || m[1]);
-  const mins = /^(m|min|mins|minute|minutes)$/i.test(m[3]) ? n : n * 60;
-  return mins > 0 && mins <= 24 * 60 ? Math.round(mins) : 0;
-}
+export { minutesIn };
 
 /**
  * `gap` carries two different things. Usually it is the shop's own cancellation or policy prose, which the

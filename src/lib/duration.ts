@@ -59,6 +59,22 @@ export function durationFrom(texts: string[]): string | null {
 }
 
 /**
+ * "1.5 hours", "90 min", "2 hr" as minutes; 0 when the text names none. A notice or refund window is not a
+ * length, so a service imported from "Cancellations prior to 72 hours" no longer opens the dashboard as a
+ * booking a whole day long.
+ *
+ * A stated range takes its longer end, which is how the dashboard has always imported a menu line: "1 to 4
+ * hours" is a four hour booking in the calendar. `src/lib/operator.ts` re-exports it under the same name.
+ */
+export function minutesIn(text: string | null | undefined): number {
+  const m = withoutNoticeWindows(text || "").match(/(\d+(?:\.\d+)?)\s*(?:-|to)?\s*(\d+(?:\.\d+)?)?\s*(hours?|hrs?|h\b|minutes?|mins?|m\b)/i);
+  if (!m) return 0;
+  const n = Number(m[2] || m[1]);
+  const mins = /^(m|min|mins|minute|minutes)$/i.test(m[3]) ? n : n * 60;
+  return mins > 0 && mins <= 24 * 60 ? Math.round(mins) : 0;
+}
+
+/**
  * A length as a person would say it out loud, read once so a card, a listing page, a phone sheet, Otto and
  * the static `/l/` page all say the same thing about the same shop.
  *
