@@ -899,6 +899,27 @@ export function completedLately(bookings: OpBooking[], days = 30, from: Date = s
 }
 
 /**
+ * Whether the guest's card was taken for a booking the shop is going ahead with.
+ *
+ * Every path that confirms a booking captures the card straight afterwards: the webhook and the Stripe return
+ * for an instant-book shop, and the Accept in this dashboard for everybody else. So a confirmed booking still
+ * sitting on a live authorization is one whose capture did not go through, and the commonest reason is
+ * ordinary: Stripe releases an uncaptured authorization after seven days, so a shop that answers its requests
+ * once a week accepts a hold that has already gone. `captureBooking` logs that and carries on, the booking is
+ * confirmed either way, and the guest's own confirmation reads "You pay the business on the day", which is
+ * right. Nothing told the operator, who read "you receive $110.20" in this drawer for money no card had paid
+ * and that no payout run will ever send: the booking never gets a payout row at all.
+ *
+ * Only a booking the API holds, and only one that carries a card: a pay-on-site booking has no payment
+ * recorded and is not this.
+ */
+export function cardNotCharged(b: OpBooking): boolean {
+  if (b.source !== "remote" || !b.payment) return false;
+  if (b.status !== "accepted" && b.status !== "completed" && b.status !== "noshow") return false;
+  return b.payment === "authorized" || b.payment === "unpaid";
+}
+
+/**
  * Whether an Accept, a Decline or a Cancel on this booking reaches the guest at all.
  *
  * Email is the only channel that exists, text messages are still deferred, and the booking form asks for a

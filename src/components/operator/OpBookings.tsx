@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { dateKey, startOfToday } from "../../lib/dates";
 import { fmtTime, money } from "../../lib/format";
-import { bookingPayout, fmtTotal, guestHearsBack, isoToDate, relDay, type OpBooking, type OpStatus } from "../../lib/operator";
+import { bookingPayout, cardNotCharged, fmtTotal, guestHearsBack, isoToDate, relDay, type OpBooking, type OpStatus } from "../../lib/operator";
 import { dialPhone } from "../../lib/phone";
 import { Markup } from "../Markup";
 import { useModal } from "../layout/useModal";
@@ -197,6 +197,15 @@ export function BookingDrawer({ b, onClose }: { b: OpBooking; onClose: () => voi
               above the "You receive" line underneath it: $116 here against the $110.20 the transfer sends. */}
           <div><small>Total</small><b>{b.subtotal != null && b.total != null && b.subtotal < b.total ? "Guest pays " + money(b.total) + " · you receive " + money(bookingPayout(b)) : fmtTotal(b)}</b>{b.addons?.length ? <span>Add-ons: {b.addons.join(", ")}</span> : null}</div>
         </div>
+        {/* The drawer promised "you receive $110.20" for a confirmed booking whose card was never charged, which
+            is a hold Stripe had already released by the time the shop answered. The money line stays, because
+            the guest owes it; what it owes on changes, and only the operator can collect it now. */}
+        {cardNotCharged(b) ? (
+          <p className="odfine">
+            This card was not charged, so collect payment from the guest on the day.
+            {guestHearsBack(b) ? " Their confirmation email says they pay you directly." : " Tell them when you confirm the details."}
+          </p>
+        ) : null}
         {b.note ? <blockquote className="odnote">“{b.note}”</blockquote> : null}
 
         <div className="odcontactrow">
