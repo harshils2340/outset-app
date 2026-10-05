@@ -10873,6 +10873,106 @@ and the on-disk Playwright Chromium. `STRIPE_SECRET_KEY`, `RESEND_API_KEY` and `
 throughout.
 
 
+## 5 October 2026, hundred and forty-sixth run (10:16 to 10:50 UTC)
+
+**Chosen, and why.** The one item on Not yet checked that the brief's own ordering puts first, "how much it
+would embarrass Harshil in front of an operator": **`/voice/:id/availability`**, flagged by the hundred and
+thirty-ninth run and still open seven runs later. The brief's guest-facing list (the listing page, search and
+browse, claim and sign-in, the dashboard pages, the empty states, 400px and the booking flow's accessibility)
+is all under Verified, so the frontier is the Not yet checked list, and this was the only entry there that was
+a defect rather than a product question. Reading the route rather than the one line about it turned one bug
+into three.
+
+**The rehearsal was skipped on arrival and run at the end.** The last entry says 57 of 57 and the only commit
+since it was that entry, so rule (b) did not fire on arrival; it fired on this run's own commits, which are in
+`backend/src`. Baseline: root `tsc --noEmit -p .` and `tsc -b` clean, backend `tsc` clean but for TS5097,
+backend 1,103 with 1,101 pass and 2 skipped, app 1,304 pass.
+
+**Found and fixed.** Two commits, pushed. Both are the same shape: the phone agent's availability route is the
+one reader of a calendar in this product that nobody had held against the three beside it.
+
+- **A caller is not told a shop is shut by the one route that never read its booking switches** (`5bdbbfdd`).
+  Three faults, one route. (a) It read **no profile at all**, so the dashboard's Published and Accepting
+  switches never reached it: an operator who hid their listing or paused bookings had their live vendor
+  calendar read out to callers, departure by departure and each with its own booking link, by the same agent
+  the facts route next door had just handed `bookingUrl: null` and "take a name and number". `profiles.ts`'s
+  own comment says the two switches are now read in three places and names `/voice` as one of them, and it is
+  half right: **`/voice` is two routes and only the facts one read them**, which a per-file check cannot see,
+  so the check is now per handler. (b) It said **"Nothing is open in this window"** whenever no departure came
+  back, on a read the vendor had answered in part and on a shop whose every open date arrived as a marker row.
+  `liveTimes.ts` keeps an open-but-untimed date apart from a shut one (`unread` against `closed`) and refuses
+  those words on a partial read; this route dropped the untimed dates silently and said them anyway, which is a
+  phone agent telling a caller a business has nothing on for a fortnight while its own booking system says the
+  opposite. **250 of the 1,911 shipped booking links come back `partial` every time by construction** (every
+  reader behind `fromConcierge`: Resova 20, Square 26, Rezdy 30, aReservation 25, Acuity 47, Checkfront 27,
+  ForeUp 2 and the rest), **and 239 more are Peek**, whose call budget times the first two or three open dates
+  and marks the remainder. Those dates now come back as `unread` and the note names them. (c) Its clock regex
+  took any two digits, where the page's `clockOf` refuses an hour past 23 and a minute past 59, so a vendor's
+  "T25:00" would have been read out to a caller.
+- **The phone agent reads the calendar a claimed shop actually keeps, which for most of them is ours**
+  (`eb18830f`). The route read one source, `getAvailability`, which is a third-party booking system and
+  nothing else. **1,911 of the 46,324 shipped operator listings publish a link to one**, so for roughly
+  nineteen shops in twenty the vendor read came back "no booking url" and the agent told every caller "this
+  business's calendar is not connected, so a person confirms the time", while the listing page beside it was
+  taking instant bookings off the hours that operator had typed into their dashboard that morning. That is the
+  one thing an agent sold to an operator cannot say, and the on-page assistant has never said it: it reads
+  `GET /bookings/open/:listing`, which this now reads too. **Only a claimed shop's slots are read out**, which
+  is the exception `liveWins` already makes for both pickers and calls `sellsItsOwn`: the same call answers an
+  unclaimed listing with our own fixed nine, eleven and one minus the hours its site says it is shut, and
+  `AGENTS.md` is explicit that the agent may never invent an open slot. A vendor's departures still win
+  whenever the vendor named any.
+
+**Verification.** Backend `npm test` 1,110 with 1,108 pass and 2 skipped, up 7. Every new rule was run against
+the tree with itself disabled and goes red: the `unread` dates, the clock range, the window note on a partial
+read, the gate on the two switches, the `claimed` gate, the empty-date filter, and the own calendar being
+reached at all. Beyond the unit tests, **the route was driven end to end against a real Postgres 16 cluster**
+on all five states, with the detail file served over a stubbed fetch: unclaimed with no booking link (the
+honest gap, and no guessed time), claimed with its own hours (`vendor: "outset"`, twelve dates, the two hour
+notice taken off today so it opens at 13:00 rather than 09:00, and Sunday absent because the operator closed
+it), Accepting off, Published off, and 6 October taken off (gone, and the other eleven dates standing). App
+`npm test` 1,304 pass, unchanged. `tsc --noEmit -p .` and `tsc -b` clean at the root, backend's own `tsc`
+clean but for TS5097. The **rehearsal ran at the end, 57 of 57**, on a Postgres 16 cluster built from scratch
+on port 5433 with SSL on and the on-disk Playwright Chromium. `STRIPE_SECRET_KEY`, `RESEND_API_KEY` and
+`GITHUB_TOKEN` were empty throughout.
+
+**Measured and left.** **`lasertag` searching `paintball` is not a guest-visible gap**, which is the eleventh
+run to carry it on the list: 13 shipped listings name laser tag in their own words, 12 of them filed under
+`paintball`, and `searchListings` finds **all 13** through the name match ("laser tag" returns 24 hits, 12 of
+them filed as paintball). What is real and smaller is that `describeQuery("laser tag").arts` is `["lasertag"]`
+alone, so the **home's Laser tag chip opens 11 listings where the search box finds 24**, and the three
+spellings disagree with each other ("lasertag" 25, "laser tag" 24, "lazer tag" 23, "laser quest" 12). Nothing
+was changed, because the cure is the `art` a listing is filed under, which is baked into `catalog.json` by a
+sync this repo cannot run. Also left: the partner gate on the availability route runs only when the facts fetch
+succeeded, so a blip would open it, which is latent because **no partner id is in `live-index.json`** and
+structurally cannot be.
+
+**Needs Harshil.**
+
+- **The facts route's words for a paused shop changed by five.** Both routes now read one `PAUSED_NOTE`, so
+  the sentence an agent is handed gained "offering a time or": "This business is not taking bookings through
+  Outset right now. Take a name and number instead of offering a time or sending the caller to a booking
+  page." One sentence in one place is what stops the two routes drifting again, and the five words are mine.
+- **A time on our own calendar is read out as a bare clock.** A vendor's departure carries the trip's name and
+  its price; a slot off the operator's own grid has neither until the caller picks a service off the menu the
+  facts route already handed over, so `label` is the clock and `price` is null. An agent reading "nine, eleven,
+  one and three" with the prices from a different payload is workable and is not what the page does.
+- **`/voice/:id/availability` now makes two profile reads per call**, one for the switches and one inside
+  `openSlots`. It is rate limited to 120 an hour per address and the second only happens when the vendor named
+  nothing, so it was left rather than threaded through `openSlots`.
+- Still open from earlier runs, unchanged: the crash screen's words are nobody's choice and nothing reports a
+  fault anywhere; "Open right now near you" is computed once a visit; the 108 operators with hacked websites
+  have not been told; the phone's browse is not ranked while the desktop's is; the phone confirmation offers no
+  way to reach the shop; a guest cannot cancel a booking at all; a price sort and a price filter compare two
+  dollars on six metros; the cards say "$" for a Canadian shop; `concierge/demand.ts` still filters its crawl
+  queue by category and region and not by the town its own comment names; a shop that unpublishes may not be
+  able to get back to the switch it flicked; the 290 listings with no way to claim; and no sync has run, so
+  `kid`, `specs`, `gap` and `extraNote` are still empty on every shipped row. **The brief's rehearsal path is
+  `backend/scripts/e2e-local.mts`, not `scripts/`**, twelfth run to say so. **Local `main` was detached
+  again** and was reattached to `origin/main` before committing, twenty-second run in a row. `npm install` was
+  needed at the root and in `backend/`, and the Postgres 16 cluster still has to be built from scratch (as
+  `ubuntu`, own socket directory, own generated certificate) before the brief's command line works.
+
+
 ## Coverage
 
 The catalog is 48,198 listings as of the 23 September sync, 1,873 of them Viator partner rows. Counts below
@@ -12010,6 +12110,15 @@ headers behind them. Every non-literal `.replace()` replacement in both trees, f
 crawled text, and every locale-free `Intl` and `toLocaleString` call, for a guest-visible string that reads
 differently on another host.
 
+The phone agent's own availability route against the three calendars beside it, read rather than sampled: the
+dashboard's Published and Accepting switches, which it alone of the four routes that offer a booking never
+read; the open-but-untimed date `liveTimes.ts` keeps apart from a shut one, counted over all 1,911 shipped
+booking links (250 whose reader marks every answer partial by construction, 239 Peek); the clock range the
+page's own reader refuses; and the claimed shop's own calendar, which for nineteen shops in twenty is the only
+calendar there is, driven end to end against a real Postgres on all five states an operator can leave it in.
+Which laser tag venues a guest actually finds, over all 13 the catalog names in its own words, through the
+search box and the home's own chip.
+
 How long a booking runs against the hours the same page prints above the picker, over all 52,815 shipped
 detail files: every start an unclaimed listing offers on every day of every readable week, held against the
 length the page states in its own key facts, on the desktop listing, the phone sheet, the public slot route
@@ -12517,9 +12626,12 @@ browser tab and bounded by what a person types. Whether a shop that unpublishes 
 drops its row from `public/catalog.json`, the dashboard's own "Your businesses" list filters out a claimed id
 with no catalog record, and a claim link for a listing the complete catalog does not hold is called bad, so the
 way back rests on the detail file under `public/o` outliving the row, which nothing here can check (see the
-hundred and thirty-ninth run's Needs Harshil). Whether `/voice/:id/availability` should read out a paused
-shop's vendor calendar, which it does while the facts route beside it hands the agent a null booking URL and
-tells it to take a name and number (see that run's Needs Harshil). Whether the 290 shipped listings now left with no way to claim at all
+hundred and thirty-ninth run's Needs Harshil). Whether an agent should read a slot off a claimed shop's own
+grid out as a bare clock, now that it reads one at all: a vendor's departure carries a trip name and a price
+and ours carries neither until the caller picks a service (see the hundred and forty-sixth run's Needs
+Harshil). Whether the `art` a listing is filed under should decide a category page when the shop's own name
+says otherwise, which is what leaves the home's Laser tag chip opening 11 listings where the search box finds
+24, and which only a sync can close. Whether the 290 shipped listings now left with no way to claim at all
 should get one: 276 never had one in practice, their only "domain" being a per-shop subdomain no mailbox exists
 at, and the other 14 are the ones a stranger could have taken, so shutting that door shut the owner's with it
 (see the hundred and fortieth run's Needs Harshil). Whether `SHARED_HOSTS` in `claimIndex.ts`, `FREE_MAIL` in
