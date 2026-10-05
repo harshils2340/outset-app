@@ -247,6 +247,38 @@ async function idsFromCatalogStream(path: string): Promise<{ ids: Set<string>; g
   return { ids, generatedAt };
 }
 
+/**
+ * How many of those catalog ids the claim index holds an address for, counted off a stream.
+ *
+ * `claim-index.json` is the biggest generated file this process can be asked for: 33.8 MB and 423,187
+ * entries as it ships. Reading and parsing it whole cost 215 MB of resident memory and 149 MB of heap,
+ * measured on the shipped file, and the API runs on a 512 MB instance that is also serving guests; the one
+ * caller is an admin opening the metrics page. catalog.json beside it is streamed for exactly that reason,
+ * and it is the smaller of the two. An entry is one flat object with no nested braces, so each is read where
+ * it sits and only the count is kept. Counted over the shipped file, the stream and a whole parse agree
+ * entry for entry.
+ */
+export async function reachableFromIndexStream(path: string, ids: Set<string>): Promise<number> {
+  // `"<id>":{...}` with no brace inside, which is what an entry is: a hash, a domain list and a masked hint.
+  const ENTRY = /"([a-z0-9-]{2,80})":\{([^{}]*)\}/g;
+  // The longest entry in the shipped file is 191 characters; a chunk boundary can fall inside one, so the
+  // tail past the last whole entry is carried into the next chunk and nothing is counted twice.
+  const TAIL = 1024;
+  let carry = "";
+  let n = 0;
+  for await (const chunk of createReadStream(path, { encoding: "utf8", highWaterMark: 1 << 20 })) {
+    const text = carry + (chunk as string);
+    ENTRY.lastIndex = 0;
+    let end = 0;
+    for (let m = ENTRY.exec(text); m; m = ENTRY.exec(text)) {
+      end = m.index + m[0].length;
+      if (ids.has(m[1]) && /"k":"/.test(m[2])) n += 1;
+    }
+    carry = text.slice(Math.max(end, text.length - TAIL));
+  }
+  return n;
+}
+
 async function catalogCounts(): Promise<CatalogCounts> {
   if (catalogCache && Date.now() - catalogCache.at < CATALOG_TTL_MS) return catalogCache.value;
   const notes: string[] = [];
@@ -274,10 +306,10 @@ async function catalogCounts(): Promise<CatalogCounts> {
   try {
     // An entry carries `k` (a hash of the on-file email) when there is an address to write to. No address, no
     // outreach, so that is what "reachable" means.
-    const index = await readJson<Record<string, { k?: string }>>("claim-index.json");
-    if (!index) notes.push("public/claim-index.json is not readable here, so the reachable count is unknown");
+    const indexPath = localPath("claim-index.json");
+    if (!indexPath) notes.push("public/claim-index.json is not in this checkout, so the reachable count is unknown");
     else if (!ids) notes.push("reachable needs the catalog ids, which could not be read, so it is left unknown");
-    else reachable = Object.entries(index).filter(([id, e]) => !!e?.k && ids!.has(id)).length;
+    else reachable = await reachableFromIndexStream(indexPath, ids);
   } catch (e) {
     notes.push("claim-index.json: " + (e as Error).message);
   }

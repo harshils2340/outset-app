@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -570,6 +570,43 @@ test("ids that straddle a read chunk are still counted", async () => {
   writeCatalog(Array.from({ length: 30000 }, (_, i) => ({ id: "o-shop-" + i + "-com", blurb: "x".repeat(40) }) as { id: string }));
   clearCatalogCache();
   assert.equal((await pgDeps.catalog()).total, 30000);
+});
+
+/**
+ * `claim-index.json` is the biggest generated file this process reads: 33.8 MB and 423,187 entries as it
+ * ships, which cost 215 MB of resident memory to parse whole on a 512 MB instance that is also serving
+ * guests. It is counted off a stream now, like the catalog beside it, so an entry that lands across a 1 MB
+ * chunk boundary has to come out the same.
+ */
+test("claim index entries that straddle a read chunk are counted once each", async () => {
+  const ids = Array.from({ length: 20000 }, (_, i) => "o-shop-" + i + "-com");
+  writeCatalog(ids.map((id) => ({ id })));
+  // Every other listing has an address on file, and each entry carries a domain list long enough that the
+  // file runs well past several 1 MB chunks.
+  const index: Record<string, { d: string[]; k?: string; h?: string }> = {};
+  ids.forEach((id, i) => {
+    index[id] = i % 2 === 0 ? { d: [id.slice(2) + ".com", "www." + id.slice(2) + ".com"], k: "h".repeat(32), h: "i...@" + id.slice(2) + ".com" } : { d: [id.slice(2) + ".com", "www." + id.slice(2) + ".com"] };
+  });
+  // One more that is in the index and not in the catalog, which must not reach the count from either end.
+  index["o-unpublished-com"] = { d: ["unpublished.com"], k: "h".repeat(32) };
+  writeFileSync(join(STORE, "claim-index.json"), JSON.stringify(index));
+  clearCatalogCache();
+  const catalog = await pgDeps.catalog();
+  assert.equal(catalog.total, 20000);
+  assert.equal(catalog.reachable, 10000);
+  assert.equal(catalog.note, null);
+});
+
+test("no claim index in the checkout leaves reachable unknown rather than zero", async (t) => {
+  const had = readFileSync(join(STORE, "claim-index.json"), "utf8");
+  t.after(() => writeFileSync(join(STORE, "claim-index.json"), had));
+  writeCatalog([{ id: "o-one-com" }]);
+  rmSync(join(STORE, "claim-index.json"), { force: true });
+  clearCatalogCache();
+  const catalog = await pgDeps.catalog();
+  assert.equal(catalog.total, 1);
+  assert.equal(catalog.reachable, null);
+  assert.match(catalog.note || "", /claim-index\.json is not in this checkout/);
 });
 
 test("no catalog file means null and a note, not a count from the 2,200-listing shard", async () => {
