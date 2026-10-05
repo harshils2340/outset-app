@@ -6,6 +6,7 @@ import { JUMP_PAGE, allBookings, applyStoredProfiles, demoProfile, hydrateProfil
 import { useApp } from "../../state/AppProvider";
 import { decideBooking, fetchBookings, hasApi, onOperatorAuthLost, signOutApi, takeClaimNotice, type RemoteBooking } from "../../lib/api";
 import { Markup } from "../Markup";
+import { ErrorBoundary } from "../layout/ErrorBoundary";
 import { Mark } from "../layout/Mark";
 import { OpAssistant } from "./OpAssistant";
 import { OpBookings, BookingDrawer } from "./OpBookings";
@@ -471,15 +472,29 @@ export function OperatorView({ compact = false }: { compact?: boolean }) {
                 <button type="button" onClick={() => setWantLogin(true)}>Sign in</button>
               </div>
             ) : null}
-            {page === "home" ? <OpHome /> : null}
-            {page === "bookings" ? <OpBookings /> : null}
-            {page === "calendar" ? <OpCalendar /> : null}
-            {page === "services" ? <OpServices /> : null}
-            {page === "hours" ? <OpHours /> : null}
-            {page === "listing" ? <OpListing /> : null}
-            {page === "assistant" ? <OpAssistant /> : null}
-            {page === "payouts" ? <OpPayouts /> : null}
-            {page === "settings" ? <OpSettings /> : null}
+            {/*
+              One page faulting leaves the other eight and the menu either side of them standing. Keyed on the
+              page, so the boundary resets when the owner opens another one rather than holding the whole
+              dashboard at the fault; without the key, React keeps the failed state for whatever renders next
+              in the same slot. The app-wide boundary is still behind this one, and its only way out is a
+              reload that drops the hash, which for an owner means the guest home and their claim link gone
+              from the address bar.
+            */}
+            <ErrorBoundary
+              key={page}
+              where={"the dashboard's " + page + " page"}
+              note="Your edits are saved on this device. Open another page from the menu, or start again."
+            >
+              {page === "home" ? <OpHome /> : null}
+              {page === "bookings" ? <OpBookings /> : null}
+              {page === "calendar" ? <OpCalendar /> : null}
+              {page === "services" ? <OpServices /> : null}
+              {page === "hours" ? <OpHours /> : null}
+              {page === "listing" ? <OpListing /> : null}
+              {page === "assistant" ? <OpAssistant /> : null}
+              {page === "payouts" ? <OpPayouts /> : null}
+              {page === "settings" ? <OpSettings /> : null}
+            </ErrorBoundary>
           </main>
 
           {compact ? (

@@ -26,6 +26,12 @@ type Props = {
   children: ReactNode;
   /** Which part of the app this is guarding, for the console line. Never shown to a guest. */
   where: string;
+  /**
+   * What the screen behind this boundary can still offer, when it is more than "start again". The operator
+   * dashboard keeps its own menu either side of a faulting page, so telling an owner to reload the whole app
+   * would be worse advice than telling them to open another page.
+   */
+  note?: string;
 };
 
 type State = { failed: boolean };
@@ -51,9 +57,7 @@ export class ErrorBoundary extends Component<Props, State> {
           <Markup html={ICONS.compass} />
         </div>
         <b>Something went wrong on this screen</b>
-        <p>
-          Nothing you have booked or saved is lost. Start again and the rest of Outset is still here.
-        </p>
+        <p>{this.props.note || "Nothing you have booked or saved is lost. Start again and the rest of Outset is still here."}</p>
         <p style={{ marginTop: 16 }}>
           <button type="button" className="cta" onClick={() => restart(window)}>
             Start again

@@ -93,3 +93,27 @@ test("the boundary catches, says so in the console, and offers one named way out
   assert.equal(/location\.href\s*=/.test(eb), false);
   assert.equal(/location\.replace\(/.test(eb), false);
 });
+
+test("a dashboard page that faults leaves the other eight and the menu beside them standing", () => {
+  const view = src("components/operator/OperatorView.tsx");
+  // Driven in a real Chromium on the demo dashboard with a throw put into OpCalendar: the sidebar, the
+  // header and the Accepting switch all stayed, the alert sat where the calendar had been, and pressing
+  // Services drew the menu editor with no alert left on the page.
+  assert.match(view, /<ErrorBoundary\s+key=\{page\}/);
+  // The nine page renders are all inside it, and nothing else is.
+  const at = view.indexOf("<ErrorBoundary");
+  const end = view.indexOf("</ErrorBoundary>", at);
+  assert.ok(at > 0 && end > at);
+  const inside = view.slice(at, end);
+  for (const page of ["home", "bookings", "calendar", "services", "hours", "listing", "assistant", "payouts", "settings"]) {
+    assert.ok(inside.includes('page === "' + page + '"'), page + " is outside the boundary");
+  }
+  // An owner is told what they can still do here, not to reload the app: the only way out of the app-wide
+  // boundary drops the hash, and for an owner that is the guest home with their claim link gone.
+  assert.match(view, /note="Your edits are saved on this device\. Open another page from the menu, or start again\."/);
+});
+
+test("the fallback says what the screen behind it can offer, and still has a default", () => {
+  const eb = src("components/layout/ErrorBoundary.tsx");
+  assert.match(eb, /this\.props\.note \|\| "Nothing you have booked or saved is lost/);
+});
