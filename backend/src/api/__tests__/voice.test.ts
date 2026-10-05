@@ -9,7 +9,7 @@ import { readFileSync } from "node:fs";
  */
 
 process.env.SITE_URL = "https://onoutset.com/";
-const { voice, speakableDays, speakableRead, windowNote, applyEdits, PAUSED_NOTE } = await import("../voice.ts");
+const { voice, speakableDays, speakableRead, speakableOwn, windowNote, applyEdits, PAUSED_NOTE } = await import("../voice.ts");
 import type { Availability } from "../../enrich/availability.ts";
 import type { StoredProfile } from "../profiles.ts";
 
@@ -258,6 +258,48 @@ test("the availability route reads the Published and Accepting switches the fact
   // The decision itself is `applyEdits`, which is what the facts route already turns into `takingBookings`.
   assert.equal(applyEdits(reel, profile({}, { published: false })).takingBookings, false);
   assert.equal(applyEdits(reel, profile({ accepting: false })).takingBookings, false);
+});
+
+/**
+ * The shop's own calendar on Outset, which is the only one almost every shop that claims has: 1,911 of the
+ * 46,324 shipped operator listings publish a third-party booking link, and this route read nothing else, so
+ * the agent told callers the calendar was not connected while the listing page beside it took instant
+ * bookings off the hours that operator had just typed in.
+ */
+test("a claimed shop's own slots are a calendar the agent may read out", () => {
+  const own = speakableOwn(
+    { claimed: true, days: [{ date: "2026-10-04", slots: ["09:00", "11:00"] }, { date: "2026-10-05", slots: [] }] },
+    "o-reeltime-com",
+  );
+  assert.deepEqual(own, [
+    {
+      date: "2026-10-04",
+      times: [
+        { at: "09:00", label: "09:00", price: null, seatsLeft: null, bookUrl: "https://onoutset.com/activities#o=o-reeltime-com" },
+        { at: "11:00", label: "11:00", price: null, seatsLeft: null, bookUrl: "https://onoutset.com/activities#o=o-reeltime-com" },
+      ],
+    },
+  ], "a date with nothing on it is not a date the agent offers, and the booking page is our own");
+  // The same twelve-a-date ceiling a vendor's departures get.
+  const many = speakableOwn({ claimed: true, days: [{ date: "2026-10-04", slots: Array.from({ length: 20 }, (_, i) => `${String(i + 4).padStart(2, "0")}:00`) }] }, "o-x");
+  assert.equal(many?.[0].times.length, 12);
+});
+
+test("an unclaimed listing's guessed times are never read out to a caller", () => {
+  // `openSlots` answers an unclaimed listing with our own fixed nine, eleven and one minus the hours its site
+  // says it is shut. AGENTS.md: the agent may never invent an open slot, so `claimed` is the gate, which is
+  // the same exception `liveWins` in src/lib/liveTimes.ts makes and calls `sellsItsOwn`.
+  assert.equal(speakableOwn({ claimed: false, days: [{ date: "2026-10-04", slots: ["09:00", "11:00", "13:00"] }] }, "o-reeltime-com"), null);
+});
+
+test("the vendor's own departures still win when the vendor answered with some", () => {
+  const src = readFileSync(new URL("../voice.ts", import.meta.url), "utf8");
+  const at = src.indexOf('voice.get("/voice/:operatorId/availability"');
+  const handler = src.slice(at);
+  assert.ok(/if \(!read\.days\.length\) \{/.test(handler), "the own calendar is reached for whatever the vendor said");
+  assert.ok(/ownCalendar\(/.test(handler), "the availability handler never reads the shop's own calendar");
+  // And the unclaimed, vendorless shop still gets the honest gap rather than a guess.
+  assert.ok(/calendar is not connected/.test(handler), "the not-connected gap went with it");
 });
 
 test.after(() => {

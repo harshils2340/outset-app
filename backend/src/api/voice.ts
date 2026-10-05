@@ -4,6 +4,7 @@ import { getAvailability, type Availability } from "../enrich/availability.ts";
 import { zonedNow } from "../concierge/shopday.ts";
 import { zoneForArea } from "../lib/zone.ts";
 import { getProfile } from "../lib/repo.ts";
+import { openSlots } from "./openSlots.ts";
 import { pgConfigured } from "../db/pg.ts";
 import { bookingPause, type StoredProfile } from "./profiles.ts";
 import { splitIncluded } from "../../../src/lib/listingDerive.ts";
@@ -348,6 +349,48 @@ export function windowNote(days: SpeakableDay[], unread: string[], partial: bool
     : null;
 }
 
+/**
+ * The shop's own calendar on Outset, which for almost every shop that claims is the only calendar it has.
+ *
+ * This route read one source, `getAvailability`, which is a third-party booking system and nothing else. Only
+ * 1,911 of the 46,324 shipped operator listings publish a link to one, so for roughly nineteen shops in twenty
+ * the vendor read came back with no booking url, and the agent told every caller "this business's calendar is
+ * not connected, so a person confirms the time" while the listing page beside it was taking instant bookings
+ * off the hours the operator had typed into their dashboard that morning. That is the one thing an operator who
+ * bought a booking agent cannot have it say, and the on-page assistant has never said it: it reads
+ * `GET /bookings/open/:listing`, the same calendar this now reads.
+ *
+ * Only a claimed shop's own slots are real, which is the same exception `liveWins` in `src/lib/liveTimes.ts`
+ * makes for both pickers and calls `sellsItsOwn`. For an unclaimed listing the same call answers with our fixed
+ * nine, eleven and one, minus the hours its own website says it is shut, and that is a guess: `AGENTS.md` is
+ * explicit that the agent may never invent an open slot, so `claimed` is the gate. The Published and Accepting
+ * switches, the notice period, the booking window, the days off, the blocked slots, the shop's own zone and the
+ * seats already sold are all inside that call, so what comes back is bookable rather than merely open.
+ */
+export function speakableOwn(own: { claimed: boolean; days: { date: string; slots: string[] }[] }, id: string): SpeakableDay[] | null {
+  if (!own.claimed) return null;
+  // Where the booking is completed, which is the same page the facts route hands over as `bookingUrl`.
+  const bookUrl = `${SITE}activities#o=${encodeURIComponent(id)}`;
+  return own.days
+    .filter((d) => d.slots.length)
+    .map((d) => ({
+      date: d.date,
+      // A time on our own calendar has no trip name to carry and no price until the caller picks a service off
+      // the menu the facts route already handed over, so it is said as the clock and nothing else. Twelve a
+      // date, the same ceiling a vendor's departures get.
+      times: d.slots.slice(0, 12).map((at) => ({ at, label: at, price: null, seatsLeft: null, bookUrl })),
+    }));
+}
+
+async function ownCalendar(id: string, from: string, days: number): Promise<SpeakableDay[] | null> {
+  try {
+    return speakableOwn(await openSlots(id, from, days), id);
+  } catch (e) {
+    console.error(`[voice] could not read the Outset calendar for ${id}: ${(e as Error).message}`);
+    return null;
+  }
+}
+
 voice.get("/voice/:operatorId/availability", rateLimit(120, 60 * 60 * 1000), async (c) => {
   const id = String(c.req.param("operatorId") ?? "");
   if (!ID.test(id)) return c.json({ error: "bad id" }, 400);
@@ -370,11 +413,29 @@ voice.get("/voice/:operatorId/availability", rateLimit(120, 60 * 60 * 1000), asy
   if (gate && !gate.takingBookings) return c.json({ live: false, takingBookings: false, note: PAUSED_NOTE, days: [] });
 
   const av = await getAvailability(id, from, days);
+  const read = av.live ? speakableRead(av, zone) : { days: [] as SpeakableDay[], unread: [] as string[] };
+
+  // The page's own rule, `liveWins` in src/lib/liveTimes.ts: the vendor's answer stands unless it came back
+  // with nothing and this shop sells its own slots here, because the booking link in the catalog can predate
+  // the claim and an empty fortnight on a stale one must not empty a calendar the shop is taking bookings on.
+  if (!read.days.length) {
+    const own = await ownCalendar(id, from, days);
+    if (own) {
+      return c.json({
+        live: true,
+        vendor: "outset",
+        from,
+        days: own,
+        partial: false,
+        unread: [],
+        note: own.length ? null : "Nothing is open in this window; offer another date or take a callback.",
+      });
+    }
+  }
+
   // A speakable line for the agent, not the internal reason: when the calendar is not connected, the agent
   // should offer to have a person confirm the time and take a callback, never guess.
   if (!av.live) return c.json({ live: false, note: "This business's calendar is not connected, so a person confirms the time. Offer to take a name and number.", days: [] });
-
-  const read = speakableRead(av, zone);
 
   return c.json({
     live: true,
