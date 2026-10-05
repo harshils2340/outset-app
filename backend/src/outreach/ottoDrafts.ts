@@ -69,15 +69,31 @@ function isEscapeRoom(op: Pick<OttoOp, "name" | "domain" | "family">): boolean {
 /**
  * The business's name as an owner would say it in a sentence: no ", LLC" or " Inc." on the end, which reads as
  * pulled from a registry rather than written by a person.
+ *
+ * "Co" is not one of them, and was. It is the shop's own word rather than its entity type: 435 of the shipped
+ * names end in " Co" or " Co." and they are "Barrio Brewing Co", "Hanalei Surf Co.", "Trinity River Kayak
+ * Co." and "The Salty Dog Sailing Co.", which is what is on the sign. Cutting it wrote "Missed calls at
+ * Hanalei Surf" and "Can I set it up for Trinity River Kayak?", and on the seven names written "& Co." or
+ * "and Co." it left the connector hanging: "who picks up the phone at Sikkema Jenkins &?". The 1,013 names
+ * ending in " Company" were kept whole all along, so the cut disagreed with itself on the same word.
  */
 export function plainName(name: string): string {
-  const n = name.trim().replace(/,?\s+(llc|l\.l\.c\.|inc|incorporated|ltd|limited|corp|co)\.?$/i, "").trim();
+  const n = name.trim().replace(/,?\s+(llc|l\.l\.c\.|inc|incorporated|ltd|limited|corp)\.?$/i, "").trim();
   return n || name.trim();
 }
 
 /**
  * What the team is doing when the phone rings, in the owner's own day rather than a generic "busy with guests":
  * an escape room's game masters are running rooms, a karting crew is on the track. By outreach_pool.family.
+ *
+ * Every family the taxonomy has (backend/src/taxonomy/catalog.ts, eight of them) needs a line of its own, or
+ * the generic one this function exists to replace is what goes out. `play` and `food` had none, and between
+ * them they are 21,424 of the 46,324 operator listings the catalog ships: `play` is bowling, mini golf,
+ * arcades, trampoline parks, laser tag, rinks, karaoke, zoos, aquariums, museums, theatres, gymnastics,
+ * billiards and party venues, all of them a front desk with a queue at it, and `play` is third in the send
+ * order (touches.ts), straight after the 1,086 indoor and motorsport shops. `food` is breweries, wineries,
+ * distilleries and cooking classes, so the line names the room and not the tasting: 267 of the 4,934 are a
+ * class.
  */
 export function busyLine(op: Pick<OttoOp, "name" | "domain" | "family">): string {
   if (isEscapeRoom(op)) return "your game masters are running rooms";
@@ -88,6 +104,8 @@ export function busyLine(op: Pick<OttoOp, "name" | "domain" | "family">): string
     case "air": return "your pilots are up flying";
     case "outdoor": return "your guides are out with a group";
     case "wellness": return "you're with a client";
+    case "play": return "your front desk has a line at it";
+    case "food": return "the room is full";
     default: return "your team is busy with guests";
   }
 }

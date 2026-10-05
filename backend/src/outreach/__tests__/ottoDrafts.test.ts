@@ -1,6 +1,8 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { BUMP_VERSION, COPY_VERSION, busyLine, draftOttoBump, draftOttoCopy, plainName, type OttoOp } from "../ottoDrafts.ts";
+import { CATEGORIES } from "../../taxonomy/catalog.ts";
+import { FAMILY_ORDER } from "../touches.ts";
 
 const op: OttoOp = {
   id: "op-1", domain: "clockwiseescape.com", name: "Clockwise Escape Room Boise", email: "info@clockwiseescape.com",
@@ -66,7 +68,8 @@ test("the first line is the owner's own day, by kind of business", () => {
   assert.equal(at("On Track Karting", "motorsport"), "your crew is out on the track");
   assert.equal(at("Sea Breeze Jet Ski", "water"), "your crew is out on the water");
   assert.equal(at("Skydive Tampa", "air"), "your pilots are up flying");
-  assert.equal(at("Bayside Bowl", "play"), "your team is busy with guests");
+  assert.equal(at("Bayside Bowl", "play"), "your front desk has a line at it");
+  assert.equal(at("Barrio Brewing", "food"), "the room is full");
   assert.equal(at("Bayside Bowl", null), "your team is busy with guests");
   const kart = copy({ name: "On Track Karting", domain: "monzakarting.com", family: "motorsport" }).body;
   assert.ok(kart.includes("When your crew is out on the track or after you close, who picks up the phone at On Track Karting?"), kart);
@@ -95,9 +98,36 @@ test("a plural name or a legal suffix never breaks the first line", () => {
   assert.equal(llc.subject, "Missed calls at House of Clues");
   assert.ok(llc.body.includes("the phone at House of Clues?") && !llc.body.includes("LLC"), llc.body);
   assert.equal(plainName("Escape Works Inc."), "Escape Works");
-  assert.equal(plainName("Bayside Co"), "Bayside");
   assert.equal(plainName("Inc"), "Inc", "a name that is only a suffix stays");
   assert.equal(plainName("Lincoln Escape"), "Lincoln Escape");
+});
+
+test("every family the catalog files a business under has a first line of its own", () => {
+  const families = [...new Set(CATEGORIES.map((c) => c.family))].sort();
+  const generic = families.filter((f) => busyLine({ name: "A Shop", domain: "ashop.com", family: f }) === "your team is busy with guests");
+  assert.deepEqual(generic, [], "these families fall back to the line this function exists to replace");
+  assert.deepEqual([...families], [...FAMILY_ORDER].sort(), "and the send order knows the same families the taxonomy does");
+});
+
+test("a shop whose own name ends in Co keeps it, because that is what is on its sign", () => {
+  // 435 of the shipped names end in " Co" or " Co.", and the 1,013 ending in " Company" were never cut.
+  assert.equal(plainName("Barrio Brewing Co"), "Barrio Brewing Co");
+  assert.equal(plainName("Hanalei Surf Co."), "Hanalei Surf Co.");
+  assert.equal(plainName("Trinity River Kayak Co."), "Trinity River Kayak Co.");
+  assert.equal(plainName("Barrio Brewing Company"), "Barrio Brewing Company");
+  // The seven written "& Co." or "and Co." were left with the connector hanging.
+  assert.equal(plainName("Sikkema Jenkins & Co."), "Sikkema Jenkins & Co.");
+  assert.equal(plainName("Mud and Co."), "Mud and Co.");
+  const brewery = copy({ name: "Barrio Brewing Co", domain: "barriobrewing.com", family: "food" });
+  assert.equal(brewery.subject, "Missed calls at Barrio Brewing Co");
+  assert.ok(brewery.body.includes("When the room is full or after you close, who picks up the phone at Barrio Brewing Co?"), brewery.body);
+  assert.ok(brewery.body.includes("Remove Barrio Brewing Co from Outset's listings"), brewery.body);
+  // The registry suffixes still go.
+  assert.equal(plainName("Seawolf Jetski Rental Corp"), "Seawolf Jetski Rental");
+  assert.equal(plainName("Harbour Cruises Ltd"), "Harbour Cruises");
+  assert.equal(plainName("Atlantic Tours Limited"), "Atlantic Tours");
+  assert.equal(plainName("Fineline Fishing Charters L.L.C."), "Fineline Fishing Charters");
+  assert.equal(plainName("Divers Incorporated"), "Divers");
 });
 
 test("the escape-room line is for escape rooms, not every business with escape in its name", () => {
