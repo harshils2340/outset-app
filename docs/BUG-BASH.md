@@ -10498,6 +10498,108 @@ The **rehearsal ran twice, 57 of 57 both times**, on a Postgres 16 cluster built
 SSL on and the on-disk Playwright Chromium. `STRIPE_SECRET_KEY`, `RESEND_API_KEY` and `GITHUB_TOKEN` were empty
 throughout.
 
+## 5 October 2026, hundred and forty-second run (06:29 to 07:35 UTC)
+
+**Chosen, and why.** Ran alongside the hundred and forty-first, which was working `docs/BUG-BASH.md` at the
+same time and reached `origin/main` first; nothing else of its work overlapped tonight's, and both entries
+stand. Five commits had landed since the hundred and fortieth run's entry (`b7bf59db`), three of them
+Harshil's own on 4 October, and they touched `backend/src` and `src/lib`, so by the brief's rule (b) the
+**rehearsal ran at the start** rather than being skipped; it was green at 57 of 57, and ran again at the end
+because tonight's fixes are in code it covers. Baseline after `npm install` on both sides: root `tsc --noEmit
+-p .` and `tsc -b` clean, backend `tsc` clean but for TS5097, backend 1,087 with 1,085 pass and 2 skipped,
+app 1,277 pass.
+
+Target: **the follow-up sender and the 2026-10-05 pitch**, which is the newest code in the repo and the one
+thing here that mails a real business unattended. `f2bdaf72` and `40349d0a` added `src/outreach/thread.ts`,
+`draftOttoBump`, `bumpCandidates`, `busyLine`, `plainName` and the weekend rule yesterday afternoon. The log
+has never named `thread.ts`, `bumpCandidates`, `busyLine` or `sentTodayByMailbox`, the outreach sweep on
+Verified predates all of it, and **today is the Monday that copy first ships**: the weekend rule stopped the
+3 and 4 October batches, so nothing has gone out under `COPY_VERSION = "2026-10-05"` yet. The queries were
+driven against a Postgres 16 cluster built here, which is the first time any of them has met a database.
+
+**Found and fixed.** Three commits, pushed.
+
+- **A follow-up did not count against the mailbox that sent it** (`46ae1970`). `sentTodayByMailbox` counted
+  `'otto'` and `'otto_resend'`; the follow-up landed yesterday under `'otto_bump'`, sends from the same
+  Gmail, and was never added to the list. Driven against a real Postgres: **ten emails out of one mailbox
+  read as six**. `planToday()` asks that question fresh at the top of every round and again on a `--resume`,
+  so the difference is handed back as headroom, which on a day the follow-up takes its full 40% share is a
+  mailbox sending 14 on a warm-up rung of 10. The same count feeds `recordRun`, so a day spent entirely on
+  follow-ups recorded as a day that sent nothing and the rung never moved. The clause names no kind now,
+  which is what `sentToday` in `sendOtto.ts` already does for the laptop and cannot go stale the next time
+  the campaign learns to send something.
+- **The pitch's first line and subject named a shop that does not exist** (`f226390f`), both measured over the
+  46,324 operator listings the catalog ships. `plainName` cut " Co" as a legal suffix: the **435** names that
+  end in it are "Barrio Brewing Co", "Hanalei Surf Co.", "Trinity River Kayak Co.", so the subject read
+  "Missed calls at Hanalei Surf" and the take-down line named nobody, while the **1,013** ending in " Company"
+  were kept whole all along. Seven written "& Co." or "and Co." were worse: "who picks up the phone at Sikkema
+  Jenkins &?". Separately `busyLine` had a line for six of the taxonomy's eight families and fell back to "your
+  team is busy with guests", the generic it exists to replace, for `play` and `food`: **21,424 of the 46,324**,
+  and `play` is third in the send order straight after the 1,086 indoor and motorsport shops, so the bowling
+  alleys, arcades, trampoline parks, rinks and museums the queue reaches first were exactly the ones getting
+  it. Every family has its own line now and a test holds the taxonomy, `FAMILY_ORDER` and the switch to one
+  list. Two assertions in `ottoDrafts.test.ts` had the old behaviour written down as expected and are updated.
+- **A reply naming the business the way the pitch addressed it reached nothing** (`b4c38ca9`). The subject
+  match added yesterday is what catches an owner answering from a mailbox we never wrote to; it looks the name
+  up in `mailedIndex`'s `byName`, keyed on the pool's raw name, while the subject carries `plainName(name)`.
+  **645 of the 46,324** spell their name differently once the suffix is dropped, so one business in every 72
+  mailed could answer, never be counted, and get "in case this got buried" three days later. `nameKeys` holds
+  both spellings, and the test runs the real subject the real copy sends against the real keys the index holds.
+
+**Measured and left.** `bumpCandidates`, `resendCandidates` and `poolCandidates` driven against Postgres over a
+hand-built history: the three lists never overlap (a bumped business carries a variant that makes
+`RESEND_SEEN` true, and a resent or bumped one is excluded by operator), a business that replied, bounced, was
+handed off or already answered is in none of them, 66 hours is honoured, and `at::text` out of Postgres parses
+in JS, so the Sent-folder search window is real. `scripts/otto-cloud.mts` type-checks clean against a config
+of its own, which nothing in the repo does for it. The pool sync's eligibility SQL and `generateOttoDrafts`'
+still match word for word, so no county park or `.gov` reaches either queue. `greet` cannot be a guessed name:
+`ownerFirstName` requires the mailbox's local part to be the owner's own first name and `/^[A-Z][a-z]+$/`. The
+escape-room line fires on 233 rows and only 2 are not filed as `indoor`, both of them on a domain that is
+plainly an escape room. `inReplyTo` is checked to one bare `<token@host>` before it reaches a header. No
+shipped name carries an entity, a tag or a URL that the mail would escape twice. `possessive` is now dead in
+production, kept because `subjectBusinesses` still matches the old subject it wrote. **`POST /auth/verify`
+comes off Not yet checked**: counting the try before comparing the code has no reachable cost, because a
+correct code deletes itself, so the slot it spends is never wanted again, and the only requests it charges are
+a wrong or empty code, which is the limit working. It is a shape question, not a defect.
+
+**Needs Harshil.**
+
+- **A resend can open an address the fresh queue cannot see.** Driven: when the owners lookup finds a better
+  mailbox after the first send, the resend goes to that new address and is recorded under `otto_resend`, but
+  `POOL_UNTOUCHED`'s address clause reads `kind = 'otto'` only, so a second business sharing that address is
+  still offered as a first touch. `seen` in `sendBatch` catches it inside one run and nothing catches it
+  across two. The narrow fix is to let the clause cover the campaign's own three kinds; I left it because
+  whether Otto and the listing pitch should share an address cool-off at all is your standing open question
+  (`spacing.ts`), and widening the queue unattended is the wrong call to make at 2am.
+- **`busyLine`'s two new lines are copy, so they are yours.** A `play` shop now reads "When your front desk
+  has a line at it or after you close" and a `food` shop "When the room is full": the second deliberately
+  names the room and not a tasting, because 267 of the 4,934 `food` rows are a cooking class. `COPY_VERSION`
+  is left at `2026-10-05` because nothing has shipped under it yet.
+- Still open from earlier runs, unchanged: there is no error boundary in this app, now twenty-seven runs asked;
+  "Open right now near you" is computed once a visit; the 108 operators with hacked websites still have not
+  been told; the phone's browse is not ranked while the desktop's is; the phone confirmation offers no way to
+  reach the shop; a guest cannot cancel a booking at all; a price sort and a price filter compare two dollars
+  on six metros; the cards say "$" for a Canadian shop; `lasertag` does not search `paintball`;
+  `concierge/demand.ts` still filters its crawl queue by category and region and not by the town its own
+  comment names; a shop that unpublishes may not be able to get back to the switch it flicked;
+  `/voice/:id/availability` reads out a paused shop's vendor calendar; the 290 listings with no way to claim;
+  and no sync has run, so `kid`, `specs`, `gap` and `extraNote` are still empty on every shipped row.
+  **The brief's rehearsal path is `backend/scripts/e2e-local.mts`, not `scripts/`**, eighth run to say so.
+  **Local `main` is still detached**, eighteenth run in a row: the sandbox refuses `git checkout -B main`, so
+  the work was committed on the detached head and pushed with `git push origin HEAD:main`. The Postgres
+  cluster still needs building as `ubuntu` with its own socket directory, and its certificate generating,
+  before the brief's command line works; it is otherwise exactly right.
+
+**Verification.** Backend `npm test` 1,094 with 1,092 pass and 2 skipped, up 7: 4 in
+`backend/src/outreach/__tests__/mailboxDay.test.ts`, 2 in `ottoDrafts.test.ts`, 1 in `replies.test.ts`. App
+1,293 pass on the rebased tree, none of them this run's: 1,277 before the hundred and forty-first run's own 16
+landed. Each new test was run against the tree with its own fix reverted and goes red there: 3
+of 11 in `ottoDrafts.test.ts`, the reply test naming the key it cannot reach, and `mailboxDay.test.ts` on the
+clause that no longer exists. `tsc --noEmit -p .` and `tsc -b` clean at the root, backend's own `tsc` clean
+but for TS5097. The **rehearsal ran twice, 57 of 57 both times**, at the start as the brief's rule required
+and again at the end, on a Postgres 16 cluster built from scratch on port 5433 with SSL on and the on-disk
+Playwright Chromium. `STRIPE_SECRET_KEY`, `RESEND_API_KEY` and `GITHUB_TOKEN` were empty throughout.
+
 ## Coverage
 
 The catalog is 48,198 listings as of the 23 September sync, 1,873 of them Viator partner rows. Counts below
@@ -11611,6 +11713,18 @@ cannot read, a site builder's own placeholder copy standing on its own, in front
 them, and a whole menu written in a script the listing's own name and town are not, each held against the real
 operators who write a second language, a casino or the word "paragraph" for reasons of their own.
 
+The follow-up sender and the 2026-10-05 pitch, the newest code here and the only one that mails a business
+unattended, read and then driven against a Postgres built for it: `sentTodayByMailbox` against every kind of
+mail a mailbox sends in a day and the warm-up rung it feeds; `bumpCandidates`, `resendCandidates` and
+`poolCandidates` as the real queries over a hand-built history, for a business in two lists at once, one that
+replied, bounced, was handed off or already answered, the 66 hour wait, and the address a resend opens;
+`plainName`, `busyLine` and `isEscapeRoom` over all 46,324 shipped operator names and all eight taxonomy
+families, every subject and first line diffed before and after; the subject a reply carries against the keys
+`mailedIndex` holds; `thread.ts`'s own newest-message rule and the `at::text` window it searches on;
+`inReplyTo` as a header; the greeting's two gates; and `scripts/otto-cloud.mts` type-checked, which nothing in
+the repo does for it. `POST /auth/verify` counting a try before it compares the code, read through and settled
+as a shape question with no reachable cost.
+
 **Not yet checked.** Whether the app should carry a copy of the sync's phrase screen as well as its brand
 list, which would be a fourth hand-kept list and whose whole job a sync would do (see this run's Needs
 Harshil). Whether a field that is one short phrase repeated and nothing else should be refused, which is
@@ -11631,8 +11745,7 @@ booked: no shipped listing does, and the dashboard's own editor takes anything t
 `backend/src/concierge/demand.ts` should scope its crawl queue by the town people asked
 about, which its own comment says it does with an `instr` on a lowered city and its SQL does not do at all: it
 filters by category and region only, so a question about escape rooms in Waterloo queues escape rooms across
-Ontario and labels each row "asked for ... near Waterloo". Whether the rehearsal should mirror the layout Render publishes rather than the one `vite build` leaves, which is what keeps the real home, its forward script and the route rewrites undriven (see this run's Needs Harshil). Whether `npm run build` and render.yaml should produce the same site at all, now that one runs `scripts/copy-operators.mjs` and the other does not. Whether a transactional email's wordmark should open the operator's page or the marketplace, which is one template serving both audiences (see this run's Needs Harshil). Whether the Inbox tab should stay in the tab bar at all while the guest agent is off, given that its list and its badge are now always empty by rule. Whether `SITE_PAGES` should be checked against the files that answer those paths, so a fifth business-type page added to the sitemap without its html cannot become a soft 404 under the catch-all. Whether `POST /auth/verify` should count a try it is about to find correct, which is
-what makes any client retry cost an owner one of five attempts (see this run's Needs Harshil). Whether a
+Ontario and labels each row "asked for ... near Waterloo". Whether the rehearsal should mirror the layout Render publishes rather than the one `vite build` leaves, which is what keeps the real home, its forward script and the route rewrites undriven (see this run's Needs Harshil). Whether `npm run build` and render.yaml should produce the same site at all, now that one runs `scripts/copy-operators.mjs` and the other does not. Whether a transactional email's wordmark should open the operator's page or the marketplace, which is one template serving both audiences (see this run's Needs Harshil). Whether the Inbox tab should stay in the tab bar at all while the guest agent is off, given that its list and its badge are now always empty by rule. Whether `SITE_PAGES` should be checked against the files that answer those paths, so a fifth business-type page added to the sitemap without its html cannot become a soft 404 under the catch-all. Whether a
 guest waiting out one of the two new deadlines should be told which wait they are in, 15 seconds on a
 stalled listing link and 20 on the card form, both of which say nothing until they end (see this run's Needs
 Harshil). Whether the concierge's 45 second idle deadline is right, which only a real `/go` run against a
@@ -12114,4 +12227,4 @@ sheet should have a word for `paddleboard`, the one `ArtKind` of 64 it has none 
 `GUIDES` holds 14 blocks and the guide section is gated on one. Whether the hand-built `LISTINGS` branch
 (`src/lib/agent.ts`, `src/lib/inventory.ts`, `src/data/slots.ts`, `DetailView.tsx`) should still ship at all:
 `LISTINGS` is empty, so none of it runs, and `inventory.ts`'s `capacity()` fabricates a seat count from a hash
-of the id, the date and the time, which is the one thing `AGENTS.md` says never to invent.
+of the id, the date and the time, which is the one thing `AGENTS.md` says never to invent. Whether the Otto campaign's own three kinds should share one address cool-off, which is what would stop a resend sent to a mailbox the owners lookup found from leaving that address open to a first touch for the next business on it: `POOL_UNTOUCHED` reads `kind = 'otto'` alone, `seen` in `sendBatch` catches it inside one run and nothing catches it across two, and the wider version of the same question (whether Otto and the listing pitch share a cool-off at all, `spacing.ts`) is still open (see the hundred and forty-second run's Needs Harshil). Whether `busyLine`'s words for `play` and `food` are the right ones, which is copy.
