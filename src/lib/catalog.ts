@@ -5,7 +5,7 @@ import { regionOfArea } from "../data/regions";
 import type { GeoPoint } from "./geo";
 import { statesAPlusAge, statesAWordedAge } from "./ages";
 import { groupCap } from "./groupSize";
-import { bookableMenu } from "./menuRow";
+import { bookableMenu, hijackedMenu } from "./menuRow";
 import { addressOf, streetOf, townOf } from "./address";
 import { shopTitle } from "./shopName";
 import { ownWords } from "./ownWords";
@@ -134,7 +134,10 @@ function photosAsPublished(item: Unclaimed): Unclaimed {
 }
 
 function asPublished(raw: Unclaimed): Unclaimed {
-  const item = photosAsPublished(bookableMenu(raw));
+  // A menu written for somebody else's business is not a menu (`hijackedMenu`): a shop with nothing to book is
+  // a shape every surface already draws, and a hacked page's own rows are not.
+  const menu = hijackedMenu(raw) ? { ...raw, options: [], services: undefined, addons: undefined } : raw;
+  const item = photosAsPublished(bookableMenu(menu));
   const blurb = ownWords(item.blurb);
   const title = shopTitle(item.title, item.src);
   const descs = (item.services || []).map((s) => ownWords(s.desc));

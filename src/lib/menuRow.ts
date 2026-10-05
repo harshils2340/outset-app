@@ -306,3 +306,39 @@ export function wholeServices<T extends { options?: Row[]; services?: Grouped[] 
   });
   return touched ? { ...item, services: nextServices } : item;
 }
+
+/**
+ * A run of eight or more characters of a script this catalog's own facts are never written in.
+ *
+ * Mirrored from `FOREIGN_SCRIPT_RUN` in `backend/src/sync/contacts.ts`; keep the two in step.
+ */
+const FOREIGN_SCRIPT_RUN = /[぀-ヿ㐀-鿿가-힯Ѐ-ӿ฀-๿؀-ۿ]{8,}/;
+
+/**
+ * Whether this listing's whole menu was written for a business that is not this one.
+ *
+ * One shipped listing is this: Wright Centennial Museum in Wright, Wyoming publishes a single bookable row,
+ * "Pontoon (البريطاني)", described in Arabic prose about the house edge on a card game, under a cover taken
+ * from the injected page's own category images. Worse, `explain` glosses the row for the guest as "A flat,
+ * steady boat on two floats, good for relaxed groups", so the page states with confidence that a museum sells
+ * a pontoon trip. The sync quarantines it (`foreignScriptCompromised`, which this is the app's half of), but
+ * no sync has run, and what a guest reads when the page opens is the detail file.
+ *
+ * The test is the whole menu, not one row, because a US or Canadian operator writing a second language into
+ * part of their own menu is doing it for their own guests: Kailua Beach Adventures and Heeia Kea Harbor both
+ * state some of their kayak trips in Japanese and mean every word, and their English rows are what tells them
+ * apart from a page that has had a section written for it. The listing's own name and town have to be in a
+ * script the rows are not, since that is what makes the rows foreign to it rather than the business foreign to
+ * this catalog. Measured over all 52,815 shipped detail files: one listing, this one.
+ */
+export function hijackedMenu(item: {
+  title?: string;
+  area?: string;
+  options?: { name: string; detail?: string }[];
+  services?: { name: string; desc?: string | null }[];
+}): boolean {
+  const rows = [...(item.services || []).map((s) => s.name + " " + (s.desc || "")), ...(item.options || []).map((o) => o.name + " " + (o.detail || ""))];
+  if (!rows.length) return false;
+  if (FOREIGN_SCRIPT_RUN.test((item.title || "") + " " + (item.area || ""))) return false;
+  return rows.every((r) => FOREIGN_SCRIPT_RUN.test(r));
+}
