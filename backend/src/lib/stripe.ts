@@ -223,19 +223,35 @@ export async function chargeSaved(o: { amount: number; currency: string; custome
   return { id: r.id, status: r.status };
 }
 
-/** Stripe-Signature check for webhooks (t=...,v1=...). */
+/**
+ * Stripe-Signature check for webhooks (t=...,v1=...).
+ *
+ * `v1` can appear more than once in one header. Stripe signs each event with every secret the endpoint
+ * currently has, so while a signing secret is being rolled the header carries two signatures and only one of
+ * them was made with the secret this service holds. Reading the pairs into an object kept the last `v1` alone,
+ * so whether an event verified came down to which signature Stripe happened to put last: half of them answered
+ * 400, Stripe retried them into the same refusal, and every `checkout.session.completed` that never landed
+ * left a paid booking sitting at "pending" with no capture, no operator email and nobody told. The Resend
+ * webhook next door already reads every signature in its own header for exactly this reason; this one now does
+ * too, and a wrong signature is still refused however many are offered.
+ */
 export function verifyWebhook(payload: string, header: string | undefined): boolean {
   const secret = process.env.STRIPE_WEBHOOK_SECRET;
   if (!secret || !header) return false;
-  const parts = Object.fromEntries(header.split(",").map((p) => p.split("=") as [string, string]));
-  const t = parts.t;
-  const v1 = parts.v1;
-  if (!t || !v1) return false;
+  // Split on the first "=" only, so a value carrying one is read whole rather than cut at it.
+  const parts = header.split(",").map((p) => p.trim()).map((p) => [p.slice(0, p.indexOf("=")), p.slice(p.indexOf("=") + 1)] as const).filter(([k]) => k);
+  const t = parts.find(([k]) => k === "t")?.[1];
+  if (!t) return false;
   // Number("abc") is NaN and every comparison with NaN is false, so a non-numeric timestamp used to slip past
   // the freshness check. The HMAC covers t, so this was never forgeable, but the check should still mean what
   // it says.
   const at = Number(t);
   if (!Number.isFinite(at) || Math.abs(Date.now() / 1000 - at) > 600) return false;
-  const want = createHmac("sha256", secret).update(t + "." + payload).digest("hex");
-  return want.length === v1.length && timingSafeEqual(Buffer.from(want), Buffer.from(v1));
+  const want = Buffer.from(createHmac("sha256", secret).update(t + "." + payload).digest("hex"));
+  for (const [k, sig] of parts) {
+    if (k !== "v1" || !sig) continue;
+    const got = Buffer.from(sig);
+    if (got.length === want.length && timingSafeEqual(got, want)) return true;
+  }
+  return false;
 }
