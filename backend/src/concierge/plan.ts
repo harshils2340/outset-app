@@ -1462,7 +1462,7 @@ export async function plan(text: string, opts: { ask?: number; prior?: Intent | 
       options = [...options, ...extra];
     }
   }
-  tr.step("catalog", options.length + " businesses matched");
+  tr.step("catalog", plural(options.length, "business", "businesses") + " matched");
 
   // Nothing here: look further out before looking elsewhere, because people will travel for the right thing.
   if (!options.length && intent.point) {
@@ -1720,7 +1720,7 @@ export async function plan(text: string, opts: { ask?: number; prior?: Intent | 
 
       const best = o.departures[0];
       const off = o.offsets?.[0];
-      tr.step("answer", o.name + ": " + (o.departures.length ? o.departures.length + " times, from " + (best?.fromPrice != null ? "$" + best.fromPrice.toFixed(2) + (best.taxIncluded ? "" : " + tax") : "price on request") : "nothing free"),
+      tr.step("answer", o.name + ": " + (o.departures.length ? plural(o.departures.length, "time") + ", from " + (best?.fromPrice != null ? "$" + best.fromPrice.toFixed(2) + (best.taxIncluded ? "" : " + tax") : "price on request") : "nothing free"),
         { who: o.name, detail: [o.widened ? "outside the day they asked for" : null, off != null ? "nearest is " + best.time + ", " + describeOffset(off) : null, o.via].filter(Boolean).join(" \u00b7 ") || undefined });
     }),
   );
@@ -1868,6 +1868,17 @@ export async function plan(text: string, opts: { ask?: number; prior?: Intent | 
   if (gaps) tr.step("queue", gaps + " of these had nothing published: queued for the crawler", { detail: "the next crawl starts with what people asked for" });
 
   return done({ intent, options, followUp: null, loosened, compare, narrow });
+}
+
+/**
+ * A count and its noun, agreeing.
+ *
+ * `stepLine` in `src/lib/concierge.ts` narrates the `catalog` and `answer` steps to the guest while they
+ * wait, so these are not internal logs: a search that matched one shop said "1 businesses matched" on the
+ * screen, measured in a live run on 6 October 2026, and a shop with one free slot was about to say "1 times".
+ */
+function plural(n: number, one: string, many = one + "s"): string {
+  return n + " " + (n === 1 ? one : many);
 }
 
 /** "half an hour earlier", "bang on", so an offer says how far it moved rather than hoping nobody checks. */

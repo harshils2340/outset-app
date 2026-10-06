@@ -129,3 +129,17 @@ test("a sentence that names nowhere is still asked where, and a province is stil
   assert.notEqual(i.city, "Ontario");
 });
 
+test("a count in a line the guest reads agrees with its noun", async () => {
+  const tr = new Trace();
+  // Bowling near Sudbury reaches exactly one business, which is what used to print "1 businesses".
+  await plan("bowling in sudbury", { trace: tr });
+  const matched = tr.steps.filter((s) => s.kind === "catalog").map((s) => s.text);
+  assert.ok(matched.some((t) => /^1 business matched$/.test(t)), matched.join(" | "));
+  assert.ok(!matched.some((t) => /\b1 businesses\b/.test(t)), matched.join(" | "));
+
+  const many = new Trace();
+  await plan("escape room in kitchener", { trace: many });
+  assert.ok(many.steps.some((s) => s.kind === "catalog" && /^[2-9] businesses matched$/.test(s.text)),
+    many.steps.filter((s) => s.kind === "catalog").map((s) => s.text).join(" | "));
+});
+
