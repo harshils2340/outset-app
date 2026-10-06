@@ -156,3 +156,19 @@ test("the comparison line holds one currency, and says so when it has left a sho
   assert.ok(said.some((t) => /another currency/.test(t)), "left a shop out of the range and did not say so: " + said.join(" | "));
 });
 
+
+test("every address the demo server prints is one it answers", () => {
+  /**
+   * `/go` came from `concierge.ts` until the API dropped it on 24 September 2026, and nothing here took it
+   * over, so the one URL both AGENTS.md files and this script's own banner give for the demo answered 404,
+   * and so did the bare host, which redirects to it. Measured by booting it on 6 October 2026.
+   */
+  const demo = readFileSync(new URL("../../../scripts/demo-server.mts", import.meta.url), "utf8");
+  const printed = [...demo.matchAll(/\$\{port\}(\/[a-z0-9/-]*)/g)].map((m) => m[1]);
+  assert.ok(printed.length >= 2, "found no printed addresses at all: " + printed.join(", "));
+  for (const path of new Set(printed)) {
+    assert.ok(new RegExp(`app\\.(?:get|route)\\("${path}"`).test(demo), path + " is printed to a human and not served");
+  }
+  // And the redirect target is the site, not a second copy of the agent's screen living in this script.
+  assert.match(demo, /app\.get\("\/go", \(c\) => c\.redirect\(SITE\)\)/);
+});

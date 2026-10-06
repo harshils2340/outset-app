@@ -10,9 +10,8 @@ import { networkInterfaces } from "node:os";
  * Running it alone means the demo has three moving parts instead of thirty, boots in a second, and cannot be
  * broken by a credential that expired overnight.
  *
- * The screen itself is the site's own agent overlay, not a page this process renders: `/go` on `concierge.ts`
- * redirects to `SITE_URL`, the same variable every mailed link in the backend already points at the deployed
- * site with. A hand-rolled second copy of that screen lived here once and drifted from the real one on every
+ * The screen itself is the site's own agent overlay, not a page this process renders: `/go` here redirects to
+ * `SITE_URL`, the same variable every mailed link in the backend already points at the deployed site with. A hand-rolled second copy of that screen lived here once and drifted from the real one on every
  * axis that matters — this does not repeat that. So a phone at the venue needs somewhere on the LAN to land:
  * with nothing configured, `SITE_URL` defaults to this machine's own address on port 5173, which is where
  * `npm run dev` already serves the site. Run that alongside this, or set `SITE_URL` to wherever the site is
@@ -168,6 +167,18 @@ app.post("/bookings", async (c) => {
   void sendConfirmation({ listing, service: b?.service, date, slot, qty, guest: { name, email } });
   return c.json({ ok: true, status: "new" });
 });
+/**
+ * `/go` itself, which is the URL this process prints and the QR code points at.
+ *
+ * It used to come from `concierge.ts`, which dropped it on 24 September 2026 when Harshil asked for the URL
+ * to go away on the deployed API. Nothing took it over here, so the one address every document gives for the
+ * demo answered 404: measured on 6 October 2026 by booting this and opening it. `/` redirected to it, so the
+ * bare host was a 404 too, and the banner above said "their phone ... <- the QR code points here" about both.
+ *
+ * The redirect, not a page: a hand-rolled second copy of the agent's screen lived here once and drifted from
+ * the real one on every axis that matters.
+ */
+app.get("/go", (c) => c.redirect(SITE));
 app.get("/", (c) => c.redirect("/go"));
 
 const port = Number(process.env.PORT || 8788);
