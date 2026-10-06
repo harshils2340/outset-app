@@ -75,7 +75,9 @@ test("the claim screen keeps a line for a link the API never judged", () => {
   // The state exists, the exchange sets it, and the details step prints something for it.
   assert.match(src, /"bad" \| "expired" \| "offline"/, "linkState lost its offline state");
   assert.match(src, /r\.expired \? "expired" : r\.unanswered \? "offline" : "bad"/, "the exchange no longer sorts its three failures");
-  const msg = src.match(/linkState === "offline" \? <p className="oderr">([^<]+)</);
+  // `[^>]*` so the attributes beside the class are the claim screen's business, not this test's: every one
+  // of these lines is a `role="alert"` now, which is how an owner hears the refusal at all.
+  const msg = src.match(/linkState === "offline" \? <p className="oderr"[^>]*>([^<]+)</);
   assert.ok(msg, "nothing is printed for a link the API never judged");
   assert.doesNotMatch(msg![1], /didn't check out|does not match|expired/i, "the offline line blames the link");
   // The step that has no business record yet says "check your connection" already; offline belongs with it.
