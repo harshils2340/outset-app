@@ -8,7 +8,7 @@ import { recordSend } from "../src/lib/outreachLog.ts";
 import { recordRun, rungFor, type RampState } from "../src/outreach/ramp.ts";
 import { MAILBOX_ERROR, NETWORK_ERROR, dayStartIso, pickIdentity } from "../src/outreach/mailboxes.ts";
 import { collectBounces, collectReplies, markRedirect, markReplied, suppressBounce } from "../src/outreach/bounceSweep.ts";
-import { pickRung, placementMatrix } from "../src/outreach/placement.ts";
+import { pickRung, placementMatrix, placementRead } from "../src/outreach/placement.ts";
 import {
   BUMP_KIND, RESEND_KIND, bumpCandidates, handedOffOperators, loadRamp, mailedIndex, poolCandidates, recordTouch, repliedOperators, resendCandidates, saveRamp, sentTodayByMailbox, type PoolRow,
 } from "../src/outreach/touches.ts";
@@ -155,22 +155,46 @@ if (!dry) {
   const pick = pickRung(COPY_LADDER.map((rung) => ({ key: rung.style, results: matrix.get(rung.style) || [] })));
   bumpsOk = pickRung([{ key: "bump", results: matrix.get("bump") || [] }])?.strict === true;
   const version = pick ? COPY_LADDER.find((r) => r.style === pick.key)!.version : COPY_VERSION;
-  state.placement = { day: today, version, summary: pick ? pick.summary : "no rung reached Primary", hold: !pick };
-  if (!pick) {
+  /**
+   * Gmail answering nothing is not a verdict. Every result reads "unknown" when nothing could be measured: an
+   * inbox whose IMAP would not open, test sends that never left, or fewer than two sending mailboxes, in which
+   * case `placementMatrix` sends no test at all. `pickRung` wants Primary in two inboxes and finds none of it
+   * either way, so an unread test took the same branch as a measured Promotions verdict: the day's batch was
+   * held and Harshil was told "Gmail put every approved copy in Promotions/Spam", which nobody had measured,
+   * and on a host left with one working mailbox that is every day from then on. placement.ts's own rule is
+   * that only an explicit Promotions or Spam verdict may hold a batch, so an unread test goes out with the
+   * approved copy, as the campaign did before the test existed, and says in the alert that it could not read.
+   */
+  const measured = [...matrix.values()].some(placementRead);
+  if (pick) {
+    state.placement = { day: today, version, summary: pick.summary, hold: false };
+    style = pick.key as CopyStyle;
+    abStyles = (["ask", "full"] as CopyStyle[]).filter((k) => pickRung([{ key: k, results: matrix.get(k) || [] }]));
+    if (abStyles.length < 2) abStyles = [];
+    console.log(`otto-cloud: sending copy ${abStyles.length ? "A/B " + abStyles.join(" + ") : version} (${pick.summary})${bumpsOk ? "" : "; follow-ups skipped today, their copy did not reach Primary"}`);
+    if (!["ask", "full"].includes(style) || !bumpsOk)
+      await notify(`Otto outreach fell back to copy ${version}`,
+        `Neither the no-link ask nor the full pitch reached Primary today, so the batch went out with the "${style}" rung, which did.${bumpsOk ? "" : " Follow-ups were skipped today: theirs did not reach Primary."}\n\n` +
+        report.join("\n") + "\n\nNothing to do unless this repeats for several days.");
+  } else if (measured) {
+    state.placement = { day: today, version, summary: "no rung reached Primary", hold: true };
     await saveRamp("otto", state);
     await notify("Otto outreach held: Gmail put every approved copy in Promotions/Spam",
       "Today's batch was not sent. Every rung of the copy ladder was tested between the sending inboxes and none reached Primary:\n\n" +
       report.join("\n") + "\n\nThis usually means the sending accounts' reputation, not the wording: check bounces and complaints first. The next run re-checks before sending.");
     process.exit(0);
+  } else {
+    // Nothing was measured, so nothing is held: the approved copy goes out and the alert says what happened.
+    // `style` is already COPY_VERSION's rung and the follow-up's copy is unchanged, so both carry on as before.
+    state.placement = { day: today, version: COPY_VERSION, summary: "no placement could be read", hold: false };
+    bumpsOk = true;
+    await saveRamp("otto", state);
+    console.log(`otto-cloud: sending copy ${COPY_VERSION} (no placement could be read)`);
+    await notify("Otto: today's placement test could not be read, sending the approved copy",
+      "Gmail did not answer for a single test message, so nothing about today's placement is known: an inbox that would not open over IMAP, test sends that never left, or fewer than two sending mailboxes configured. That is not a copy in Promotions.\n\n" +
+      (report.length ? report.join("\n") : "(no test was sent at all: a placement test needs two sending mailboxes)") +
+      `\n\nThe batch went out with copy ${COPY_VERSION}, which is what the campaign sent before this test existed. Check MAIL_SMTP_USER / MAIL_SMTP_PASS for each sending mailbox if this repeats.`);
   }
-  style = pick.key as CopyStyle;
-  abStyles = (["ask", "full"] as CopyStyle[]).filter((k) => pickRung([{ key: k, results: matrix.get(k) || [] }]));
-  if (abStyles.length < 2) abStyles = [];
-  console.log(`otto-cloud: sending copy ${abStyles.length ? "A/B " + abStyles.join(" + ") : version} (${pick.summary})${bumpsOk ? "" : "; follow-ups skipped today, their copy did not reach Primary"}`);
-  if (!["ask", "full"].includes(style) || !bumpsOk)
-    await notify(`Otto outreach fell back to copy ${version}`,
-      `Neither the no-link ask nor the full pitch reached Primary today, so the batch went out with the "${style}" rung, which did.${bumpsOk ? "" : " Follow-ups were skipped today: theirs did not reach Primary."}\n\n` +
-      report.join("\n") + "\n\nNothing to do unless this repeats for several days.");
 }
 const mailboxes = (state.mailboxes ||= {});
 const before = await sentTodayByMailbox(dayStart);

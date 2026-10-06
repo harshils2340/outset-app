@@ -1,7 +1,8 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { BUMP_VERSION, COPY_LADDER, COPY_VERSION, draftOttoBump, draftOttoCopy, plainName, type OttoOp } from "../ottoDrafts.ts";
-import { pickRung, type PlacementResult } from "../placement.ts";
+import { readFileSync } from "node:fs";
+import { pickRung, placementRead, type PlacementResult } from "../placement.ts";
 
 const op: OttoOp = {
   id: "op-1", domain: "clockwiseescape.com", name: "Clockwise Escape Room Boise", email: "info@clockwiseescape.com",
@@ -131,4 +132,50 @@ test("ask: no link at all, asks before sending the recording, and the stop is a 
   assert.ok(c.body.includes('PS. If you\'re not interested, just reply "stop" and I won\'t email you again.'), c.body);
   assert.ok(c.body.split("--")[0].split(/\s+/).length < 75, "a short note");
   assert.ok(!c.body.includes("—") && !/!/.test(c.body));
+});
+
+/**
+ * Gmail answering nothing at all, which is not a Promotions verdict.
+ *
+ * `pickRung` wants Primary in two inboxes, and an unread test has none of it, so a test that could not be
+ * measured took the same branch as a measured Promotions verdict: the batch was held and Harshil was told
+ * "Gmail put every approved copy in Promotions/Spam", which nobody had measured. Every result reads
+ * "unknown" when an inbox would not open over IMAP, when the test sends never left, and when fewer than two
+ * sending mailboxes are configured, in which case `placementMatrix` sends no test at all and returns empty
+ * lists: on a host left with one working app password that is every day from then on, with no mail going out
+ * and the wrong reason given. placement.ts's own rule, in its own words, is that only an explicit Promotions
+ * or Spam verdict may hold a batch.
+ */
+test("an unread placement test is told apart from a copy Gmail filed under Promotions", () => {
+  const r = (...ps: PlacementResult["placement"][]): PlacementResult[] => ps.map((placement) => ({ from: "a", to: "b", placement, subject: "s" }));
+  // What the two cases look like: neither picks a rung, and only one of them is a verdict.
+  const unread = r("unknown", "unknown", "unknown");
+  const promotions = r("promotions", "promotions", "promotions");
+  assert.equal(pickRung([{ key: "full", results: unread }]), null);
+  assert.equal(pickRung([{ key: "full", results: promotions }]), null);
+  assert.equal(placementRead(unread), false, "nothing was measured");
+  assert.equal(placementRead(promotions), true, "Gmail answered, and the answer was Promotions");
+  // No test sent at all, which is what one sending mailbox gives.
+  assert.equal(placementRead([]), false);
+  // One tab read out of three is an answer: a single Spam verdict is the one that matters most.
+  assert.equal(placementRead(r("unknown", "unknown", "spam")), true);
+  assert.equal(placementRead(r("unknown", "primary", "unknown")), true);
+  assert.equal(placementRead(r("unknown", "updates", "unknown")), true);
+});
+
+/** And the daily run acts on the difference: held on a verdict, sent on an unread test. */
+test("the daily run holds on a verdict and sends the approved copy when it could not read one", () => {
+  const src = readFileSync(new URL("../../../scripts/otto-cloud.mts", import.meta.url), "utf8");
+  assert.match(src, /const measured = \[\.\.\.matrix\.values\(\)\]\.some\(placementRead\)/, "the run has to ask whether anything was measured");
+  assert.match(src, /\} else if \(measured\) \{/, "only a measured verdict may take the holding branch");
+  // The holding branch is the only one that stops the run, and it is the only one that claims Promotions.
+  const branches = src.split("const measured =")[1];
+  const held = branches.slice(branches.indexOf("} else if (measured) {"), branches.indexOf("} else {"));
+  assert.match(held, /process\.exit\(0\)/, "a measured Promotions verdict still holds the batch");
+  assert.match(held, /Promotions\/Spam/);
+  // The unread branch alone, up to the close of the block the placement test sits in.
+  const after = branches.slice(branches.indexOf("} else {"));
+  const unread = after.slice(0, after.indexOf("\n}\n"));
+  assert.doesNotMatch(unread, /process\.exit\(0\)/, "an unread test must not stop the day's outreach");
+  assert.match(unread, /could not be read/, "and the alert has to say that is what happened");
 });

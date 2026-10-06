@@ -81,6 +81,16 @@ export async function placementMatrix(
   return out;
 }
 
+/**
+ * Whether Gmail answered at all. Every result is "unknown" when nothing could be measured: an inbox whose
+ * IMAP would not open, a test send that never left, or fewer than two sending mailboxes, in which case no
+ * test is sent in the first place. That is not a verdict, and the rule at the top of this file is that only
+ * an explicit Promotions or Spam verdict may hold a batch, so a caller has to be able to tell the two apart.
+ */
+export function placementRead(results: PlacementResult[]): boolean {
+  return results.some((r) => r.placement !== "unknown");
+}
+
 /** Hold the batch only on a clear verdict: at least two explicit Promotions/Spam, and no more Primary than that. */
 export function placementVerdict(results: PlacementResult[]): { hold: boolean; summary: string } {
   const n = (p: Placement) => results.filter((r) => r.placement === p).length;
