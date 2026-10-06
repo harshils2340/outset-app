@@ -277,7 +277,7 @@ async function sendBatch(limit: number, quota: Record<string, number>): Promise<
     const op = { id: r.operator_id, domain: r.domain, name: r.name, email: r.email, phone: r.phone, city: r.city, region: r.region, calendar_vendor: r.calendar_vendor, family: r.family };
     // The greeting belongs to the pool's address; a follow-up to an older address opens plainly.
     const greet = !bump || to === r.email.trim().toLowerCase() ? r.greet : null;
-    const thread = bump && !dry ? await threads.find(from, to, new Date(r.last_at || Date.now())) : null;
+    const thread = bump && !dry ? await threads.find(from, to, new Date(r.last_at || Date.now())).catch(() => null) : null;
     const copy = bump
       ? draftOttoBump(op, to, { greet, subject: thread?.subject || draftOttoCopy(op, to).subject })
       : draftOttoCopy(op, to, { greet, style: abStyles.length ? abStyles[(abTurn++) % abStyles.length] : style });
