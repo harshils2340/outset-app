@@ -46,3 +46,16 @@ test("no message the operator reads back from a press is left silent", () => {
   const users = readdirSync(DIR).filter((f) => f.endsWith(".tsx") && /className="odtoast"/.test(read(f)));
   assert.deepEqual(users, ["OperatorView.tsx"], "the toast is drawn in one place");
 });
+
+test("answering a request keeps the keyboard in the queue", () => {
+  const src = read("OpBookings.tsx");
+  // The pressed Accept is unmounted with the row, so the next request's Accept is focused before the
+  // decision, while it is still the element React has on the screen.
+  assert.match(src, /const answer = \(status: OpStatus\) => \{/);
+  assert.match(src, /document\.querySelectorAll<HTMLButtonElement>\("\.odbkactions button:last-of-type"\)/);
+  assert.match(src, /decide\(b, status\);\s*\n\s*next\?\.focus\(\);/, "focus moves after the decision is taken");
+  // Both buttons go through it, on the Bookings page and on the Home feed, which draw the same row.
+  assert.match(src, /onClick=\{\(\) => answer\("declined"\)\}/);
+  assert.match(src, /onClick=\{\(\) => answer\("accepted"\)\}/);
+  assert.ok(!/onClick=\{\(\) => decide\(b, "accepted"\)\}/.test(src), "no Accept in the row calls decide directly");
+});

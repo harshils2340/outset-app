@@ -25,8 +25,28 @@ export const STATUS_LABEL: Record<OpStatus, string> = {
 
 export function BookingRow({ b, actions = false }: { b: OpBooking; actions?: boolean }) {
   const { openBooking, decide } = useOp();
+  const row = useRef<HTMLDivElement>(null);
+  /**
+   * Answer a request and keep the keyboard in the queue.
+   *
+   * An answered request leaves the New bucket, so the Accept that was pressed is unmounted and focus fell to
+   * the document body: measured in a real Chromium, `document.activeElement` was `BODY` after Accept, which
+   * on a page whose whole job is working through three waiting requests means tabbing back down the page
+   * after each one. The next request's Accept takes it instead, which React has already got on the screen
+   * and keeps across the re-render, and the toast beside it says which guest was answered.
+   *
+   * Focused before the decision, because afterwards this row's own buttons are on their way out. The last
+   * request in the queue has nothing to hand to and still lands on the body.
+   */
+  const answer = (status: OpStatus) => {
+    const all = [...document.querySelectorAll<HTMLButtonElement>(".odbkactions button:last-of-type")];
+    const here = all.findIndex((btn) => row.current?.contains(btn));
+    const next = here < 0 ? null : all[here + 1] || all[here - 1] || null;
+    decide(b, status);
+    next?.focus();
+  };
   return (
-    <div className={"odbk" + (b.status === "new" ? " fresh" : "")}>
+    <div className={"odbk" + (b.status === "new" ? " fresh" : "")} ref={row}>
       <button type="button" className="odbkmain" onClick={() => openBooking(b.id)}>
         <span className="avatar">{b.guest.slice(0, 1)}</span>
         <span className="meta">
@@ -47,8 +67,8 @@ export function BookingRow({ b, actions = false }: { b: OpBooking; actions?: boo
         <div className="odbkactions">
           {/* Three new requests are three Declines and three Accepts. Named for the guest they answer, so
               the pair read out is the pair the operator meant. */}
-          <button type="button" className="cta ghost" onClick={() => decide(b, "declined")} aria-label={"Decline " + b.guest + ", " + relDay(b.date) + " at " + fmtTime(b.slot)}>Decline</button>
-          <button type="button" className="cta" onClick={() => decide(b, "accepted")} aria-label={"Accept " + b.guest + ", " + relDay(b.date) + " at " + fmtTime(b.slot)}>Accept</button>
+          <button type="button" className="cta ghost" onClick={() => answer("declined")} aria-label={"Decline " + b.guest + ", " + relDay(b.date) + " at " + fmtTime(b.slot)}>Decline</button>
+          <button type="button" className="cta" onClick={() => answer("accepted")} aria-label={"Accept " + b.guest + ", " + relDay(b.date) + " at " + fmtTime(b.slot)}>Accept</button>
         </div>
       ) : null}
     </div>
