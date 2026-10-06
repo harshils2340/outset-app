@@ -11603,6 +11603,105 @@ switches that are both off (`GUEST_AGENT`, `AGENT_MODE_LIVE`).
   cluster still has to be built from scratch, which here also means running `initdb` as the `postgres` user
   because the session is root.
 
+## 2026-10-06 11:45 UTC, hundred and fifty-third run: what the concierge says when somebody actually gives it a catalog
+
+**Chosen, and why.** Not yet checked says it plainly and has for weeks: "The concierge overlay against a live
+API: nothing here could give it one, so its answers, its chips, its history panel and its 'Also nearby' rows
+have been read and unit tested but never seen full of real shops." That stopped being true tonight.
+`backend/src/db/client.ts` honours `OUTSET_DB`, and `scripts/demo-server.mts` boots the concierge with no
+Postgres, no Stripe and no mail key, so a scratch SQLite catalog was seeded with a Waterloo region, a second
+Waterloo in Iowa, and Windsor and Detroit ten kilometres apart across the river, and the real API was asked
+the things a guest types. The concierge is the newest surface and the one Harshil demos. Every finding below
+came out of that session, none of them was visible to a test, and all five were visible to a guest.
+
+**The rehearsal.** Not run on arrival: the last entry says 57 of 57 on its own final tree and nothing has
+landed since except its log commit, which answers both of the brief's conditions. Run at the end, because
+this run's commits touch `backend/src`: **57 passed, 0 warned, 0 failed**, on a Postgres 16 cluster built
+from scratch on port 5433 with SSL on and the on-disk Playwright Chromium. `STRIPE_SECRET_KEY`,
+`RESEND_API_KEY` and `GITHUB_TOKEN` were empty throughout. Baseline on arrival: root `tsc --noEmit -p .` and
+`tsc -b` clean, backend `tsc` clean but for TS5097, backend 1,125 with 1,123 pass and 2 skipped, app 1,335
+pass.
+
+**Found and fixed.** Five commits, pushed. Each was measured in the live server before and after.
+
+- **The demo server answers the address on its own QR code** (`f08b24a2`). The worst of the five and the
+  smallest. `http://localhost:8788/go` is what this script prints as "this machine", prints again as "their
+  phone  <- the QR code points here", and what both `AGENTS.md` files give for running the concierge alone.
+  It answered **404**, and so did the bare host, which redirects to it. `/go` came from `concierge.ts` until
+  the API dropped it on 24 September; the comment there says this script still serves it and nothing here ever
+  did. It redirects to `SITE` now, which the script already computes. The test is the durable half: every
+  address the banner prints to a human must be one the process answers.
+- **The card named one of our own reader ids to the guest** (`c1199344`). A Checkfront shop came back
+  `via: "their replay calendar"`, and `WebConcierge` prints that as "Read from their replay calendar just
+  now" on the one line whose job is to say these times are the shop's own. Two faults: `LiveRead["vendor"]`
+  is wider than the vendors `readerFor` routes to (`replay` is our word for a sniffed endpoint, `agent` the
+  browser on a hand-built form, `none` no link at all) and all three went through `vendorName`, whose
+  fallback hands back what it was given, which is the hole the table above it exists to close; and the
+  Checkfront driver reported `replay` although `readerFor` had identified the link as Checkfront and its own
+  refusal says "That Checkfront account is closed". 56 operators run Checkfront. Now "their Checkfront
+  calendar", with `viaPhrase` answering the whole phrase and nothing at all for a shop with no link.
+- **A town we hold one business in is somewhere a guest can name** (`1dd80ded`). "escape room in kitchener"
+  came back "Where are you? A town or city is enough." and a list of other towns, for a town we hold two
+  businesses in and the coordinates of both; "escape room in guelph" did it on one. `townsOf` keeps only the
+  places with three businesses or more, which is right for the towns offered back as choices and for the typo
+  scan and wrong for a town the guest named themselves: a place is a point here, not a word, and the search
+  then runs 40 km around it. The same floor also ran *before* the region was read, so "escape room in
+  waterloo iowa" lost its town altogether, the Ontario Waterloo having cleared three and then been dropped
+  for the wrong state, leaving a state-wide search by review count. The floor now comes off after the
+  narrowing and only for names of five letters or more, the guard the typo scan already keeps.
+- **The price range a guest compares is in one currency** (`caccc3e4`). "escape room in windsor ontario"
+  answered "$35.00 to $65.00 a head across 4 places", the $35 Canadian and the $65 a shop in Detroit well
+  inside the radius. A range is arithmetic and two currencies in it is none, and this is the line
+  `concierge/AGENTS.md` calls the answer to why a guest would use this instead of a search engine. The town
+  decides the currency, read with `currencyForArea`, which the booking path already prices every listing
+  with; a shop quoted in the other one keeps its price on its own card and stays out of the range, the way a
+  whole-room price already does, and the trace says so rather than leaving the count unexplained.
+- **A count in the line the guest is watching agrees with its noun** (`67b496a6`). `stepLine` narrates the
+  `catalog` and `answer` steps while a guest waits, so these are not logs: a search that reached one shop
+  printed "1 businesses matched" on the screen, and a shop with one free slot would have said "1 times, from
+  $37.00 + tax".
+
+**Verification.** Backend `npm test` 1,133 with 1,131 pass and 2 skipped, up 8; app 1,345 pass, unchanged and
+untouched. `tsc --noEmit -p .` and `tsc -b` clean at the root, backend's own `tsc` clean but for TS5097. The
+eight new tests are one file, `conciergeLive.test.ts`, with its own seeded catalog and no network; six of the
+eight were run against the pre-fix tree and failed there, the seventh (a province is still not a town) is the
+regression guard and passes both ways, and the eighth fails with `demo-server.mts` reverted. Every commit in
+the chain was checked out into a scratch tree and its own tests run green, so the history is green commit by
+commit, not only at the end.
+
+**Measured and left.** The group-price rule holds against a filled catalog: a $250 private room buyout is
+offered on its own card and is not in the range, and a $30 lane priced per group leaves a one-shop comparison
+empty rather than quoting a room as a head. `placeAmbiguity` still refuses to ask about a runner-up town
+under three businesses, which is right and is why tonight's floor change adds no new questions. A party of 20
+is still offered a four-player room, which is the ninety-seventh run's deliberate decision not to filter
+departures on a rate's `maxParty`. `demand.ts` still filters its crawl queue by category and region while its
+own comment claims an `instr` on a lowered city, confirmed live and left: picking between narrowing to the
+town and ordering by it is a crawl-priority judgement, not a defect with one right answer.
+
+**Needs Harshil.**
+
+- **A concierge card still prints a bare dollar sign for a shop in the other country's money.** The range
+  holds one currency now; the card's own figure does not say which. `money()` in `src/lib/concierge.ts`
+  hard-codes `$`, and the catalog's `offerings.currency` column, which holds the answer, is read by nothing in
+  the concierge: tonight's fix infers the currency from the town, which is right for a shop quoting its own
+  country's money and silent about one that publishes USD in Ontario.
+- **Whether the demo needs the site running beside it to be a demo at all.** `/go` is a redirect to
+  `SITE_URL`, which defaults to this machine on port 5173, so the QR code now lands on a dev server that has
+  to be running. The banner says so. Nothing here can tell whether that is the demo you want or whether this
+  process should serve the built site too.
+- Still open from earlier runs, unchanged: every other screen change in the app is silent to a screen reader;
+  an operator typing a comma for a decimal point is charged a hundred times over; the emails say nothing about
+  dark mode; `OperatorView`'s `storage` listener ignores a removal; two tabs chatting to one shop are resolved
+  by keeping the longer thread; half of an A/B day's batch carries no unsubscribe link; the cross-campaign
+  cool-off is one-way; nothing comes back for money a capture or a refund failed on; the 108 operators with
+  hacked websites have not been told; a guest cannot cancel a booking at all; the 290 listings with no way to
+  claim; and no sync has run, so `kid`, `specs`, `gap` and `extraNote` are still empty on every shipped row.
+  **The brief's rehearsal path is `backend/scripts/e2e-local.mts`, not `scripts/`**, nineteenth run to say so.
+  **Local `main` was detached again** and was fast-forwarded to `origin/main` before committing,
+  twenty-ninth run in a row; `git checkout -B` is refused in this container, `git checkout main && git merge
+  --ff-only origin/main` is not. `npm install` was needed at the root and in `backend/`, and the Postgres 16
+  cluster still has to be built from scratch, as the `postgres` user because the session is root.
+
 ## Coverage
 
 The catalog is 48,198 listings as of the 23 September sync, 1,873 of them Viator partner rows. Counts below
@@ -12808,6 +12907,16 @@ console progress) and the founder window's browser-side two, each read and left;
 `toLocaleUpperCase` and every `Intl` constructor; and the `lang` attribute on every document the product
 serves, which the email template alone did not carry.
 
+The concierge against a real API and a filled catalog, which nothing here had ever
+given it: `OUTSET_DB` on a scratch SQLite file plus `scripts/demo-server.mts`, seeded with a Waterloo region,
+a second Waterloo in Iowa and Windsor and Detroit across the river, then asked the sentences a guest types.
+Place reading end to end against that catalog: a town of one business, a town of two, a town named with its
+own region against a bigger one of the same name elsewhere, a province, a typo, and a sentence naming nowhere.
+The comparison line's arithmetic, including a radius that spans a border. Every value a reader can report as
+its vendor, against the phrase it puts on a card. Every address `demo-server.mts` prints to a human, against
+the routes it actually answers. The group-price rule and the party-size rule, pressed against live answers
+rather than hand-shaped ones.
+
 **Not yet checked.** Whether every other screen change in the app should move focus and say so: a tab
 change, a listing opening, the chat screen and the dashboard's own nine pages all swap the screen in silence,
 and a blanket rule changes how the whole app behaves for sighted keyboard users too (see the hundred and
@@ -12853,7 +12962,7 @@ booked: no shipped listing does, and the dashboard's own editor takes anything t
 `backend/src/concierge/demand.ts` should scope its crawl queue by the town people asked
 about, which its own comment says it does with an `instr` on a lowered city and its SQL does not do at all: it
 filters by category and region only, so a question about escape rooms in Waterloo queues escape rooms across
-Ontario and labels each row "asked for ... near Waterloo". Whether the rehearsal should mirror the layout Render publishes rather than the one `vite build` leaves, which is what keeps the real home, its forward script and the route rewrites undriven (see this run's Needs Harshil). Whether `npm run build` and render.yaml should produce the same site at all, now that one runs `scripts/copy-operators.mjs` and the other does not. Whether a transactional email's wordmark should open the operator's page or the marketplace, which is one template serving both audiences (see this run's Needs Harshil). Whether the Inbox tab should stay in the tab bar at all while the guest agent is off, given that its list and its badge are now always empty by rule. Whether `SITE_PAGES` should be checked against the files that answer those paths, so a fifth business-type page added to the sitemap without its html cannot become a soft 404 under the catch-all. Whether a
+Ontario and labels each row "asked for ... near Waterloo". Confirmed live by the hundred and fifty-third run and left, because narrowing to the town and merely ordering by it are two different crawl priorities and the comment argues for both. Whether a concierge card should say which country's dollars its own figure is in, now that the range beside it holds one currency, and whether the catalog's `offerings.currency` column should answer that rather than the town the guest named (see that run's Needs Harshil). Whether `demo-server.mts` should serve the built site as well as redirect to it, now that its QR code lands on a dev server that has to be running (see that run). Whether the rehearsal should mirror the layout Render publishes rather than the one `vite build` leaves, which is what keeps the real home, its forward script and the route rewrites undriven (see this run's Needs Harshil). Whether `npm run build` and render.yaml should produce the same site at all, now that one runs `scripts/copy-operators.mjs` and the other does not. Whether a transactional email's wordmark should open the operator's page or the marketplace, which is one template serving both audiences (see this run's Needs Harshil). Whether the Inbox tab should stay in the tab bar at all while the guest agent is off, given that its list and its badge are now always empty by rule. Whether `SITE_PAGES` should be checked against the files that answer those paths, so a fifth business-type page added to the sitemap without its html cannot become a soft 404 under the catch-all. Whether a
 guest waiting out one of the two new deadlines should be told which wait they are in, 15 seconds on a
 stalled listing link and 20 on the card form, both of which say nothing until they end (see this run's Needs
 Harshil). Whether the concierge's 45 second idle deadline is right, which only a real `/go` run against a
@@ -12952,9 +13061,10 @@ blocks `fetch` on every `*.rezdy.com` subdomain; its price helpers and its windo
 instead. Whether the concierge's
 watch window should have a browser door of its own: with
 `ADMIN_KEY` set it now answers a browser 404 and only curl gets in, and the metrics page's emailed-code
-sign-in is the pattern it lacks. The concierge overlay against a
-live API: nothing here could give it one, so its answers, its chips, its history panel and its "Also nearby"
-rows have been read and unit tested but never seen full of real shops. The wallet against a real Stripe key,
+sign-in is the pattern it lacks. The concierge overlay itself in a browser against a live
+API: the hundred and fifty-third run gave the API a filled catalog and drove it by its own routes, so the
+answers, the narrowing and the comparison have now been seen full of real shops, but the chips, the history
+panel and the "Also nearby" rows were read as JSON and never clicked. The wallet against a real Stripe key,
 which is the same wall as everything else on that list. Whether the in-app concierge should be reachable at
 all from the phone frame's own tab bar, rather than only from the home's pill and an `#ask=` link.
 Which of two towns of the same name a guest means: "golf springfield" cannot tell, and
