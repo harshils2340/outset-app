@@ -484,14 +484,13 @@ export function readIntent(text: string, prior?: Intent | null, device?: { lat: 
    * fifty-five operators' worth of guests in Waterloo, Iowa. Which one they meant is not guessable from the
    * sentence, so the whole list comes back and the planner asks.
    */
-  const exactPlaces = townsOf(
-    db
-      .prepare(
-        `SELECT city, region, lat, lon FROM operators
-          WHERE city IS NOT NULL AND length(city) >= 4 AND lat IS NOT NULL AND instr(?, lower(city)) > 0`,
-      )
-      .all(t) as Pin[],
-  ).filter((r) => wordIn(t, r.city));
+  const namedPins = db
+    .prepare(
+      `SELECT city, region, lat, lon FROM operators
+        WHERE city IS NOT NULL AND length(city) >= 4 AND lat IS NOT NULL AND instr(?, lower(city)) > 0`,
+    )
+    .all(t) as Pin[];
+  const exactPlaces = townsOf(namedPins).filter((r) => wordIn(t, r.city));
 
   /**
    * A one-letter slip in the town's name — "tornto" for "toronto" — must not read as nowhere named and drop
@@ -522,9 +521,35 @@ export function readIntent(text: string, prior?: Intent | null, device?: { lat: 
    * So only the town that *is* the region word is discarded, and when a region was named the towns are
    * narrowed to it: "Waterloo, Iowa" is one place, not eleven.
    */
-  const placeRows = allPlaces
-    .filter((r) => !(regionWord && r.city.toLowerCase() === regionWord))
-    .filter((r) => !region || r.region === region);
+  const inRegion = (rows: PlaceMatch[]) =>
+    rows
+      .filter((r) => !(regionWord && r.city.toLowerCase() === regionWord))
+      .filter((r) => !region || r.region === region);
+
+  /**
+   * A town we hold one business in is still a town.
+   *
+   * `townsOf` keeps only the places with three businesses or more, which is right for the towns this offers
+   * back as choices and for the typo scan above, and wrong for a town the guest named themselves. A place is
+   * a point here, not a word, and one pin is a point: the search then goes 40 km around it and answers out of
+   * the bigger town next door, which is the whole reason "escape room in waterloo" is answered by shops filed
+   * under Kitchener. Measured against a filled catalog on 6 October 2026, two ways round:
+   *
+   *   - "escape room in kitchener" came back "Where are you? A town or city is enough." and a list of other
+   *     towns, for a town we held two businesses in and the coordinates of both.
+   *   - "escape room in waterloo iowa" lost its town altogether, because the floor was applied before the
+   *     region was: the Ontario Waterloo cleared three and was then thrown away for being the wrong state,
+   *     leaving a state-wide search by review count, which is the hundred kilometre answer the comment above
+   *     says was fixed for "escape room in kitchener ontario".
+   *
+   * So the floor comes off only once the narrowing has run and left nothing, and only for names of five
+   * letters or more, which is the guard the typo scan already keeps: it is what stops a short word that is
+   * ordinary English as well as somewhere's name being quietly reread as a one-shop hamlet.
+   */
+  const named = inRegion(allPlaces);
+  const placeRows = named.length
+    ? named
+    : inRegion(townsOf(namedPins.filter((p) => p.city.length >= 5), 1).filter((r) => wordIn(t, r.city)));
 
   // When the sentence names several places, the one with the most businesses is the one it is about.
   const bestName = placeRows.length ? placeRows[0].city.toLowerCase() : null;

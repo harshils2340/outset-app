@@ -99,3 +99,33 @@ test("the Checkfront driver says Checkfront, which is what routed the shop to it
   assert.ok(!/vendor:\s*"replay"/.test(src), "the Checkfront reader still reports itself as a replay");
   assert.ok(/vendor:\s*"checkfront"/.test(src), "the Checkfront reader names no vendor at all");
 });
+test("a town we hold one or two businesses in is a place, not a reason to ask where they are", () => {
+  // Measured in a live run: both of these came back "Where are you? A town or city is enough." and a list of
+  // other towns, for towns we hold the coordinates of.
+  for (const [sentence, town] of [["escape room in kitchener", "Kitchener"], ["escape room in guelph", "Guelph"]] as const) {
+    const i = readIntent(sentence);
+    assert.equal(i.city, town, sentence);
+    assert.equal(i.region, "ON", sentence);
+    assert.ok(i.point, sentence + " resolved a town with no point to search around");
+  }
+});
+
+test("the floor on a town's size comes off after the region is read, not before it", () => {
+  /**
+   * Waterloo, Ontario clears three and Waterloo, Iowa does not, so the Iowa one was thrown away for being
+   * the wrong state after the Ontario one had already won, leaving a state-wide search by review count.
+   */
+  const i = readIntent("escape room in waterloo iowa");
+  assert.equal(i.city, "Waterloo");
+  assert.equal(i.region, "IA");
+  assert.ok(i.point && i.point.lat > 42 && i.point.lat < 43, "the Iowa Waterloo, not the Ontario one");
+});
+
+test("a sentence that names nowhere is still asked where, and a province is still not a town", () => {
+  assert.equal(readIntent("escape room tonight").city, null);
+  // The town that is the region word is still discarded, which is what keeps Ontario, California out.
+  const i = readIntent("escape room in ontario");
+  assert.equal(i.region, "ON");
+  assert.notEqual(i.city, "Ontario");
+});
+
