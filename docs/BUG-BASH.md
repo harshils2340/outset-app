@@ -11702,6 +11702,97 @@ town and ordering by it is a crawl-priority judgement, not a defect with one rig
   --ff-only origin/main` is not. `npm install` was needed at the root and in `backend/`, and the Postgres 16
   cluster still has to be built from scratch, as the `postgres` user because the session is root.
 
+## 2026-10-06 13:35 UTC, hundred and fifty-fourth run: the site Render actually publishes, as against the one we build
+
+**Chosen, and why.** Not yet checked has carried this for weeks: "Whether the rehearsal should mirror the
+layout Render publishes rather than the one `vite build` leaves, which is what keeps the real home, its
+forward script and the route rewrites undriven." Nothing in this repo had ever run `render.yaml`'s own build
+command and served the result through `render.yaml`'s own route table, so the home every guest and every
+cold-emailed operator lands on, the script that forwards an old root link into the app, and the thirteen
+redirects and rewrites under it were all read and never once executed. Every other area the brief lists is on
+Verified. So: `npx vite build --base=/ && npx tsx scripts/build-pages.mts && cp dist/index.html dist/404.html
+&& cp dist/index.html dist/app.html && mv dist/otto.html dist/index.html && rm -f dist/claim-index.json`, the
+exact line in `render.yaml`, 20,728 listing pages and 3,040 landing pages out of the shipped catalog, served
+by a 60 line stand-in for Render's static runtime (an existing file wins, then the routes in order, then
+404.html) and driven in the on-disk Chromium.
+
+**The rehearsal.** Run, because this run's commit touches `src/`, which is one of the brief's two conditions.
+**57 passed, 0 warned, 0 failed**, on a Postgres 16 cluster built from scratch on port 5433 with SSL on.
+`STRIPE_SECRET_KEY`, `RESEND_API_KEY` and `GITHUB_TOKEN` were empty throughout. Baseline on arrival: root
+`tsc --noEmit -p .` and `tsc -b` clean, backend `tsc` clean but for TS5097, backend 1,133 with 1,131 pass and
+2 skipped, app 1,345 pass.
+
+**Found and fixed.** One commit, pushed, measured in a real browser against the production layout before and
+after.
+
+- **The operator's own tab is named for their shop, not for the guest marketplace** (`468a56ac`). `/operators`
+  read "Book things to do near you · Outset" on every screen of the dashboard: the owner's tab, their
+  bookmark and their history entry were the guest marketplace's, and an owner with their listing open in one
+  tab and their dashboard in another had two entries with one name. This is the bug `pageTitle` was written to
+  fix for guests in September, left standing on the operator side because the provider's title effect only
+  ever asked whether a listing was open. `/admin` had it worse: `AdminView` names itself "Outset metrics" once
+  on mount, the provider wraps it although it draws none of it, and the catalog landing a moment later renamed
+  the metrics page to the guest home's title. Now `dashboardTitle` names the shop the dashboard is open on
+  ("10pin Bowling Lounge dashboard · Outset", "Operator dashboard · Outset" before one is picked) and the
+  provider leaves `/admin` alone. Six tests.
+
+**Verification.** App `npm test` 1,350 pass, up 5 (six new tests, one rewritten for the new deps array);
+backend 1,131 pass and 2 skipped, unchanged and untouched. `tsc --noEmit -p .` and `tsc -b` clean at the root,
+backend's own `tsc` clean but for TS5097. The fix was confirmed in Chromium against the production build:
+`/operators` "Operator dashboard · Outset", `/operators#claim=o-10pinchicago-com&k=...` "10pin Bowling Lounge
+dashboard · Outset", `/admin` "Outset metrics", `/activities` and `/activities#o=` unchanged.
+
+**Measured and left.** The forward script in `public/otto.html` is right on all ten hash shapes the app reads,
+driven one fresh browser context each because a hash-only `goto` never reloads the page and makes every one of
+them look broken: `#o=`, `#remove=`, `#paid=`, `#wallet=`, `#safe`, `#ask=` and `#admin` reach `/activities`,
+`#claim=`, `#payouts` and `#demo` reach `/operators`, `?preview=1` carries, an unknown hash stays on the Otto
+page, and the list matches every hash `AppProvider`, `App`, `OperatorView`, `OpLogin`, `WalletCard` and
+`lib/admin.ts` read, with nothing missing in either direction. Every one of the 3,107 internal links on the
+built site, from both shells, the eight static pages, all 3,040 landing pages and a seventh of the listing
+pages, resolved through the route table to a real file: nothing broken, and only `/activities` itself falling
+to the SPA, which is the point of it. All 20,728 listing pages and 3,040 landing pages carry `noindex`, as
+`MARKETPLACE_IN_SEARCH = false` intends, and the sitemap holds exactly the five URLs that decision leaves it:
+the root and the four `SITE_PAGES`, every one of which resolves. The eight marketing and legal pages at 400px
+and 1280px: no sideways scroll, no control without a name, no page without a `lang` or an `h1` except
+`unsubscribe.html` (below). A `/l/` page's "Book on Outset" link followed into the app on four listings
+including a partner's, each opening the shop it names. `build-pages` prints "14,236 listings" for 20,728 files
+because its count is the non-affiliate ones it would offer a search engine, which with `inSearch` off it
+offers none of. The committed `index.html`'s crawlable block names two pages the current catalog no longer
+earns (`/p/fitness-in-tampa.html`, `/p/fitness-in-orlando.html`, both now filed as yoga and gymnastics): the
+generator cannot emit a dead link, `build-pages` rewrites that block in `dist` before anything is copied from
+it, and `public/` holds no `/p/` at all, so the only reader of the stale copy is the dev server, where all 61
+links are equally dead. A linter run from a scratch install over both projects turned up 85 errors and 59
+warnings and not one defect: every `rules-of-hooks` error is an early return on a module constant, every
+`no-promise-executor-return` is `new Promise((r) => setTimeout(r, n))`, and the `require-atomic-updates` pairs
+are refs.
+
+**Needs Harshil.**
+
+- **The unsubscribe page says nothing a screen reader can hear, and has no heading at all.**
+  `public/unsubscribe.html` is where a cold-emailed business lands, and the one sentence that matters
+  ("You are unsubscribed", "That link is not valid", "We could not reach the server") is swapped into a bare
+  `<p id="msg">` with no `role="status"` and no live region, so a blind recipient is told nothing about
+  whether they are off the list. It also has no `h1`, no `color-scheme`, and asks for `Inter` where the
+  product uses Figtree. Left alone because `public/` is outside the directories this brief allows.
+- **Whether the rehearsal should build the production layout now that we know it works.** The route table,
+  the forward script and the two shells were driven by hand tonight and nothing re-drives them: a new hash
+  shape in the app, or a route added to `render.yaml` without its file, would land a guest or an owner on the
+  Otto marketing page and no test would notice. The stand-in server is 60 lines and `e2e-local.mts` already
+  builds a site and runs a browser.
+- Still open from earlier runs, unchanged: a concierge card prints a bare dollar sign for a shop in the other
+  country's money; every other screen change in the app is silent to a screen reader; an operator typing a
+  comma for a decimal point is charged a hundred times over; the emails say nothing about dark mode;
+  `OperatorView`'s `storage` listener ignores a removal; two tabs chatting to one shop are resolved by keeping
+  the longer thread; half of an A/B day's batch carries no unsubscribe link; the cross-campaign cool-off is
+  one-way; nothing comes back for money a capture or a refund failed on; the 108 operators with hacked
+  websites have not been told; a guest cannot cancel a booking at all; the 290 listings with no way to claim;
+  and no sync has run, so `kid`, `specs`, `gap` and `extraNote` are still empty on every shipped row.
+  **The brief's rehearsal path is `backend/scripts/e2e-local.mts`, not `scripts/`**, twentieth run to say so.
+  **Local `main` was detached again** and was fast-forwarded to `origin/main` before committing, thirtieth run
+  in a row. `npm install` was needed at the root and in `backend/`, and the Postgres 16 cluster still has to
+  be built from scratch, as the `postgres` user because the session is root.
+
+
 ## Coverage
 
 The catalog is 48,198 listings as of the 23 September sync, 1,873 of them Viator partner rows. Counts below
@@ -12056,6 +12147,19 @@ link and every card link against the page and the listing it opens; all 60,237 p
 each one links to; every image address on every page against the scheme the page itself is served over; the
 JSON-LD of all 1,481 pages parsed; and the pages at 400px in a real Chromium. The photo filters behind a
 cover, against a bot check the crawl was served instead of a page.
+
+The site Render actually publishes, built by `render.yaml`'s own command and served through `render.yaml`'s
+own route table for the first time: every one of its thirteen redirects and rewrites, the two shells it makes
+out of one build, the Otto home it moves into place, and the script on that home that forwards an old root
+link into the app, against all ten hash shapes `AppProvider`, `App`, `OperatorView`, `OpLogin`, `WalletCard`
+and `lib/admin.ts` read, in both directions. Every internal link on the built site against the file the route
+table resolves it to, over both shells, the eight static pages, all 3,040 landing pages and a seventh of the
+20,728 listing pages. That every generated page carries the `noindex` the marketplace-out-of-search decision
+intends, and that the sitemap holds exactly what that decision leaves it. The eight marketing and legal pages
+at 400px and 1280px, for sideways scroll, a control with no name, a missing `lang` and a missing `h1`. A
+listing page's own "Book on Outset" link followed into the app. What the browser tab, the bookmark and the
+history entry call the operator dashboard and the metrics page, which `pageTitle` had only ever named on the
+guest side.
 
 Where the home opens on a first visit, driven rather than read: every time zone in the table against the 47
 metros, an unmapped zone, a browser with no `Intl`, and what an id that names no metro does to the rails, the
@@ -12962,7 +13066,7 @@ booked: no shipped listing does, and the dashboard's own editor takes anything t
 `backend/src/concierge/demand.ts` should scope its crawl queue by the town people asked
 about, which its own comment says it does with an `instr` on a lowered city and its SQL does not do at all: it
 filters by category and region only, so a question about escape rooms in Waterloo queues escape rooms across
-Ontario and labels each row "asked for ... near Waterloo". Confirmed live by the hundred and fifty-third run and left, because narrowing to the town and merely ordering by it are two different crawl priorities and the comment argues for both. Whether a concierge card should say which country's dollars its own figure is in, now that the range beside it holds one currency, and whether the catalog's `offerings.currency` column should answer that rather than the town the guest named (see that run's Needs Harshil). Whether `demo-server.mts` should serve the built site as well as redirect to it, now that its QR code lands on a dev server that has to be running (see that run). Whether the rehearsal should mirror the layout Render publishes rather than the one `vite build` leaves, which is what keeps the real home, its forward script and the route rewrites undriven (see this run's Needs Harshil). Whether `npm run build` and render.yaml should produce the same site at all, now that one runs `scripts/copy-operators.mjs` and the other does not. Whether a transactional email's wordmark should open the operator's page or the marketplace, which is one template serving both audiences (see this run's Needs Harshil). Whether the Inbox tab should stay in the tab bar at all while the guest agent is off, given that its list and its badge are now always empty by rule. Whether `SITE_PAGES` should be checked against the files that answer those paths, so a fifth business-type page added to the sitemap without its html cannot become a soft 404 under the catch-all. Whether a
+Ontario and labels each row "asked for ... near Waterloo". Confirmed live by the hundred and fifty-third run and left, because narrowing to the town and merely ordering by it are two different crawl priorities and the comment argues for both. Whether a concierge card should say which country's dollars its own figure is in, now that the range beside it holds one currency, and whether the catalog's `offerings.currency` column should answer that rather than the town the guest named (see that run's Needs Harshil). Whether `demo-server.mts` should serve the built site as well as redirect to it, now that its QR code lands on a dev server that has to be running (see that run). Whether the rehearsal should mirror the layout Render publishes rather than the one `vite build` leaves: the real home, its forward script and the route rewrites were driven by hand by the hundred and fifty-fourth run and were right, and nothing re-drives them, so a new hash shape or a route added without its file would still reach a guest (see that run's Needs Harshil). Whether `npm run build` and render.yaml should produce the same site at all, now that one runs `scripts/copy-operators.mjs` and the other does not. Whether a transactional email's wordmark should open the operator's page or the marketplace, which is one template serving both audiences (see this run's Needs Harshil). Whether the Inbox tab should stay in the tab bar at all while the guest agent is off, given that its list and its badge are now always empty by rule. Whether `SITE_PAGES` should be checked against the files that answer those paths, so a fifth business-type page added to the sitemap without its html cannot become a soft 404 under the catch-all. Whether a
 guest waiting out one of the two new deadlines should be told which wait they are in, 15 seconds on a
 stalled listing link and 20 on the card form, both of which say nothing until they end (see this run's Needs
 Harshil). Whether the concierge's 45 second idle deadline is right, which only a real `/go` run against a
@@ -13487,4 +13591,14 @@ which nothing in the code would say. Whether a `.svg` or `.gif` cover should be 
 both skip the proxy, so the canvas that would read them is tainted and the flat screen keeps them by rule: 2
 covers and 10 photos on 6 listings. Whether `splitAddons` should be handed the shop's own add-on names in
 `bookedRow` as well, which is the one of its four readers that still has only the menu to go on, and which
-only a booking written before `service` existed can reach.
+only a booking written before `service` existed can reach. Whether the unsubscribe page should say its outcome to a
+screen reader and carry a heading at all: `public/unsubscribe.html` swaps the one sentence that matters into
+a bare paragraph with no live region, and `public/` is outside the directories the brief allows (see the
+hundred and fifty-fourth run's Needs Harshil). Whether the crawlable block committed into `index.html` should
+be kept in step with the catalog: two of its 61 links name landing pages the current catalog no longer earns,
+which reaches nobody because `build-pages` rewrites that block in `dist` before anything is copied from it
+and `public/` holds no `/p/` at all, but nothing says so when it drifts. Whether `build-pages` should print
+the number of listing pages it wrote rather than the number it would offer a search engine, which with the
+marketplace out of search is none of them. Whether `render.yaml`'s build should run `tsc -b` the way
+`npm run build` does, and whether `npm run build` should run `copy-operators.mjs` before `build-pages` when
+that leaves the copy it makes holding the stale block.
