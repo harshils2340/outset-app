@@ -29,7 +29,7 @@ import { currentLocation, type Place } from "../lib/places";
 import { pageTitle } from "../lib/site";
 import { priceFor, priceUnclaimed } from "../lib/pricing";
 import { applyStoredProfiles } from "../lib/operator";
-import { loadBookings, loadChats, saveBookings, saveChats } from "../lib/storage";
+import { DEVICE_KEYS, loadBookings, loadChats, mergeBookings, mergeChats, saveBookings, saveChats } from "../lib/storage";
 import { isHttpsUrlOnHost } from "../lib/urlSafety";
 import { AGENT_MODE_LIVE, guestWords } from "../lib/concierge";
 import { ErrorBoundary } from "../components/layout/ErrorBoundary";
@@ -94,6 +94,8 @@ export type AppState = {
 
 type Action =
   | { type: "hydrate"; bookings: Booking[]; chats: Record<string, ChatMessage[]> }
+  /** Another tab of this browser wrote the device's bookings or chats. Take what it has that we do not. */
+  | { type: "deviceMerge"; bookings?: Booking[]; chats?: Record<string, ChatMessage[]> }
   | { type: "catalogLoaded"; added: number; complete?: boolean }
   | { type: "catalogTouched" }
   /** The local day rolled over, so the ten-day window has been rebuilt under whatever the guest had picked. */
@@ -217,6 +219,14 @@ function reducer(state: AppState, action: Action): AppState {
   switch (action.type) {
     case "hydrate":
       return { ...state, hydrated: true, bookings: action.bookings, chats: action.chats };
+    case "deviceMerge": {
+      const bookings = action.bookings ? mergeBookings(state.bookings, action.bookings) : state.bookings;
+      const chats = action.chats ? mergeChats(state.chats, action.chats) : state.chats;
+      // Nothing changed hands: returning the same state keeps the save effects below from writing again,
+      // which would send the other tab a `storage` event back and start the two of them bouncing.
+      if (bookings === state.bookings && chats === state.chats) return state;
+      return { ...state, bookings, chats };
+    }
     case "catalogLoaded":
       return { ...state, catalogReady: true, catalogComplete: state.catalogComplete || !!action.complete, catalogVersion: action.added ? state.catalogVersion + 1 : state.catalogVersion };
     case "catalogTouched":
@@ -937,6 +947,23 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (!state.hydrated) return;
     saveBookings(state.bookings);
   }, [state.bookings, state.hydrated]);
+
+  /*
+   * A second tab of this browser wrote the bookings or the chats. Both stores are written whole, so the next
+   * write from this tab would put its own hydrated list over the top and the other tab's booking would leave
+   * the device: see `mergeBookings` in lib/storage.ts for what that costs a guest. The operator dashboard
+   * already listens for this on its own profile key; this is the guest side of the same fix.
+   */
+  useEffect(() => {
+    if (!state.hydrated) return;
+    const onStorage = (e: StorageEvent) => {
+      if (!e.newValue) return;
+      if (e.key === DEVICE_KEYS.bookings) dispatch({ type: "deviceMerge", bookings: loadBookings() });
+      else if (e.key === DEVICE_KEYS.chats) dispatch({ type: "deviceMerge", chats: loadChats() });
+    };
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
+  }, [state.hydrated]);
 
   /**
    * The grounded fallback behind Otto's rules. `sendChat` leaves a bubble `pending` when the rules answered with

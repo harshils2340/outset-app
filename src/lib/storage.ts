@@ -84,6 +84,72 @@ export function saveChats(chats: Record<string, ChatMessage[]>): void {
   }
 }
 
+/* ---------- a second tab of the same browser ---------- */
+
+/*
+ * Both stores above are written whole: the app holds the list in React state, reads it once on the first
+ * paint, and writes all of it back on every change. That is fine for one tab and loses a booking with two.
+ * A guest comparing two listings in two tabs, which is what "open in new tab" is for, books in the second
+ * and then books in the first: the first tab writes the list it hydrated with, which has no row for the
+ * booking the second tab just took, so that trip leaves the device. Its Trips card, its Inbox thread and the
+ * operator feed, which reads the guest bookings in this same browser, all go with it. The money is in
+ * Postgres and the confirmation email was sent, so the guest is holding a code for a trip the app says they
+ * never booked.
+ *
+ * The operator dashboard already answers this (see `OperatorView`): the `storage` event says another tab
+ * wrote the key, and the tab that hears it takes that copy. The guest side has the easier job of the two,
+ * because nothing here ever removes a booking: `state.bookings` is prepended to and updated in place, never
+ * shortened. So the merge is a union and cannot lose a row either way.
+ */
+
+/*
+ * A merge that changed nothing hands back the list it was given, identity and all.
+ *
+ * This is what stops two tabs bouncing. A `storage` event reaches every tab but the one that wrote, so a tab
+ * that merges and then saves sends the event straight back; with a fresh array every time, each tab would
+ * answer the other's write with one of its own, for ever. The lists here are a guest's own trips and threads,
+ * so a stringify is cheaper than the render it prevents.
+ */
+function same<T>(merged: T, mine: T): T {
+  return JSON.stringify(merged) === JSON.stringify(mine) ? mine : merged;
+}
+
+/**
+ * Our bookings and the ones another tab just wrote, as one list, newest first.
+ *
+ * A code only one side holds is kept. A code both hold is taken from `theirs`, which is the newer write: the
+ * other tab may have been the one that came back from Stripe and marked it paid.
+ */
+export function mergeBookings(mine: Booking[], theirs: Booking[]): Booking[] {
+  const by = new Map<string, Booking>();
+  for (const b of mine) by.set(b.code, b);
+  for (const b of theirs) by.set(b.code, b);
+  return same([...by.values()].sort((a, b) => b.created - a.created), mine);
+}
+
+/**
+ * Our threads and another tab's, as one set.
+ *
+ * A shop only one side has talked to keeps its thread. A shop both sides hold keeps the longer thread, since
+ * a thread is appended to and the longer one is the one with the later messages in it. Two tabs chatting to
+ * the same shop at the same moment is the one case this does not resolve, and the alternative, splicing two
+ * divergent message lists, cannot tell an appended message from the one `chatSettled` replaced in place.
+ */
+export function mergeChats(
+  mine: Record<string, ChatMessage[]>,
+  theirs: Record<string, ChatMessage[]>,
+): Record<string, ChatMessage[]> {
+  const out: Record<string, ChatMessage[]> = { ...mine };
+  for (const [id, thread] of Object.entries(theirs)) {
+    const here = out[id];
+    if (!here || thread.length > here.length) out[id] = thread;
+  }
+  return same(out, mine);
+}
+
+/** The keys the two stores above live under, for a tab deciding whether a `storage` event is one of theirs. */
+export const DEVICE_KEYS = { bookings: BOOKINGS_KEY, chats: CHATS_KEY } as const;
+
 /**
  * A booking's `addons` list holds two different things: the service the guest picked, stored as its index into
  * the listing's own menu, and every extra they added, stored by name. Three screens read it, and the phone
