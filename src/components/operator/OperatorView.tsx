@@ -447,8 +447,11 @@ export function OperatorView({ compact = false }: { compact?: boolean }) {
                 claim one is the only thing that tells an owner somebody else walked in through a forwarded
                 link, and nobody could read it. In the phone frame `.od` is a column, so it was under the tab
                 bar there instead. */}
+            {/* Set from the sign-in answer, so it arrives after the dashboard has painted: a status, the way
+                its signed-out twin below already is. It is the only thing that tells an owner somebody else
+                walked in through a forwarded link. */}
             {claimNotice ? (
-              <div className="odnotice">
+              <div className="odnotice" role="status">
                 <span>
                   <b>This listing was already claimed by {claimNotice.email}</b>
                   <small>
@@ -527,7 +530,15 @@ export function OperatorView({ compact = false }: { compact?: boolean }) {
         ) : null}
 
         {opened ? <BookingDrawer b={opened} onClose={() => setOpenedId(null)} /> : null}
-        {toastText ? <div className="odtoast">{toastText}</div> : null}
+        {toastText ? <div className="odtoast" aria-hidden="true">{toastText}</div> : null}
+        {/* The dashboard's whole notice channel is that pill, and 32 messages go through it: "Blocked as time
+            off", "Day off added", "Samples removed", and every refusal the dashboard has, from "Could not
+            save that. Check your connection and try again." after an Accept that failed to "Could not release
+            the listing. Nothing was changed." The pill is mounted and unmounted with its text and carries no
+            role, so an operator using a screen reader pressed Accept, watched nothing happen and was told
+            nothing. Announced from a region that is always here and empty the rest of the time, the shape
+            OpServices already uses for its reorder announcements. */}
+        <span className="odsr" role="status" aria-live="polite">{toastText || ""}</span>
       </div>
     </OpCtx.Provider>
   );

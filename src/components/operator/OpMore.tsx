@@ -273,12 +273,12 @@ export function OpSettings() {
           <label className="odfield">
             <span>Email</span>
             <input type="email" value={p.ownerEmail} maxLength={OWNER_EMAIL_MAX} autoComplete="email" inputMode="email" spellCheck={false} aria-invalid={badEmail || undefined} onChange={(e) => set({ ownerEmail: e.target.value.slice(0, OWNER_EMAIL_MAX) })} onBlur={(e) => { const t = e.target.value.trim(); if (t !== p.ownerEmail) set({ ownerEmail: t }); }} />
-            {badEmail ? <small className="oderr">That's not an email address. Booking alerts can't reach it.</small> : null}
+            {badEmail ? <small className="oderr" role="alert">That's not an email address. Booking alerts can't reach it.</small> : null}
           </label>
           <label className="odfield">
             <span>Mobile</span>
             <input type="tel" value={p.ownerPhone} maxLength={OWNER_PHONE_MAX} autoComplete="tel" inputMode="tel" aria-invalid={badPhone || undefined} onChange={(e) => set({ ownerPhone: e.target.value.slice(0, OWNER_PHONE_MAX) })} onBlur={(e) => { const t = e.target.value.trim(); if (t !== p.ownerPhone) set({ ownerPhone: t }); }} />
-            {badPhone ? <small className="oderr">Enter a phone number with 7 to 15 digits, like +1 727 555 0100.</small> : null}
+            {badPhone ? <small className="oderr" role="alert">Enter a phone number with 7 to 15 digits, like +1 727 555 0100.</small> : null}
           </label>
         </section>
 

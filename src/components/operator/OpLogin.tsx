@@ -590,12 +590,12 @@ export function OpLogin({ claimId, claimToken, compact, onEnter, onBack }: { cla
             <h2>Find your business</h2>
             <p className="odmuted">Search by name. If we already built your listing, you'll claim it in under a minute.</p>
             {claimId && !preset && app.catalogComplete ? (
-              <p className="oderr">We couldn't find the business named in that link. Search for it by name below, or write to {SUPPORT}.</p>
+              <p className="oderr" role="alert">We couldn't find the business named in that link. Search for it by name below, or write to {SUPPORT}.</p>
             ) : claimId && !preset && (linkState === "bad" || linkState === "offline") ? (
               /* The link check waits a full minute for the catalog and the listing's own file, then gives up. If
                  the listing never arrived, the link is not what went wrong and a fresh one will not help: the
                  owner landed here on a bare "Find your business" screen with nothing said at all. */
-              <p className="oderr">We couldn't load your listing. Check your connection and open the link from your email again, or search for your business by name below.</p>
+              <p className="oderr" role="alert">We couldn't load your listing. Check your connection and open the link from your email again, or search for your business by name below.</p>
             ) : null}
             {/* The magnifying glass is the whole of this label's content, which leaves the box with no
                 accessible name at all and suppresses the placeholder a browser would otherwise fall back
@@ -650,7 +650,7 @@ export function OpLogin({ claimId, claimToken, compact, onEnter, onBack }: { cla
 
             <div className="odor"><span>already claimed?</span></div>
             <label className="odfield"><span>Sign in with the email on your listing</span><input type="email" maxLength={200} value={signinEmail} onChange={(e) => { setSigninEmail(e.target.value); setVerifiedIds(null); if (mode === "signin") setErr(null); }} placeholder="you@business.com" onKeyDown={(e) => e.key === "Enter" && isApi && !sending && EMAIL.test(signinEmail.trim()) && (setMode("signin"), void startSignIn())} /></label>
-            {err && mode === "signin" ? <p className="oderr">{err}</p> : null}
+            {err && mode === "signin" ? <p className="oderr" role="alert">{err}</p> : null}
             <button type="button" className="cta odwide" disabled={!EMAIL.test(signinEmail.trim()) || sending || !isApi} title={!isApi ? "Signing in needs the Outset API, which this demo is not connected to" : !EMAIL.test(signinEmail.trim()) ? "Type the email address you claimed with" : undefined} onClick={() => { setMode("signin"); void startSignIn(); }}>{sending ? "Sending…" : "Email me a sign-in code"}</button>
             {!isApi ? <p className="odfine">Sign-in codes switch on once the API is connected.</p> : null}
             <div className="odor"><span>or</span></div>
@@ -662,9 +662,9 @@ export function OpLogin({ claimId, claimToken, compact, onEnter, onBack }: { cla
           <>
             <button type="button" className="odlink" onClick={() => { setStep("pick"); setErr(null); }}><Markup html={OD_ICONS.back} /> Different business</button>
             {head}
-            {linkState === "bad" ? <p className="oderr">That claim link didn't check out. Ask for a fresh one below, or sign in with your email.</p> : null}
-            {linkState === "expired" ? <p className="oderr">That claim link has expired. Links stay good for a while so an old forwarded email cannot open your dashboard. Ask for a fresh one below, it arrives in a moment.</p> : null}
-            {linkState === "offline" ? <p className="oderr">We couldn't reach Outset to check that link, so there is nothing wrong with it. Check your connection and reload this page, or open the link from your email again.</p> : null}
+            {linkState === "bad" ? <p className="oderr" role="alert">That claim link didn't check out. Ask for a fresh one below, or sign in with your email.</p> : null}
+            {linkState === "expired" ? <p className="oderr" role="alert">That claim link has expired. Links stay good for a while so an old forwarded email cannot open your dashboard. Ask for a fresh one below, it arrives in a moment.</p> : null}
+            {linkState === "offline" ? <p className="oderr" role="alert">We couldn't reach Outset to check that link, so there is nothing wrong with it. Check your connection and reload this page, or open the link from your email again.</p> : null}
             <h2>Who's the owner?</h2>
             <p className="odmuted">We'll send booking alerts here. Nothing goes out until you confirm.</p>
             <label className="odfield"><span>Your name</span><input maxLength={120} value={name} onChange={(e) => setName(e.target.value)} placeholder="Full name" /></label>
@@ -673,7 +673,7 @@ export function OpLogin({ claimId, claimToken, compact, onEnter, onBack }: { cla
             {isApi ? (
               <>
                 <p className="odmuted">{ruleLine}</p>
-                {err && mode === "claim" ? <p className="oderr">{err}</p> : null}
+                {err && mode === "claim" ? <p className="oderr" role="alert">{err}</p> : null}
                 <button type="button" className="cta odwide" disabled={!canRequest} onClick={() => void requestLink()}>{sending ? "Sending…" : "Email me my claim link"}</button>
                 {/* TEST BYPASS. Rendered only when the API confirms this address is on OUTSET_TEST_CLAIM_EMAILS. */}
                 {testOn ? (
@@ -682,7 +682,7 @@ export function OpLogin({ claimId, claimToken, compact, onEnter, onBack }: { cla
                     <p>This API was started with OUTSET_TEST_CLAIM_EMAILS naming your address, so the claim link above skips the website-email check for any business. Every use is logged on the server. Nobody else gets this.</p>
                     <button type="button" className="cta odwide" disabled={entering} onClick={() => void enterForTest()}>{entering ? "Opening…" : "Open the dashboard now (skip the link)"}</button>
                     <button type="button" className="odghost danger" disabled={releasing} onClick={() => void releaseForTest()}>{releasing ? "Releasing…" : "Release this business (test unclaim)"}</button>
-                    {testMsg ? <p className="odtestmsg">{testMsg}</p> : null}
+                    {testMsg ? <p className="odtestmsg" role="status">{testMsg}</p> : null}
                   </div>
                 ) : null}
               </>
@@ -703,7 +703,7 @@ export function OpLogin({ claimId, claimToken, compact, onEnter, onBack }: { cla
             ) : (
               <p className="odmuted">Mail is not switched on for this API yet, so the link for <b>{email.trim()}</b> went to the server log instead of your inbox.</p>
             )}
-            {err ? <p className="oderr">{err}</p> : null}
+            {err ? <p className="oderr" role="alert">{err}</p> : null}
             {/* TEST BYPASS. This host cannot send mail, so the allowlisted tester gets the link here. */}
             {bypassLink ? (
               <div className="odtest">
@@ -731,7 +731,7 @@ export function OpLogin({ claimId, claimToken, compact, onEnter, onBack }: { cla
               </>
             )}
             <label className="odfield"><span>Verification code</span><input inputMode="numeric" autoFocus value={code} onChange={(e) => { setCode(e.target.value); setErr(null); }} placeholder="000 000" onKeyDown={(e) => e.key === "Enter" && finish()} /></label>
-            {err ? <p className="oderr">{err}</p> : null}
+            {err ? <p className="oderr" role="alert">{err}</p> : null}
             <button type="button" className="cta odwide" disabled={checking} aria-busy={checking} title={checking ? "Checking the code you typed" : undefined} onClick={finish}>{checking ? "Checking…" : "Open my dashboard"}</button>
           </>
         ) : null}
