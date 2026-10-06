@@ -11092,6 +11092,113 @@ marketplace's own `/activities`, which its comment claims it does.
   `ubuntu`, own socket directory, own generated certificate) before the brief's command line works.
 
 
+## 6 October 2026, hundred and forty-eighth run (03:40 to 05:25 UTC)
+
+**Chosen, and why.** Not an entry off Not yet checked, for the reason the last run gave: what is left there is
+product questions. So the frontier was picked two ways. First, **a linter this repo has never run**: the
+hundred and twenty-second run's Needs Harshil says `react-hooks/exhaustive-deps` found a bug here in seconds
+from a scratch install and that adding it needs `package.json`, which an overnight run may not touch. Adding it
+is not needed to run it: eslint 9 plus the plugin went into the scratch directory, pointed at `src/`, and read
+75 findings, which is a mechanical sweep of every hook in the app that no run has done. Second, **the code that
+has landed since the last bug bash**, all of it in the outreach sender (the Otto copy A/B, the address guards,
+the daily cloud run), which is by definition unread by any run and is the one channel that writes to real
+operators.
+
+**The rehearsal ran, twice.** Rule (b) fired on arrival: the commits since the last entry touch
+`backend/src/outreach`. It was green on arrival (57 of 57) and green again at the end, after this run's own
+changes to `src/components` and `backend/src`. Baseline: root `tsc --noEmit -p .` and `tsc -b` clean, backend
+`tsc` clean but for TS5097, backend 1,117 with 1,115 pass and 2 skipped, app 1,304 pass.
+
+**Found and fixed.** Three commits, pushed.
+
+- **A tab open past midnight stops offering yesterday's calendar as today's** (`b82dfb51`). The booking window
+  rebuilds itself on the local day roll and the provider dispatches a redraw on it, which the hundred and
+  twenty-eighth run put in. The four effects that ask the API what is actually free over that window list the
+  listing id and nothing about the window, so the answer held in state is still the one fetched for yesterday's
+  ten days: **nine of today's plus one that has been and gone.** For a claimed shop, whose picker is drawn
+  entirely from that answer, the tenth day of the new window then has no times at all and is struck through as
+  closed under a date more than a week out, which is the exact symptom the window fix was written against, on
+  the half it did not reach; three nights on a closed lid is three such days, and the seven it does hold are
+  last night's seats. The desktop listing's booking box, the phone's booking sheet, the dashboard's test chat
+  (whose whole promise is that it runs what guests get) and the Inbox chat's prefetch all now name the window's
+  own start in the dependency list. The request cache is keyed on the window too, so a render asking for the
+  same day costs nothing. This is the one real defect in the 75 findings: the other 62 warnings on the booking
+  flow are a dependency the effect already reads under another name (`selectedKey` for `selected`) or a
+  deliberate narrowing the code states in its own comment (`item.options.length`, `deadSet.size`), and the 13
+  `rules-of-hooks` errors are all one module-level `const` computed once at load, which no render can change.
+- **The listing pitch stops mailing a business the cloud pitched Otto to this week** (`cfd7a88e`). `spacing.ts`
+  is a written rule: one pitch per address per campaign for good, another campaign's send bars an address for
+  seven days, because both go out of one personal Gmail and 2,038 operators clear both campaigns' filters. Both
+  send queries enforce it with a clause over `outreach_drafts`, which is **the laptop's SQLite**, and that was
+  the whole record for exactly as long as both ran from the laptop. The Otto campaign moved to the cloud on 28
+  September and records itself in Postgres `outreach_sends` instead, so from the listing send's side those sends
+  stopped existing: a business pitched Otto this morning is back at the top of the listing queue, clear of every
+  clause, and **a business that replied "stop" to the Otto note has nothing on that disk saying so**, because a
+  reply is recorded there too. Either one is a second cold pitch from the one account the channel runs on. The
+  listing send now asks the shared record as well as its own disk, with the same cool-off: answered or handed
+  off leaves the queue, inside the week is passed over and stays a draft, and a shared record it cannot read
+  says so loudly instead of reading as nobody having been mailed.
+- **Gmail answering nothing is not a copy in Promotions, and no longer stops the day's outreach** (`44567ad4`).
+  The daily run tests every rung of the copy ladder between the sending inboxes and sends with the first one
+  Gmail puts in Primary. `pickRung` wants Primary in two inboxes, and a test **nobody could read** has none of
+  it, so an unread test took the same branch as a measured Promotions verdict: the batch held, nothing sent, and
+  the alert to Harshil read "Gmail put every approved copy in Promotions/Spam", which nobody had measured. Every
+  result reads `unknown` when an inbox will not open over IMAP, when the test sends never left, and when fewer
+  than two sending mailboxes are configured, in which case **no test is sent at all** and the matrix comes back
+  empty, so a host left with one working app password holds every batch from then on and gives the wrong reason
+  for it. `placement.ts`'s own rule, in its own words, is that only an explicit Promotions or Spam verdict may
+  hold a batch. An unread test now sends the approved copy, which is what the campaign sent before the test
+  existed, and the alert says the test could not be read and what to check. A measured verdict still holds.
+
+**Verification.** App `npm test` 1,309 pass, up 2; backend `npm test` 1,123 with 1,121 pass and 2 skipped, up
+6. Every new rule was run against the tree with its own fix reverted and goes red for the stated reason, not on
+a missing import: the four dependency lists, the listing send's read of the shared record, and the daily run's
+two branches. `tsc --noEmit -p .` and `tsc -b` clean at the root, backend's own `tsc` clean but for TS5097. The
+**rehearsal ran at the end, 57 of 57**, on a Postgres 16 cluster built from scratch on port 5433 with SSL on
+and the on-disk Playwright Chromium. `STRIPE_SECRET_KEY`, `RESEND_API_KEY` and `GITHUB_TOKEN` were empty
+throughout.
+
+**Measured and left.** An address `UNREADABLE_ADDRESS` rejects is **never recorded as a touch**, unlike a dead
+domain or a dead site, which are written back as `failed`. So such a row stays in the cloud pool for ever and is
+re-read and re-rejected every single day; harmless today, because it only costs one of the slots in a fetch of
+twice the day's limit, but if enough ever gathered at the head of the send order the batch would quietly send
+nothing. The regex could not be measured against real addresses from here: the shipped catalog carries no email
+at all, by design, so only the laptop's own operators table could say how many real businesses it drops. An
+`ask` rung with no link in it is **not** covered by `outreachBlockers`' unsubscribe-link check, which still
+passes because the link it tests is the one `signOff` would have built.
+
+**Needs Harshil.**
+
+- **Half of an A/B day's batch carries no unsubscribe link at all.** The `ask` rung is deliberate about that:
+  "no link at all" is its whole point, and its stop is the PS asking for a reply. But `ottoDrafts.ts`'s own
+  changelog says of the 6 October copy that "the unsubscribe link, the reply-'no' opt-out and the postal address
+  stay", and `outreachBlockers` refuses to send at all unless a working public unsubscribe link exists, so the
+  code says in two places that every email carries one. On a day both rungs reach Primary the batch alternates,
+  and half of it does not. A reply-based opt-out is defensible under CAN-SPAM and CASL; it is a call, and it is
+  yours.
+- **The cross-campaign rule is now one-way.** The fix above is the half that can be fixed from here. The cloud
+  Otto sender still cannot see the listing campaign's sends, because those live only in the laptop's SQLite, so
+  a business mailed the listing pitch on the Mac can be pitched Otto from the cloud the next day. Closing it
+  means `outreach-pool-sync.mts` publishing listing sends into `outreach_sends` as well.
+- **A reply to the pitch is not an unsubscribe.** `markReplied` writes a `replied` row; `suppressBounce` next
+  door calls `recordUnsub` and puts a bounce on the real suppression list. So "reply no and I won't email again"
+  is honoured only by code that reads `outreach_sends`, which is now both campaigns, and not by anything reading
+  the suppression list. That is probably right (a reply is a conversation, not a complaint), but it is worth
+  deciding rather than inheriting.
+- Still open from earlier runs, unchanged: nothing ever comes back for money a capture or a refund failed on;
+  the crash screen's words are nobody's choice and nothing reports a fault anywhere; "Open right now near you"
+  is computed once a visit; the 108 operators with hacked websites have not been told; the phone's browse is not
+  ranked while the desktop's is; the phone confirmation offers no way to reach the shop; a guest cannot cancel a
+  booking at all; a price sort and a price filter compare two dollars on six metros; the cards say "$" for a
+  Canadian shop; `concierge/demand.ts` still filters its crawl queue by category and region and not by the town
+  its own comment names; the 290 listings with no way to claim; and no sync has run, so `kid`, `specs`, `gap`
+  and `extraNote` are still empty on every shipped row. **The brief's rehearsal path is
+  `backend/scripts/e2e-local.mts`, not `scripts/`**, fourteenth run to say so. **Local `main` was detached
+  again** and was reattached to `origin/main` before committing, twenty-fourth run in a row. `npm install` was
+  needed at the root and in `backend/`, and the Postgres 16 cluster still has to be built from scratch (as
+  `ubuntu`, own socket directory, own generated certificate) before the brief's command line works.
+
+
 ## Coverage
 
 The catalog is 48,198 listings as of the 23 September sync, 1,873 of them Viator partner rows. Counts below
@@ -12255,6 +12362,16 @@ the operator's scheduled share. All three driven end to end against a real Postg
 can be told to refuse one call, with every email read back out of the outbox. That `SITE_PAGES` names a file
 that exists, on all four.
 
+Every hook in the guest app and the operator dashboard, through the linter this repo has never run
+(`react-hooks`, from a scratch install): 75 findings read one at a time, the 13 `rules-of-hooks` errors
+pinned to a module-level `const` no render can change, the 62 dependency warnings sorted into a dependency
+the effect already reads under another name, a narrowing the code states in its own comment, and the one
+real defect. What the four effects that ask a shop's booking system what is free are keyed on, against the
+local day roll the window itself already follows: the desktop booking box, the phone booking sheet, the
+dashboard's test chat and the Inbox chat's prefetch. The cross-campaign spacing rule across the two
+databases it now lives in, which is the laptop's SQLite and the cloud sender's Postgres. What the daily
+Otto run does when Gmail answers nothing at all, as against answering Promotions.
+
 **Not yet checked.** Whether a claimed shop's own calendar should refuse a start its service cannot finish
 by closing time, the way an unclaimed listing's now does: the operator set those hours and that slot length
 themselves, so nothing there is invented, and a 16:00 on a 17:30 close is their own grid rather than our
@@ -12787,4 +12904,12 @@ carry `/about` and the marketplace's own `/activities`, which its comment says i
 and real rewrites behind them. Whether the lock-held recheck in `POST /bookings` should pass `runsFor` and the
 reinstate in `PATCH` should pass `week` and `runsFor`, which the first check of the same request does: both
 omissions only loosen a second check on a booking the first already allowed, so neither is reachable as a wrong
-answer today.
+answer today. Whether an address the
+unreadable-address regex rejects should be written back as a touch the way a dead domain and a dead site are,
+so it leaves the cloud pool instead of sitting at the head of the send order being re-rejected every day (see
+the hundred and forty-eighth run's Measured and left). Whether that regex drops any real business at all,
+which only the laptop's own operators table can say, the shipped catalog carrying no address by design.
+Whether an unread placement test should send the approved copy or hold, now that it sends: a day with no
+measurement is a day nobody is watching the reputation the whole channel runs on. Whether this repo should
+have a linter in `package.json` after all, now that running one found a guest-facing bug on the first pass
+and 74 findings that were not one (see that run).
