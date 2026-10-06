@@ -5,7 +5,8 @@ import { recordSend } from "../lib/outreachLog.ts";
 import { emailHash, loadSuppression, mailPostal, unsubPageUrl } from "../lib/unsub.ts";
 import { outreachBlockers, skipMark, UNREADABLE_ADDRESS, type SkipReason } from "./guards.ts";
 import { isDeliverable } from "./deliverable.ts";
-import { cooloffStart, noRecentSendSql } from "./spacing.ts";
+import { otherCampaignHolds } from "./touches.ts";
+import { CROSS_CAMPAIGN_DAYS, cooloffStart, noRecentSendSql } from "./spacing.ts";
 
 export type OpRow = {
   id: string;
@@ -88,6 +89,15 @@ export async function sendOutreach(opts: {
   }
   if (!opts.dry && blockers.length) return out;
   const rows = listingQueue(opts.limit, { metro: opts.metro, country: opts.country });
+  // The queue's own cool-off clause reads this disk's drafts table, and the Otto campaign has sent from the
+  // cloud since 28 September 2026, where it records itself in Postgres instead (touches.ts). So the shared
+  // record is asked too, or the rule in spacing.ts holds for nothing: a business pitched Otto this morning
+  // would get the listing pitch tonight from the same personal Gmail, and one that replied "stop" to Otto
+  // would get it at all.
+  const elsewhere = await otherCampaignHolds("listing", cooloffStart()).catch((e) => {
+    console.error("shared outreach record unavailable, relying on this disk alone: " + (e as Error).message);
+    return null;
+  });
   const seen = new Set<string>();
   for (const r of rows) {
     const to = r.to_email.trim().toLowerCase();
@@ -103,6 +113,21 @@ export async function sendOutreach(opts: {
       continue;
     }
     seen.add(to);
+    // Answered the other campaign, or was handed to a person to mail: that is for good, and it is marked on
+    // this disk the same way scripts/outreach-handoff.mts marks its own exports, so the row leaves the queue.
+    if (elsewhere?.done.operators.has(r.opid) || elsewhere?.done.emails.has(to)) {
+      if (!opts.dry) db.prepare("UPDATE outreach_drafts SET status = 'handoff' WHERE id = ?").run(r.id);
+      console.log("skipped " + to + ": the Otto campaign has it in hand");
+      out.skipped++;
+      continue;
+    }
+    // Inside the other campaign's cool-off: nothing about the row has changed, so it is passed over and
+    // stays a draft, and this campaign may have it once the week is up.
+    if (elsewhere?.holds.operators.has(r.opid) || elsewhere?.holds.emails.has(to)) {
+      console.log("skipped " + to + ": the Otto pitch went to this business inside the last " + CROSS_CAMPAIGN_DAYS + " days");
+      out.skipped++;
+      continue;
+    }
     // A domain that takes no mail is left out of the batch rather than sent to and bounced: see deliverable.ts.
     if (!(await isDeliverable(to))) {
       mark("undeliverable");

@@ -5,6 +5,7 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { CROSS_CAMPAIGN_DAYS, cooloffStart, maySend, noRecentSendSql } from "../spacing.ts";
+import { OTHER_CAMPAIGN_SQL, splitCampaignHolds } from "../touches.ts";
 
 const here = dirname(fileURLToPath(import.meta.url));
 
@@ -115,4 +116,54 @@ test("both send queries read the shared rule rather than their own per-kind clau
       file + " still carries a dedup clause blind to the other campaign",
     );
   }
+});
+
+/**
+ * The rule across the two databases it now lives in.
+ *
+ * `noRecentSendSql` above is the laptop's SQLite, which is where both campaigns' drafts and sends were when
+ * the rule was written. The Otto campaign moved to the cloud on 28 September 2026 and records itself in
+ * Postgres (`outreach_sends`), so from the listing send's side those sends were invisible: a business pitched
+ * Otto that morning sat at the top of the listing queue, clear of every clause, and one that replied "stop"
+ * to the Otto note had nothing on this disk saying so. Both are a second cold pitch from the one personal
+ * Gmail the whole channel runs on, which is what an owner marks as spam.
+ */
+test("the shared record's rows split into the week and the for-good halves", () => {
+  const rows = [
+    { operator_id: "op-sent", email: "Info@Sent.com", status: "sent" },
+    { operator_id: "op-replied", email: "ron@replied.com", status: "replied" },
+    { operator_id: "op-handoff", email: "ron@handoff.com", status: "handoff" },
+    // A bounce is already on the suppression list by address; here it is simply not a send.
+    { operator_id: "op-bounce", email: "gone@bounce.com", status: "bounce" },
+    { operator_id: "op-failed", email: "dead@failed.com", status: "failed" },
+  ];
+  const { holds, done } = splitCampaignHolds(rows);
+  assert.deepEqual([...holds.operators], ["op-sent"], "only a send is the cool-off");
+  // The address is matched the way every sender lowercases it before asking.
+  assert.deepEqual([...holds.emails], ["info@sent.com"]);
+  assert.deepEqual([...done.operators].sort(), ["op-bounce", "op-failed", "op-handoff", "op-replied"]);
+  assert.equal(done.emails.has("ron@replied.com"), true);
+  // Nothing lands in both halves, or a business would be marked handed off on a cool-off.
+  for (const o of holds.operators) assert.equal(done.operators.has(o), false, o);
+});
+
+test("nothing is held when the shared record has nothing", () => {
+  const { holds, done } = splitCampaignHolds([]);
+  assert.equal(holds.operators.size + holds.emails.size + done.operators.size + done.emails.size, 0);
+});
+
+/** The query behind it reads exactly those rows, and reads the other campaign rather than its own. */
+test("the shared record is asked for the other campaign's week and for every reply", () => {
+  assert.match(OTHER_CAMPAIGN_SQL, /status in \('replied', 'handoff'\)/);
+  assert.match(OTHER_CAMPAIGN_SQL, /status = 'sent' and kind <> \$1 and at >= \$2::timestamptz/);
+});
+
+/** And the listing send actually asks, since a rule nothing reads is the bug this replaced. */
+test("the listing send reads the shared record as well as its own disk", () => {
+  const src = readFileSync(join(here, "..", "send.ts"), "utf8");
+  assert.match(src, /otherCampaignHolds\("listing", cooloffStart\(\)\)/, "send.ts must ask the shared record for the cool-off");
+  assert.match(src, /elsewhere\?\.done\.(operators|emails)/, "a business that answered Otto has to leave the listing queue");
+  assert.match(src, /elsewhere\?\.holds\.(operators|emails)/, "a business pitched Otto this week has to be passed over");
+  // A record it could not read must not silently become "nobody has been mailed".
+  assert.match(src, /shared outreach record unavailable/, "an unreadable shared record has to say so");
 });

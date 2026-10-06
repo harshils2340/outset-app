@@ -148,6 +148,47 @@ export async function touched(kind = "otto"): Promise<{ operators: Set<string>; 
 }
 
 /**
+ * What the other campaign's shared record says this one may not touch, for a campaign whose own queue lives
+ * on a disk the cloud sender has never seen.
+ *
+ * `spacing.ts` is the rule: one pitch per address per campaign for good, and another campaign's send bars an
+ * address until the cool-off passes. Both campaigns enforced it by reading `outreach_drafts`, which is the
+ * laptop's SQLite, and that was enough for exactly as long as both ran from the laptop. The Otto campaign
+ * moved to the cloud on 28 September 2026 and records itself here instead, so from the listing campaign's
+ * side those sends stopped existing: a business the cloud pitched Otto to this morning was back at the top of
+ * the listing queue, eligible for a second cold pitch from the same personal Gmail inside the week the rule
+ * names, and a business that replied "stop" to the Otto note was never marked on that disk at all and so was
+ * never out of the other campaign's reach.
+ *
+ * `holds` is the week; `done` is for good (it answered, or a person was handed it to mail by hand).
+ */
+export type CampaignHolds = { holds: { operators: Set<string>; emails: Set<string> }; done: { operators: Set<string>; emails: Set<string> } };
+
+/** Which rows this reads: a reply or a handoff whenever it happened, another campaign's send inside the window. */
+export const OTHER_CAMPAIGN_SQL = `select operator_id, email, status from outreach_sends
+      where status in ('replied', 'handoff')
+         or (status = 'sent' and kind <> $1 and at >= $2::timestamptz)`;
+
+/** The halves those rows fall into, apart from the query so the rule can be driven without a database. */
+export function splitCampaignHolds(rows: { operator_id: string; email: string; status: string }[]): CampaignHolds {
+  const empty = () => ({ operators: new Set<string>(), emails: new Set<string>() });
+  const out: CampaignHolds = { holds: empty(), done: empty() };
+  for (const r of rows) {
+    // Only 'sent' is the week. A reply or a handoff is the business out of this campaign's reach for good.
+    const side = r.status === "sent" ? out.holds : out.done;
+    side.operators.add(r.operator_id);
+    side.emails.add(String(r.email || "").trim().toLowerCase());
+  }
+  return out;
+}
+
+export async function otherCampaignHolds(ownKind: string, since: string): Promise<CampaignHolds> {
+  if (!pgConfigured()) return splitCampaignHolds([]);
+  await ensureTouchTables();
+  return splitCampaignHolds(await query<{ operator_id: string; email: string; status: string }>(OTHER_CAMPAIGN_SQL, [ownKind, since]));
+}
+
+/**
  * Sent today, per mailbox, from the shared record; `dayStart` is the campaign day's first instant as ISO.
  *
  * Every send out of a mailbox counts, whatever kind of mail it was: the first pitch, the resend and the
