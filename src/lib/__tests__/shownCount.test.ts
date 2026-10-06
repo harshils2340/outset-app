@@ -18,8 +18,9 @@ const home = readFileSync(new URL("../../components/web/WebHome.tsx", import.met
 
 test("the refine modal promises the list the page draws", () => {
   assert.match(home, /const shownCount = \(gridList \?\? searchList \?\? base\)\.length;/);
-  assert.match(home, /Show \{shownCount\.toLocaleString\(\)\} \{shownCount === 1 \? "place" : "places"\}/);
+  assert.match(home, /Show \{fmtCount\(shownCount\)\} \{shownCount === 1 \? "place" : "places"\}/);
   // The old count must not come back: `base` is the pool before the price range.
+  assert.equal(home.includes("fmtCount(base.length)}"), false);
   assert.equal(home.includes("Show {base.length.toLocaleString()}"), false);
 });
 

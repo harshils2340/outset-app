@@ -7,7 +7,7 @@ import { ALL_METRO_ID, METROS, metroById, metroCoords } from "../../data/metros"
 import type { ArtKind, CategoryId, Unclaimed } from "../../data/types";
 import { experienceById, fromPrice, getCatalog, partnerBookLine, publicRating, topRated } from "../../lib/catalog";
 import { listingFacts } from "../../lib/catalog";
-import { fmtDate, fmtReviews, money, titleCase } from "../../lib/format";
+import { fmtCount, fmtDate, fmtReviews, money, titleCase } from "../../lib/format";
 import { ART_ALIASES, WHAT_INTENTS, describeQuery, metroInQuery, parseIntent, searchMetros, searchRegions, searchSuggest, stripPlaceWords, warmSearch, type SearchScope } from "../../lib/search";
 import { loadListing } from "../../lib/catalogLoad";
 import { dealToday } from "../../lib/companyAgent";
@@ -551,7 +551,7 @@ function Grid({ items, onOpen, near, resetKey }: { items: Unclaimed[]; onOpen: (
       </div>
       {items.length > shown ? (
         <div className="ah-more">
-          <p>Showing {shown.toLocaleString()} of {items.length.toLocaleString()}</p>
+          <p>Showing {fmtCount(shown)} of {fmtCount(items.length)}</p>
           <button type="button" className="ah-btn-dark" onClick={() => setShown((n) => n + GRID_PAGE)}>Show more</button>
         </div>
       ) : null}
@@ -911,7 +911,7 @@ function FiltersModal({ sort, price, prices, total, near, onApply, onClose, onNe
         <div className="ah-modal-foot">
           <button type="button" className="ah-textbtn strong" onClick={() => { setDraftSort("relevance"); setDmin(lo); setDmax(hi); }}>Clear all</button>
           <button type="button" className="ah-btn-dark" onClick={() => onApply(draftSort, range)}>
-            Show {matches.toLocaleString()} {matches === 1 ? "place" : "places"}
+            Show {fmtCount(matches)} {matches === 1 ? "place" : "places"}
           </button>
         </div>
       </div>
@@ -1397,7 +1397,7 @@ export function WebHome({ onOperators, onAsk, asking = false, askSeed = "", onCl
       const m = whereMetro.metro;
       whereRows.push({ key: "tm" + m.id, head: "Places", icon: ICONS.pin, title: m.name + ", " + m.region, sub: "Things to do · " + places(metroCounts.get(m.id) || 0), on: !near && state.metroId === m.id, pick: () => pickMetro(m.id) });
     }
-    whereRegions.forEach((r, i) => whereRows.push({ key: "r" + r.code, head: i === 0 && !whereMetro ? "Places" : undefined, icon: ICONS.pin, title: r.name, sub: r.count.toLocaleString() + " places · " + r.country, pick: () => pickPlace({ label: r.name, sub: r.country, lat: r.lat, lon: r.lon, region: r.code }) }));
+    whereRegions.forEach((r, i) => whereRows.push({ key: "r" + r.code, head: i === 0 && !whereMetro ? "Places" : undefined, icon: ICONS.pin, title: r.name, sub: fmtCount(r.count) + " places · " + r.country, pick: () => pickPlace({ label: r.name, sub: r.country, lat: r.lat, lon: r.lon, region: r.code }) }));
     whereCities.forEach((m, i) => whereRows.push({ key: "s" + m.id, head: i === 0 && !whereRegions.length ? "Cities" : undefined, icon: ICONS.pin, title: m.name + ", " + m.region, sub: places(metroTotals.get(m.id) || 0), on: !near && state.metroId === m.id, pick: () => pickMetro(m.id) }));
     // A typed city keeps map places to its own area: "Miami" should not offer Miami, Oklahoma.
     const tmc = whereMetro ? metroCoords(whereMetro.metro.id) : null;
@@ -1411,7 +1411,7 @@ export function WebHome({ onOperators, onAsk, asking = false, askSeed = "", onCl
     for (const c of chips) {
       const n = countFor(c.query);
       if (!n) continue;
-      whatRows.push({ key: "i" + c.query, head: first ? head : undefined, icon: ICONS.spark, title: c.label, sub: n.toLocaleString() + hereLine, on: q.trim().toLowerCase() === c.query, pick: () => pickWhat(c.query) });
+      whatRows.push({ key: "i" + c.query, head: first ? head : undefined, icon: ICONS.spark, title: c.label, sub: fmtCount(n) + hereLine, on: q.trim().toLowerCase() === c.query, pick: () => pickWhat(c.query) });
       first = false;
     }
   };
@@ -1425,7 +1425,7 @@ export function WebHome({ onOperators, onAsk, asking = false, askSeed = "", onCl
         const n = countFor(query);
         if (!n) continue;
         const title = RAIL_KINDS.find((r) => r.art === art)?.title || ART_LABEL[art];
-        whatRows.push({ key: "k" + art, head: first ? "Popular" + hereLine : undefined, icon: ICONS.spark, title, sub: n.toLocaleString() + hereLine, pick: () => pickWhat(query) });
+        whatRows.push({ key: "k" + art, head: first ? "Popular" + hereLine : undefined, icon: ICONS.spark, title, sub: fmtCount(n) + hereLine, pick: () => pickWhat(query) });
         first = false;
       }
       intentRows(WHAT_INTENTS, "Ideas");
@@ -1439,7 +1439,7 @@ export function WebHome({ onOperators, onAsk, asking = false, askSeed = "", onCl
       for (const a of acts) {
         const n = countFor(a.query);
         if (!n) continue;
-        whatRows.push({ key: "a" + a.art, head: first ? "Activities" : undefined, icon: ICONS.spark, title: RAIL_KINDS.find((r) => r.art === a.art)?.title || a.label, sub: n.toLocaleString() + hereLine, on: typed === a.query, pick: () => pickWhat(a.query) });
+        whatRows.push({ key: "a" + a.art, head: first ? "Activities" : undefined, icon: ICONS.spark, title: RAIL_KINDS.find((r) => r.art === a.art)?.title || a.label, sub: fmtCount(n) + hereLine, on: typed === a.query, pick: () => pickWhat(a.query) });
         first = false;
       }
       ops.forEach((u, i) => whatRows.push({ key: "o" + u.id, head: i === 0 ? "Businesses" : undefined, u, title: u.title, sub: ART_LABEL[u.art] + " · " + u.area, pick: () => { commitWhat(); openSeg(null); openRequest(u.id); } }));
@@ -1451,7 +1451,7 @@ export function WebHome({ onOperators, onAsk, asking = false, askSeed = "", onCl
       (found?.elsewhere ?? []).forEach((a, i) => whatRows.push({ key: "e" + a.art, head: i === 0 ? "Elsewhere" : undefined, icon: ICONS.globe, title: a.label + " across the US and Canada", sub: places(a.count), pick: () => { setNear(null); setMetro(ALL_METRO_ID); pickWhat(a.query); } }));
       if (found?.nearMiss) spots.forEach((pl, i) => whatRows.push({ key: "np" + pl.metro.id, head: i === 0 ? "Nearest with it" : undefined, icon: ICONS.pin, title: whatShort + " in " + pl.metro.name, sub: places(pl.count) + " · " + pl.metro.region, pick: () => pickCity(pl.metro.id) }));
       if (found?.family) whatRows.push({ key: "fam" + found.family.cat, head: "Browse instead", icon: ICONS.catAll, title: found.family.name + hereLine, sub: places(found.family.count) + " to browse", pick: () => { setQ(""); setCat(found.family!.cat); setSeg(null); } });
-      if (found?.otherCats) whatRows.push({ key: "othercats", icon: ICONS.catAll, title: "Show all categories", sub: found.otherCats.toLocaleString() + " more outside " + catName(state.cat), pick: () => setCat("all") });
+      if (found?.otherCats) whatRows.push({ key: "othercats", icon: ICONS.catAll, title: "Show all categories", sub: fmtCount(found.otherCats) + " more outside " + catName(state.cat), pick: () => setCat("all") });
     }
   }
   const rows = seg === "what" ? whatRows : whereRows;
@@ -1756,7 +1756,7 @@ export function WebHome({ onOperators, onAsk, asking = false, askSeed = "", onCl
               {moreKinds.map((k) => (
                 <button type="button" key={k.art} onClick={() => { setQ(kindQuery(k.art)); window.scrollTo({ top: 0 }); }}>
                   <b>{k.title}</b>
-                  <small>{k.n.toLocaleString()} {k.n === 1 ? "place" : "places"}</small>
+                  <small>{fmtCount(k.n)} {k.n === 1 ? "place" : "places"}</small>
                 </button>
               ))}
             </div>
@@ -1768,7 +1768,7 @@ export function WebHome({ onOperators, onAsk, asking = false, askSeed = "", onCl
             <div className="ah-rowhead">
               <div className="ah-rowtitle">
                 <h2 id="ah-grid-title">
-                  {gridList.length > 1000 ? "Over 1,000" : gridList.length.toLocaleString()} {kindChip ? (world.chips.find((c) => c.art === kindChip)?.name || "").toLowerCase() : state.cat === "all" ? "experiences" : catName(state.cat).toLowerCase() + " experiences"}
+                  {gridList.length > 1000 ? "Over 1,000" : fmtCount(gridList.length)} {kindChip ? (world.chips.find((c) => c.art === kindChip)?.name || "").toLowerCase() : state.cat === "all" ? "experiences" : catName(state.cat).toLowerCase() + " experiences"}
                   {inWhere}
                 </h2>
                 <p>
@@ -1795,7 +1795,7 @@ export function WebHome({ onOperators, onAsk, asking = false, askSeed = "", onCl
               <div className="ah-rowtitle">
                 <h2 id="ah-search-title">
                   {whatTitle || "Things to do"}
-                  {hereLine} · {searchList.length.toLocaleString()}
+                  {hereLine} · {fmtCount(searchList.length)}
                 </h2>
                 <p>
                   {intent.label
@@ -1817,21 +1817,21 @@ export function WebHome({ onOperators, onAsk, asking = false, askSeed = "", onCl
                 <span className="ah-emptyfix">
                   {priceOn ? <button type="button" className="ah-btn-outline" onClick={() => setPrice({ min: null, max: null })}>Remove the price filter</button> : null}
                   {found?.otherCats ? (
-                    <button type="button" className="ah-btn-outline" onClick={() => setCat("all")}>{found.otherCats.toLocaleString()} in other categories</button>
+                    <button type="button" className="ah-btn-outline" onClick={() => setCat("all")}>{fmtCount(found.otherCats)} in other categories</button>
                   ) : null}
                   {acts.map((a) => (
-                    <button type="button" key={a.art} className="ah-btn-outline" onClick={() => setQ(a.query)}>{a.label} · {a.count.toLocaleString()}</button>
+                    <button type="button" key={a.art} className="ah-btn-outline" onClick={() => setQ(a.query)}>{a.label} · {fmtCount(a.count)}</button>
                   ))}
                   {(found?.elsewhere ?? []).map((a) => (
                     <button type="button" key={a.art} className="ah-btn-outline" onClick={() => { setNear(null); setMetro(ALL_METRO_ID); setQ(a.query); }}>
-                      {a.label} across the US and Canada · {a.count.toLocaleString()}
+                      {a.label} across the US and Canada · {fmtCount(a.count)}
                     </button>
                   ))}
                   {spots.map((pl) => (
-                    <button type="button" key={pl.metro.id} className="ah-btn-outline" onClick={() => pickCity(pl.metro.id)}>{pl.metro.name} · {pl.count.toLocaleString()}</button>
+                    <button type="button" key={pl.metro.id} className="ah-btn-outline" onClick={() => pickCity(pl.metro.id)}>{pl.metro.name} · {fmtCount(pl.count)}</button>
                   ))}
                   {found?.family ? (
-                    <button type="button" className="ah-btn-outline" onClick={() => { setQ(""); setCat(found.family!.cat); }}>Browse {found.family.name}{hereLine} · {found.family.count.toLocaleString()}</button>
+                    <button type="button" className="ah-btn-outline" onClick={() => { setQ(""); setCat(found.family!.cat); }}>Browse {found.family.name}{hereLine} · {fmtCount(found.family.count)}</button>
                   ) : null}
                   {typedMetro || near || metro ? (
                     <button type="button" className="ah-btn-outline" onClick={() => { setNear(null); setMetro(ALL_METRO_ID); if (typedMetro) setQ(qWithoutPlace.trim()); }}>Search everywhere</button>
@@ -1844,7 +1844,7 @@ export function WebHome({ onOperators, onAsk, asking = false, askSeed = "", onCl
 
         {state.catalogReady && !state.locating && !q.trim() && waiting > 0 ? (
           <p className="ah-waiting">
-            {waiting.toLocaleString()} more {waiting === 1 ? "place is" : "places are"} listed{inWhere} without a photo yet. They appear here as we gather their photos and prices; search one by name to open it now.
+            {fmtCount(waiting)} more {waiting === 1 ? "place is" : "places are"} listed{inWhere} without a photo yet. They appear here as we gather their photos and prices; search one by name to open it now.
           </p>
         ) : null}
       </main>
@@ -1892,7 +1892,7 @@ export function WebHome({ onOperators, onAsk, asking = false, askSeed = "", onCl
             <span className="ah-footbar-right">
               <span>English (US)</span>
               <span>$ USD</span>
-              <span>{getCatalog().length.toLocaleString()} operators across the US and Canada</span>
+              <span>{fmtCount(getCatalog().length)} operators across the US and Canada</span>
             </span>
           </div>
           <LegalRow />
@@ -2032,7 +2032,7 @@ export function WebHome({ onOperators, onAsk, asking = false, askSeed = "", onCl
             <div className="ah-refine-foot">
               <button type="button" className="ah-textbtn strong" onClick={() => { setWhereText(""); setNear(null); setMetro(ALL_METRO_ID); setDate(0); pickParty(2, 0, true); setRefine("where"); }}>Clear all</button>
               <button type="button" className="ah-btn-dark" onClick={() => { setRefine(null); window.scrollTo({ top: 0 }); }}>
-                Show {shownCount.toLocaleString()} {shownCount === 1 ? "place" : "places"}
+                Show {fmtCount(shownCount)} {shownCount === 1 ? "place" : "places"}
               </button>
             </div>
           </div>

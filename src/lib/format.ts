@@ -95,12 +95,29 @@ export function unitLine(l: Listing, qty: number): string {
   return "Flat rate · " + l.minHours + " hour trip";
 }
 
+/**
+ * A count as the product writes it, not as the reader's browser would: "1,234".
+ *
+ * `money`, `fmtDate` and every other formatter in this file name "en-US", so the dollars, the dates and the
+ * review counts read the same for everybody. The counts on browse and on the two search sheets called bare
+ * `toLocaleString()` instead, which hands the grouping to whatever locale the browser is set to. Half the
+ * catalog is Canadian and a browser there is often fr-CA, where 1,234 is "1 234" with a no-break space; a
+ * German browser reads "1.234" and an Egyptian one "\u0661\u066c\u0662\u0663\u0664". The same sentences carry "Over 1,000" and
+ * "1,000+" as literals, so one line read "Over 1,000 experiences" beside "1 234".
+ *
+ * Nothing changes below a thousand, which is every count `plural` is handed outside the concierge's own
+ * "I found N places".
+ */
+export function fmtCount(n: number): string {
+  return n.toLocaleString("en-US");
+}
+
 export function plural(n: number, unit: string): string {
-  return n + " " + unit + (n === 1 ? "" : "s");
+  return fmtCount(n) + " " + unit + (n === 1 ? "" : "s");
 }
 
 export function fmtReviews(n: number): string {
-  return n.toLocaleString("en-US");
+  return fmtCount(n);
 }
 
 /**

@@ -1,4 +1,5 @@
 import { getCatalog } from "../../lib/catalog";
+import { fmtCount } from "../../lib/format";
 import { useApp } from "../../state/AppProvider";
 import { METROS } from "../../data/metros";
 import { Mark } from "./Mark";
@@ -18,7 +19,7 @@ export function Pitch() {
       <p>Real operators across the US and Canada. Instant Book, facts from their own sites.</p>
       <div className="pitchstats">
         <div>
-          <b>{count.toLocaleString()}</b>
+          <b>{fmtCount(count)}</b>
           <span>operators</span>
         </div>
         <div>

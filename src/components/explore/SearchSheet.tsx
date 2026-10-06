@@ -4,6 +4,7 @@ import { ALL_METRO_ID, METROS, metroById, metroLabel, metroShort } from "../../d
 import type { ArtKind, CategoryId } from "../../data/types";
 import { getCatalog } from "../../lib/catalog";
 import { dateKey } from "../../lib/dates";
+import { fmtCount } from "../../lib/format";
 import { currentLocation, searchPlaces, type Place } from "../../lib/places";
 import { ART_ALIASES, WHAT_INTENTS, describeQuery, metroInQuery, searchMetros, searchSuggest, stripPlaceWords } from "../../lib/search";
 import { useApp } from "../../state/AppProvider";
@@ -293,7 +294,7 @@ export function SearchSheet() {
       </span>
     </button>
   );
-  const n = (k: number) => k.toLocaleString() + hereName;
+  const n = (k: number) => fmtCount(k) + hereName;
 
   return (
     <div className="airsearch">
@@ -353,7 +354,7 @@ export function SearchSheet() {
                   {/* Typed an activity: that row goes first, because the activity is what they said, not the city that brushed past it. */}
                   {activityTyped ? item("act", <IcSearch size={20} />, activityTyped, "Search activities" + hereName, moveToWhat) : null}
                   {cities.map(({ m, n: k }) =>
-                    item("m" + m.id, <IcPin size={20} />, m.name, m.region + ", " + (m.country === "CA" ? "Canada" : "United States") + " · " + k.toLocaleString() + " places", () => pickCity(m.id)),
+                    item("m" + m.id, <IcPin size={20} />, m.name, m.region + ", " + (m.country === "CA" ? "Canada" : "United States") + " · " + fmtCount(k) + " places", () => pickCity(m.id)),
                   )}
                   {businessHits.length ? <p className="airsgroup">Businesses</p> : null}
                   {businessHits.map((u) => {
@@ -377,9 +378,9 @@ export function SearchSheet() {
                 <>
                   {item("nearby", <IcNavigate size={20} />, locating ? "Finding you…" : "Nearby", "Find what's around you", useHere, { disabled: locating })}
                   {locateNote ? <p className="airsgroup">{locateNote}</p> : null}
-                  {item("anywhere", <IcGlobe size={20} />, "Anywhere", countInMetro(ALL_METRO_ID, state.cat, prefs.filters).toLocaleString() + " places across the US and Canada", () => pickPlace({ kind: "metro", id: ALL_METRO_ID }))}
+                  {item("anywhere", <IcGlobe size={20} />, "Anywhere", fmtCount(countInMetro(ALL_METRO_ID, state.cat, prefs.filters)) + " places across the US and Canada", () => pickPlace({ kind: "metro", id: ALL_METRO_ID }))}
                   <p className="airsgroup">Suggested destinations</p>
-                  {seeded.map(({ m, n: k }) => item(m.id, <IcPin size={20} />, m.name + ", " + m.region, k.toLocaleString() + " places", () => pickPlace({ kind: "metro", id: m.id }), { pressed: !where && state.metroId === m.id }))}
+                  {seeded.map(({ m, n: k }) => item(m.id, <IcPin size={20} />, m.name + ", " + m.region, fmtCount(k) + " places", () => pickPlace({ kind: "metro", id: m.id }), { pressed: !where && state.metroId === m.id }))}
                 </>
               )}
             </div>
@@ -434,10 +435,10 @@ export function SearchSheet() {
                     ? item("fam", <IcSearch size={20} />, typed.family.name + hereName, n(typed.family.n) + " to browse", () => { setCat(typed.family!.cat); pickWhat(""); })
                     : null}
                   {typed.places.length ? <p className="airsgroup">Nearest with it</p> : null}
-                  {typed.places.map((pl) => item("pl" + pl.metro.id, <IcPin size={20} />, whatLabel(whatRest) + " in " + pl.metro.name, pl.count.toLocaleString() + " in " + pl.metro.name + ", " + pl.metro.region, () => pickWhatIn(whatRest, pl.metro.id)))}
-                  {typed.elsewhere.map((a) => item("el" + a.art, <IcGlobe size={20} />, a.label + " anywhere", a.count.toLocaleString() + " across the US and Canada", () => pickWhatIn(a.query, ALL_METRO_ID)))}
+                  {typed.places.map((pl) => item("pl" + pl.metro.id, <IcPin size={20} />, whatLabel(whatRest) + " in " + pl.metro.name, fmtCount(pl.count) + " in " + pl.metro.name + ", " + pl.metro.region, () => pickWhatIn(whatRest, pl.metro.id)))}
+                  {typed.elsewhere.map((a) => item("el" + a.art, <IcGlobe size={20} />, a.label + " anywhere", fmtCount(a.count) + " across the US and Canada", () => pickWhatIn(a.query, ALL_METRO_ID)))}
                   {typed.otherCats
-                    ? item("oc", <IcSearch size={20} />, "In other categories", typed.otherCats.toLocaleString() + hereName, () => { setCat("all"); pickWhat(whatRest); })
+                    ? item("oc", <IcSearch size={20} />, "In other categories", fmtCount(typed.otherCats) + hereName, () => { setCat("all"); pickWhat(whatRest); })
                     : null}
                   {typed.acts.length ? <p className="airsgroup">{typed.zero ? "Close to it" + hereName : "Activities"}</p> : null}
                   {typed.acts.map((a) => item("a" + a.art, <Art kind={a.art} id={"ss" + a.art} />, a.label, n(a.n), () => pickWhat(a.query), { art: true, pressed: whatRest.toLowerCase() === a.query }))}

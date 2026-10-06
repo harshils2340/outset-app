@@ -4,6 +4,7 @@ import { ALL_METRO_ID, metroShort } from "../../data/metros";
 import { ICONS } from "../../data/icons";
 import { getCatalog, savedListings, stillArriving } from "../../lib/catalog";
 import { dateKey } from "../../lib/dates";
+import { fmtCount } from "../../lib/format";
 import { searchSuggest, warmSearch, type SearchScope } from "../../lib/search";
 import { useApp } from "../../state/AppProvider";
 import { Markup } from "../Markup";
@@ -223,11 +224,11 @@ export function ExploreView({ onAsk, onCloseAsk, asking }: { onAsk: () => void; 
             {q ? (
               <>
                 {what}
-                {here || " anywhere"} · {list.length.toLocaleString()}
+                {here || " anywhere"} · {fmtCount(list.length)}
               </>
             ) : (
               <>
-                {list.length > 1000 ? "Over " + (Math.floor(list.length / 1000) * 1000).toLocaleString() : list.length.toLocaleString()}{" "}
+                {list.length > 1000 ? "Over " + fmtCount(Math.floor(list.length / 1000) * 1000) : fmtCount(list.length)}{" "}
                 {list.length === 1 ? "experience" : "experiences"}
                 {here}
               </>
@@ -266,7 +267,7 @@ export function ExploreView({ onAsk, onCloseAsk, asking }: { onAsk: () => void; 
             ) : null}
             {found?.otherCats ? (
               <button type="button" className="airghost" onClick={() => setCat("all")}>
-                {found.otherCats.toLocaleString()} in other categories
+                {fmtCount(found.otherCats)} in other categories
               </button>
             ) : null}
             {state.metroId !== ALL_METRO_ID || state.near ? (
@@ -284,12 +285,12 @@ export function ExploreView({ onAsk, onCloseAsk, asking }: { onAsk: () => void; 
                 }}
               >
                 Browse {found.family.name}
-                {here} · {found.family.count.toLocaleString()}
+                {here} · {fmtCount(found.family.count)}
               </button>
             ) : null}
             {(found?.activities ?? []).map((a) => (
               <button type="button" key={a.art} className="airghost" onClick={() => setQ(a.query)}>
-                {a.label} · {a.count.toLocaleString()}
+                {a.label} · {fmtCount(a.count)}
               </button>
             ))}
             {(found?.elsewhere ?? []).map((a) => (
@@ -302,12 +303,12 @@ export function ExploreView({ onAsk, onCloseAsk, asking }: { onAsk: () => void; 
                   setQ(a.query);
                 }}
               >
-                {a.label} anywhere · {a.count.toLocaleString()}
+                {a.label} anywhere · {fmtCount(a.count)}
               </button>
             ))}
             {(found?.places ?? []).map((pl) => (
               <button type="button" key={pl.metro.id} className="airghost" onClick={() => setMetro(pl.metro.id)}>
-                {pl.metro.name} · {pl.count.toLocaleString()}
+                {pl.metro.name} · {fmtCount(pl.count)}
               </button>
             ))}
             {q ? (
@@ -341,7 +342,7 @@ function Wishlists({ saved, complete }: { saved: string[]; complete: boolean }) 
         </header>
         <div className="airpageempty">
           <IcHeart size={32} />
-          <h2>Loading your {missing === 1 ? "saved place" : missing.toLocaleString() + " saved places"}</h2>
+          <h2>Loading your {missing === 1 ? "saved place" : fmtCount(missing) + " saved places"}</h2>
           <p>One moment while we look them up.</p>
         </div>
       </div>

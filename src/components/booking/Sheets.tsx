@@ -29,7 +29,7 @@ import {
   topRated,
   type FactLine,
 } from "../../lib/catalog";
-import { fmtDate, fmtReviews, fmtTime, money, moneyIn, priceWith, reviewsLine, unitLine } from "../../lib/format";
+import { fmtCount, fmtDate, fmtReviews, fmtTime, money, moneyIn, priceWith, reviewsLine, unitLine } from "../../lib/format";
 import { countryOfArea } from "../../data/regions";
 import { formatDistance, milesBetween, type GeoPoint } from "../../lib/geo";
 import { addonPrice, hasPrice, priceFor, priceUnclaimed, serviceFeeLabel } from "../../lib/pricing";
@@ -1622,7 +1622,7 @@ function FiltersBody() {
             closeSheet();
           }}
         >
-          {count ? "Show " + (count > 1000 ? "1,000+" : count.toLocaleString()) + (count === 1 ? " experience" : " experiences") : "No exact matches"}
+          {count ? "Show " + (count > 1000 ? "1,000+" : fmtCount(count)) + (count === 1 ? " experience" : " experiences") : "No exact matches"}
         </button>
       </div>
     </div>

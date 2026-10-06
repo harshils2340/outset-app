@@ -29,7 +29,7 @@ import {
   type ConciergeStep,
   type ConciergeOption,
 } from "../../lib/concierge";
-import { fmtTime } from "../../lib/format";
+import { fmtCount, fmtTime } from "../../lib/format";
 import { dateKey } from "../../lib/dates";
 import { loadGuest } from "../../lib/storage";
 import { BAD_EMAIL_ASK, guestEmailOk } from "../../lib/guestEmail";
@@ -784,7 +784,7 @@ function Working({ steps, status, elapsed }: { steps: ConciergeStep[]; status: s
 /** The rating a shop carries, said in one short string, or nothing when nobody has rated it. */
 function stars(o: ConciergeOption): string | null {
   if (o.rating == null) return null;
-  return "★ " + o.rating.toFixed(1) + (o.reviews ? " (" + o.reviews.toLocaleString() + ")" : "");
+  return "★ " + o.rating.toFixed(1) + (o.reviews ? " (" + fmtCount(o.reviews) + ")" : "");
 }
 
 /**
