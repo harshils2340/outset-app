@@ -84,6 +84,22 @@ export function getPrefs(): Prefs {
   return prefs;
 }
 
+/*
+ * A second tab of this browser changed a pick.
+ *
+ * `saved`, `when` and `who` are the three that outlive a visit, and this module holds them in memory and
+ * writes all three keys whole. So a wishlist hearted in another tab was gone the moment this one hearted
+ * anything: this tab's own list, which never had that id in it, went over the top. The three are
+ * last-write-wins by nature, one id list and two single picks, so reading them back is the whole fix.
+ */
+if (typeof window !== "undefined" && typeof window.addEventListener === "function") {
+  window.addEventListener("storage", (e: StorageEvent) => {
+    if (e.key !== "outset.saved" && e.key !== "outset.when" && e.key !== "outset.who") return;
+    prefs = { ...prefs, saved: readSaved(), when: readWhen(), who: readWho() };
+    subs.forEach((f) => f());
+  });
+}
+
 export function usePrefs(): Prefs {
   return useSyncExternalStore(
     (f) => {

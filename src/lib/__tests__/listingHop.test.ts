@@ -16,6 +16,11 @@ import { readFileSync } from "node:fs";
  * A renderer would be the honest way to test this and the repo has none, so this reads the files: the page
  * is keyed by the listing, the way the phone sheet has always keyed its own, and the state below is seeded
  * at mount, which is what makes the key the thing that resets it.
+ *
+ * The heart has since stopped being one of those: it is read from `explore/prefs`, the one store that owns
+ * the wishlist, rather than seeded from `localStorage` at mount, because this page writing that key itself
+ * made two writers for it (see `secondTab.test.ts`). So it cannot go stale across a hop with or without the
+ * key, and what the key still resets is the two below it.
  */
 
 const src = (rel: string) => readFileSync(new URL(rel, import.meta.url), "utf8");
@@ -40,8 +45,11 @@ test("the rail really does open another listing in place, which is why the key m
   assert.match(LISTING, /<Card\b[\s\S]*?onOpen=\{onOpen\}/, "the rail no longer hands the rail cards the page's own onOpen");
 });
 
+test("the heart is read from the wishlist store, so a hop cannot carry the last listing's", () => {
+  assert.match(LISTING, /const saved = usePrefs\(\)\.saved\.includes\(item\.id\)/, "the heart is mount-seeded state again, which a hop carries over");
+});
+
 test("the state a hop used to carry is seeded at mount, so only a remount clears it", () => {
-  assert.match(LISTING, /const \[saved, setSaved\] = useState\(\(\) =>/, "the heart reads this device's saved list once, at mount");
   assert.match(LISTING, /const \[addonIdx, setAddonIdx\] = useState<number\[\]>\(\[\]\)/, "ticked add-ons are indexes into this listing's own menu");
   assert.match(LISTING, /const \[openMap, setOpenMap\] = useState<Map<string, string\[\]> \| null>\(null\)/, "the open-slot map is one shop's answer");
   // The fetch only ever writes a map it was given: an answer of "nothing known" leaves whatever is there.

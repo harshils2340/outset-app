@@ -38,7 +38,7 @@ import { adminWebsite, isAdmin, subscribeAdmin } from "../../lib/admin";
 import { anchorMonth, dateKey, startOfToday } from "../../lib/dates";
 import { fewSeats, liveEmptyNote, liveRead, liveWins, type TimeChip } from "../../lib/liveTimes";
 import { safeHttpUrl } from "../../lib/urlSafety";
-import { startingParty } from "../explore/prefs";
+import { startingParty, toggleSaved, usePrefs } from "../explore/prefs";
 import { useApp } from "../../state/AppProvider";
 import { Photo } from "../art/Photo";
 import { Mark } from "../layout/Mark";
@@ -893,14 +893,17 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
   const [modal, setModal] = useState<string | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [flash, setFlash] = useState<string | null>(null);
-  const [saved, setSaved] = useState(() => {
-    try {
-      const parsed: unknown = JSON.parse(localStorage.getItem("outset.saved") || "[]");
-      return Array.isArray(parsed) && parsed.includes(item.id);
-    } catch {
-      return false;
-    }
-  });
+  /*
+   * The heart, read from the one store that owns the wishlist.
+   *
+   * This page used to read and write `outset.saved` itself, which made two writers for one key: this one,
+   * which read the key back on every press, and `explore/prefs`, which keeps the list in memory and writes
+   * all of it. Both run in the same tab, because the phone frame opens over this site. So a place hearted
+   * here was missing from the Wishlists tab, which paints from the store's copy, and the next heart tapped in
+   * the frame wrote that stale copy over this save. It also went to the bottom of the list, where the tab
+   * promises newest first.
+   */
+  const saved = usePrefs().saved.includes(item.id);
 
   useEffect(() => {
     if (gallery == null) return;
@@ -1293,14 +1296,7 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
   };
   const toggleSave = () => {
     const next = !saved;
-    setSaved(next);
-    try {
-      const parsed: unknown = JSON.parse(localStorage.getItem("outset.saved") || "[]");
-      const list = (Array.isArray(parsed) ? parsed.filter((x): x is string => typeof x === "string") : []).filter((x) => x !== item.id);
-      localStorage.setItem("outset.saved", JSON.stringify(next ? [...list, item.id] : list));
-    } catch {
-      /* private window: the heart still fills for this visit */
-    }
+    toggleSaved(item.id);
     setFlash(next ? "Saved" : "Removed from saved");
   };
 
