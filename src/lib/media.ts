@@ -88,8 +88,20 @@ export function probePhotos(srcs: string[], drop: (src: string) => void, minSide
   return () => imgs.forEach((i) => { i.onload = null; i.onerror = null; });
 }
 
-/** True when the picture is close to one colour: a blank, a gradient, or a small glyph on a plain ground. */
-function isFlat(img: HTMLImageElement): boolean {
+/**
+ * True when the picture is close to one colour: a blank, a gradient, or a small glyph on a plain ground.
+ *
+ * Measured against the white the tile is actually drawn on, which a fresh canvas is not: it is transparent,
+ * and a transparent pixel reads back as black. So a picture with an alpha channel was scored against a
+ * background a guest never sees, and the one shape that matters is the commonest logo there is, a light mark
+ * drawn for a dark header. Driven in a real Chromium: a near-white glyph on a transparent ground scores 118.9
+ * as this read it, far over the bar, and 4.8 against white, well under it. It was kept, and what a guest got
+ * in the photo grid was a blank white tile, which is the first thing this function was written to drop. The
+ * same run says nothing else moves: a dark glyph on alpha scores 14.9 then 95 and is kept either way, a flat
+ * opaque tile scores 0 both ways, and every photo with no alpha at all, which is 255,428 of the 294,467
+ * shipped photo URLs, is composited over nothing and reads identically.
+ */
+export function isFlat(img: HTMLImageElement): boolean {
   try {
     const n = 24;
     const canvas = document.createElement("canvas");
@@ -97,6 +109,8 @@ function isFlat(img: HTMLImageElement): boolean {
     canvas.height = n;
     const ctx = canvas.getContext("2d", { willReadFrequently: true });
     if (!ctx) return false;
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, n, n);
     ctx.drawImage(img, 0, 0, n, n);
     const px = ctx.getImageData(0, 0, n, n).data;
     let sum = 0;
