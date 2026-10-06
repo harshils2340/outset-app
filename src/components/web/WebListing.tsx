@@ -1015,6 +1015,17 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
   // Stripe, and the booking email names it, so the box that takes the money names it too.
   const cur = countryOfArea(item.area);
   const day = dates[state.dateIdx];
+  /**
+   * The window both calendar fetches are keyed on, as values rather than the array they came out of.
+   *
+   * `bookingDates()` rebuilds itself on the local day roll and the provider redraws on it, but an effect that
+   * asked for the old window and lists only the listing id never asks again: the answer on screen is still
+   * the one for yesterday's ten days, which is nine of today's plus one that has been and gone, so the tenth
+   * day of the new window has no times at all and reads as closed under a date a week out. Three nights on a
+   * closed lid is three such days, and the seven it does hold are last night's seats.
+   */
+  const windowFrom = dateKey(dates[0]);
+  const windowDays = dates.length;
 
   /* Live departures from the operator's own booking system, when they run one we can read. The card paints
      with the published times first and upgrades itself when this resolves; with no API it never resolves
@@ -1023,9 +1034,9 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
   useEffect(() => {
     let alive = true;
     setAvail(null);
-    void fetchAvailability(item.id, dateKey(dates[0]), dates.length).then((a) => { if (alive) setAvail(a); }).catch(() => {});
+    void fetchAvailability(item.id, windowFrom, windowDays).then((a) => { if (alive) setAvail(a); }).catch(() => {});
     return () => { alive = false; };
-  }, [item.id]);
+  }, [item.id, windowFrom, windowDays]);
   const read = useMemo(() => liveRead(avail), [avail]);
   const liveDays = read.chips;
   // Whether they have a departure worth telling the guest about, which is what the highlight row is for.
@@ -1040,14 +1051,14 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
   useEffect(() => {
     if (!hasApi()) return;
     let alive = true;
-    void fetchOpenSlots(item.id, dateKey(dates[0]), dates.length, picked?.name, qty).then((r) => {
+    void fetchOpenSlots(item.id, windowFrom, windowDays, picked?.name, qty).then((r) => {
       if (!alive || !r.known) return;
       setOpenMap(new Map(r.days.map((d) => [d.date, d.slots])));
     });
     return () => {
       alive = false;
     };
-  }, [item.id, picked?.name, qty, openTick]);
+  }, [item.id, windowFrom, windowDays, picked?.name, qty, openTick]);
   /**
    * Whether the vendor's answer is what the picker draws, which is the only thing that says whether the
    * published times may stand in for it.

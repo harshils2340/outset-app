@@ -26,14 +26,17 @@ export function OpAssistant() {
    * stays null and every answer is what it was before.
    */
   const [live, setLive] = useState<LiveAvailability | null>(null);
+  // The day the window starts on, as a value, so a dashboard left open across midnight asks again instead of
+  // answering out of yesterday's ten days: the same rule the two guest pickers read.
+  const windowFrom = dateKey(startOfToday());
   useEffect(() => {
     let alive = true;
     setLive(null);
     // The guest's own window, not `fetchAvailability`'s wider default: a different window is a different
     // answer, and it also misses the request cache the listing page has already filled.
-    void fetchAvailability(u.id, dateKey(startOfToday()), BOOKING_WINDOW_DAYS).then((a) => { if (alive) setLive(a); }).catch(() => {});
+    void fetchAvailability(u.id, windowFrom, BOOKING_WINDOW_DAYS).then((a) => { if (alive) setLive(a); }).catch(() => {});
     return () => { alive = false; };
-  }, [u.id]);
+  }, [u.id, windowFrom]);
   const ctx = useMemo(() => ({ item: u, contact: contactFor(u), live }), [u, live]);
   const [msgs, setMsgs] = useState<Bubble[]>(() => [{ id: bubbleId(), who: "them", t: companyGreeting(ctx) }]);
   const [text, setText] = useState("");

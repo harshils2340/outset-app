@@ -463,12 +463,19 @@ function RequestBody({
   // One business is "Museum in Saint Petersburg", not "Museums in": the singular type the desktop page uses.
   const kind = TYPE_NAME[item.art] || ART_LABEL[item.art] || catName;
 
+  /**
+   * The window both calendar fetches are keyed on, as values rather than the array they came out of, so the
+   * local day roll re-asks: see the same pair on the desktop listing page.
+   */
+  const windowFrom = dateKey(dates[0]);
+  const windowDays = dates.length;
+
   /* Live departures from the operator's own booking system, when they run one we can read. The picker paints with
      the published times first and upgrades itself when this resolves; with no API it never resolves live. */
   const [avail, setAvail] = useState<LiveAvailability | null>(null);
   useEffect(() => {
     let alive = true;
-    void fetchAvailability(item.id, dateKey(dates[0]), dates.length)
+    void fetchAvailability(item.id, windowFrom, windowDays)
       .then((a) => {
         if (alive) setAvail(a);
       })
@@ -476,7 +483,7 @@ function RequestBody({
     return () => {
       alive = false;
     };
-  }, [item.id]);
+  }, [item.id, windowFrom, windowDays]);
   const read = useMemo(() => liveRead(avail), [avail]);
   const liveDays = read.chips;
   /* What is still open on Outset: the claimed shop's hours minus every time already booked, for a party this
@@ -485,14 +492,14 @@ function RequestBody({
   useEffect(() => {
     if (!hasApi()) return;
     let alive = true;
-    void fetchOpenSlots(item.id, dateKey(dates[0]), dates.length, picked?.name, qty).then((r) => {
+    void fetchOpenSlots(item.id, windowFrom, windowDays, picked?.name, qty).then((r) => {
       if (!alive || !r.known) return;
       setOpenMap(new Map(r.days.map((d) => [d.date, d.slots])));
     });
     return () => {
       alive = false;
     };
-  }, [item.id, picked?.name, qty]);
+  }, [item.id, windowFrom, windowDays, picked?.name, qty]);
   /**
    * Whether the vendor's answer is what the picker draws, which is the only thing that says whether the
    * published times may stand in for it. A shop with an empty fortnight did answer, and drawing our nine,

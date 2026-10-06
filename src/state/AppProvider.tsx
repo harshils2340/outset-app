@@ -1122,7 +1122,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const u = experienceById(state.threadId);
     if (!u) return;
     void fetchAvailability(u.id, dateKey(bookingDates()[0]), bookingDates().length).catch(() => {});
-  }, [state.screen, state.threadId]);
+    // `catalogVersion` is also what the day roll bumps, so a thread left open overnight asks for the new
+    // window rather than leaving Otto answering out of the one that has gone.
+  }, [state.screen, state.threadId, state.catalogVersion]);
 
   const listing = listingById(state.listingId);
   const thread = threadFor(state.threadId);

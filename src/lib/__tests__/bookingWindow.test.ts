@@ -146,3 +146,48 @@ test("startOfToday is midnight on the day it is called", () => {
     mock.timers.reset();
   }
 });
+
+/**
+ * The other half of the roll: the window moving is no use if the calendar fetched for it does not move too.
+ *
+ * Every surface that offers a start time asks the API what is free over `bookingDates()`, and keeps the answer
+ * in state for the life of the mount. The effects that ask listed the listing id and nothing about the window,
+ * so a tab or a dashboard open across local midnight held the answer for yesterday's ten days: nine of today's
+ * plus one that has gone, leaving the tenth day of the new window with no times at all and struck through as
+ * closed under a date more than a week out, and three nights on a closed lid leaving three such days. Measured
+ * on the desktop listing's booking box, the phone's booking sheet and the dashboard's test chat.
+ *
+ * The rule, not the reading: an effect that calls for the window has to name the window, so a day roll re-asks.
+ */
+test("every effect that fetches the booking window re-asks when the window rolls", () => {
+  const CALLS = /fetchAvailability\(|fetchOpenSlots\(/;
+  const offenders: string[] = [];
+  let checked = 0;
+  for (const { file, text } of sources()) {
+    if (!CALLS.test(text)) continue;
+    // Each `useEffect(` and whatever follows it up to the next one: the call and its own dependency array.
+    const chunks = text.split("useEffect(").slice(1);
+    for (const chunk of chunks) {
+      if (!CALLS.test(chunk)) continue;
+      const deps = /\n\s*\}, \[([^\]]*)\]\);/.exec(chunk);
+      assert.ok(deps, file + ": a window fetch in a useEffect with no dependency array this test can read");
+      checked += 1;
+      // The window's own start, or the counter the day roll bumps for a surface that reads it from the state.
+      if (!/windowFrom|catalogVersion/.test(deps![1])) offenders.push(file + ": [" + deps![1].trim() + "]");
+    }
+  }
+  assert.ok(checked >= 4, "the booking surfaces that fetch a calendar should all be read, saw " + checked);
+  assert.deepEqual(offenders, [], "a calendar fetched for a window it does not depend on is yesterday's answer after midnight:\n" + offenders.join("\n"));
+});
+
+/** And the window's start is read per render, not frozen beside the effect that uses it. */
+test("the window start those effects name is read off the clock", () => {
+  for (const { file, text } of sources()) {
+    if (!/fetchAvailability\(|fetchOpenSlots\(/.test(text) || !/windowFrom/.test(text)) continue;
+    assert.match(
+      text,
+      /const windowFrom = dateKey\((dates\[0\]|startOfToday\(\))\)/,
+      file + ": windowFrom has to come from the live window, or it is the day the mount happened on for ever",
+    );
+  }
+});
