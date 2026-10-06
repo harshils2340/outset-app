@@ -21,7 +21,7 @@ import { recordTouch } from "./touches.ts";
  * whatever local marking its own disk needs (scripts/bounces.mts marks the laptop's SQLite draft failed).
  * Re-running is safe; every step is idempotent. A delay notice, where Gmail is still retrying, is left alone.
  */
-export type Bounce = { email: string; mailbox: string; reason: string; at: string };
+export type Bounce = { email: string; mailbox: string; reason: string; at: string; notices?: { mailbox: string; uid: number }[] };
 
 const EMAIL = /[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/gi;
 
@@ -50,7 +50,8 @@ export async function collectBounces(days: number): Promise<Bounce[]> {
           const reason = (/\b5\d\d[ -][\s\S]{0,140}/.exec(body)?.[0] || subject || "bounce").replace(/\s+/g, " ").trim().slice(0, 160);
           const at = msg.envelope?.date ? new Date(msg.envelope.date).toISOString() : nowIso();
           for (const email of new Set(candidates)) {
-            if (!found.has(email)) found.set(email, { email, mailbox: id.user, reason, at });
+            if (!found.has(email)) found.set(email, { email, mailbox: id.user, reason, at, notices: [] });
+            found.get(email)!.notices!.push({ mailbox: id.user, uid: Number(msg.uid) });
             n++;
           }
         }
@@ -65,6 +66,40 @@ export async function collectBounces(days: number): Promise<Bounce[]> {
     }
   }
   return [...found.values()];
+}
+
+/**
+ * Takes the bounce notices the caller has already folded into the suppression list out of the inbox (archived and
+ * marked read, still in All Mail), so the sending inboxes, one of them Harshil's own, show replies and not Gmail's
+ * "Address not found" mail. Call it only after suppressBounce has succeeded for every bounce passed in: a notice
+ * that leaves the inbox is never read by this sweep again. Best effort; a failure only leaves the notice where it was.
+ */
+export async function archiveBounceNotices(bounces: Bounce[]): Promise<number> {
+  const byMailbox = new Map<string, number[]>();
+  for (const b of bounces) for (const n of b.notices || []) (byMailbox.get(n.mailbox) || byMailbox.set(n.mailbox, []).get(n.mailbox)!).push(n.uid);
+  let done = 0;
+  for (const id of smtpIdentities()) {
+    const uids = [...new Set(byMailbox.get(id.user) || [])];
+    if (!uids.length) continue;
+    const host = id.host === "smtp.gmail.com" ? "imap.gmail.com" : id.host.replace(/^smtp\./, "imap.");
+    const client = new ImapFlow({ host, port: 993, secure: true, auth: { user: id.user, pass: id.pass }, logger: false });
+    try {
+      await client.connect();
+      const lock = await client.getMailboxLock("INBOX");
+      try {
+        await client.messageFlagsAdd(uids, ["\\Seen"], { uid: true });
+        await client.messageFlagsRemove(uids, ["\\Inbox"], { uid: true, useLabels: true });
+        done += uids.length;
+      } finally {
+        lock.release();
+      }
+    } catch (e) {
+      console.error(`${id.user}: could not archive bounce notices: ${(e as Error).message.slice(0, 120)}`);
+    } finally {
+      await client.logout().catch(() => undefined);
+    }
+  }
+  return done;
 }
 
 /**

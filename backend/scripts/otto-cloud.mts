@@ -7,7 +7,7 @@ import { COPY_LADDER, COPY_VERSION, draftOttoBump, draftOttoCopy, type CopyStyle
 import { recordSend } from "../src/lib/outreachLog.ts";
 import { recordRun, rungFor, type RampState } from "../src/outreach/ramp.ts";
 import { MAILBOX_ERROR, NETWORK_ERROR, dayStartIso, pickIdentity } from "../src/outreach/mailboxes.ts";
-import { collectBounces, collectReplies, markRedirect, markReplied, suppressBounce } from "../src/outreach/bounceSweep.ts";
+import { archiveBounceNotices, collectBounces, collectReplies, markRedirect, markReplied, suppressBounce } from "../src/outreach/bounceSweep.ts";
 import { pickRung, placementMatrix, placementRead } from "../src/outreach/placement.ts";
 import {
   BUMP_KIND, RESEND_KIND, bumpCandidates, handedOffOperators, loadRamp, mailedIndex, poolCandidates, recordTouch, repliedOperators, resendCandidates, saveRamp, sentTodayByMailbox, type PoolRow,
@@ -63,11 +63,15 @@ if (!ids.length) {
 
 // Yesterday's bounces out of the pool before today's batch.
 if (!dry) {
-  for (const b of await collectBounces(3)) {
+  const bounces = await collectBounces(3);
+  for (const b of bounces) {
     console.log(`bounce: ${b.email} via ${b.mailbox}: ${b.reason}`);
     await suppressBounce(b);
     blocked.add(emailHash(b.email));
   }
+  // Every one is on the suppression list now, so Gmail's "Address not found" notices can leave the inboxes.
+  const archived = await archiveBounceNotices(bounces);
+  if (archived) console.log(`otto-cloud: archived ${archived} bounce notice(s) out of the sending inboxes`);
 }
 
 /** A note to Harshil, sent from a second sending mailbox to his own (the cron has no other mail transport). */

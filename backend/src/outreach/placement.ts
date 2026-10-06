@@ -56,6 +56,7 @@ export async function placementMatrix(
     const c = new ImapFlow({ host: "imap.gmail.com", port: 993, secure: true, auth: { user: to.user, pass: to.pass }, logger: false });
     try {
       await c.connect();
+      const trash = await trashFolder(c);
       const lock = await c.getMailboxLock("[Gmail]/All Mail");
       try {
         for (const s of mine) {
@@ -66,7 +67,7 @@ export async function placementMatrix(
           }
           out.get(s.key)!.push({ from: s.from.user, to: to.user, placement, subject: s.subject });
           const all = (await c.search({ gmraw: `subject:${s.tag} in:anywhere` } as never, { uid: true })) || [];
-          if (all.length) await c.messageDelete(all, { uid: true });
+          if (all.length) await binTestCopies(c, all, trash);
         }
       } finally {
         lock.release();
@@ -79,6 +80,22 @@ export async function placementMatrix(
     }
   }
   return out;
+}
+
+/**
+ * The test copies go to Gmail's Trash, read. Until 6 October 2026 they were "deleted" from All Mail, which Gmail
+ * does not honour for a message that still carries the Inbox label: every test copy stayed in the receiving
+ * inbox, five a run per inbox, and Harshil's Primary filled with "Missed calls at ... pt3x9..." mail.
+ */
+async function binTestCopies(c: ImapFlow, uids: number[], trash: string): Promise<void> {
+  await c.messageFlagsAdd(uids, ["\\Seen"], { uid: true }).catch(() => undefined);
+  await c.messageMove(uids, trash, { uid: true });
+}
+
+/** Gmail's Trash folder by its special use: "[Gmail]/Trash" in English, "[Gmail]/Bin" in British English. */
+export async function trashFolder(c: ImapFlow): Promise<string> {
+  const boxes = await c.list().catch(() => []);
+  return boxes.find((b) => b.specialUse === "\\Trash")?.path || "[Gmail]/Trash";
 }
 
 /**
