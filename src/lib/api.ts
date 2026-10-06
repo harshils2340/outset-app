@@ -683,6 +683,24 @@ const UPLOAD_PASSES: { max: number; quality: number }[] = [
   { max: 1024, quality: 0.62 },
 ];
 
+/**
+ * The ground a photo is flattened onto before it is encoded as JPEG.
+ *
+ * JPEG carries no alpha channel, and the canvas spec says what becomes of one: a transparent pixel is
+ * composited onto solid black. A fresh canvas is entirely transparent, so an operator who uploaded a PNG with
+ * a transparent background, a logo, a badge or a cut-out boat, got it back with every transparent pixel black:
+ * in their own photo grid, as their listing's hero, in the guest's gallery, and committed to a public
+ * repository for good. Driven in a real Chromium, a transparent pixel reads back (0, 2, 0). Every surface
+ * that draws these photos sits on white, so white is the ground.
+ */
+export function jpegGround(canvas: HTMLCanvasElement): CanvasRenderingContext2D | null {
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return null;
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  return ctx;
+}
+
 /** Resize in the browser, send JPEG bytes, get back a URL on the site. */
 export async function uploadPhoto(listing: string, file: File): Promise<{ ok: boolean; url?: string; error?: string }> {
   if (!API_URL) return { ok: false, error: "Uploads switch on once the API is connected." };
@@ -701,9 +719,9 @@ export async function uploadPhoto(listing: string, file: File): Promise<{ ok: bo
     const canvas = document.createElement("canvas");
     canvas.width = Math.max(1, Math.round(img.width * scale));
     canvas.height = Math.max(1, Math.round(img.height * scale));
-    const ctx = canvas.getContext("2d");
     // Without this the drawImage below threw inside an onload handler and the promise never settled, so the
     // button sat on "Uploading 1..." for the rest of the session.
+    const ctx = jpegGround(canvas);
     if (!ctx) return { ok: false, error: "This browser can't resize photos. Try another one." };
     ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
     data = canvas.toDataURL("image/jpeg", pass.quality);
