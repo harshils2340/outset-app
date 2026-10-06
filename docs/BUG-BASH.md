@@ -11318,12 +11318,103 @@ sweep worth having run once, and worth not running again until the rules change.
   scratch (as `ubuntu`, own socket directory, own generated certificate) before the brief's command line
   works.
 
+## 2026-10-06 07:17 UTC, hundred and fiftieth run: what the device remembers when two writers share one key
+
+**Chosen, and why.** Nothing has landed since the last entry except its own commits, and what is left on Not
+yet checked is still product questions, so the frontier was picked by kind again. The last run's kind was a
+linter; this run's is a store. The operator dashboard carries a comment saying two tabs editing a phone and
+an address used to end with one edit gone, and `OperatorView` has listened on the `storage` event ever since.
+Nothing had ever asked the same question of the guest's side. So: **every key the app writes to the guest's
+own device**, all 17 of them over 42 `localStorage` call sites in 11 modules, read for the one shape that
+loses data, a holder of a stale copy that writes the whole value back. Three of the 17 have it. All three are
+fixed.
+
+**The rehearsal.** Run at the end, because this run's commits touch `src/lib`, `src/state` and
+`src/components`, which it drives. Not run on arrival: the last entry says 57 of 57 twice on the final tree
+and nothing has landed since, which answers both of the brief's conditions. Baseline on arrival: root `tsc
+--noEmit -p .` and `tsc -b` clean, backend `tsc` clean but for TS5097, backend 1,123 with 1,121 pass and 2
+skipped, app 1,320 pass.
+
+**Found and fixed.** Two commits, pushed.
+
+- **A booking taken in a second tab stops leaving the device when the first tab saves** (`97271414`).
+  `state.bookings` and `state.chats` are read off the device once on the first paint and written back whole on
+  every change, so two tabs each hold their own copy and the one that writes second puts its own hydrated
+  list over the top. "Open in new tab" is how a guest compares two listings, so booking in each tab is an
+  ordinary thing to do, and the first booking then left the device: its Trips card, its Inbox thread and the
+  operator feed, which reads the guest bookings kept in this same browser. The money was in Postgres and the
+  confirmation had already been emailed, so the guest was left holding a code for a trip the app said they
+  never booked. Nothing on the guest side ever removes a booking (`state.bookings` is prepended to and updated
+  in place and never shortened by any reducer arm that touches it), so the merge is a union keyed by
+  `code`, newest first, with a shared code taken from the newer write because the other tab may be the one
+  that came back from Stripe and marked it paid; threads union by shop, keeping the longer. A merge that
+  changed nothing hands back the list it was given: a `storage` event reaches every tab but the writer, so two
+  tabs that each saved after merging would have answered one another for ever.
+- **A place hearted on the desktop listing page reaches the wishlist, and survives the next heart**
+  (`cc933e94`). One list of ids, `outset.saved`, had two writers **in one tab**: `explore/prefs` holds it from
+  module load and writes all of it, and `WebListing` read the key back and wrote it itself. Both run side by
+  side, because the phone frame opens over the desktop site and the Wishlists tab lives in that frame. Driven
+  through the real modules: after a desktop heart the store still answered `[]`, so the tab that lists saves
+  showed none, and the next heart tapped in the frame wrote `["o-phone-b"]`, taking the desktop save with it.
+  The page also appended where the tab promises newest first. The heart now goes through the store, which is
+  the one writer, and reads from it rather than from state seeded at mount, so a hop in the "More places like
+  this" rail cannot carry the last listing's heart either; `listingHop.test.ts` was updated to say so, since
+  that heart was one of the three pieces of state its key existed to reset. The store reads the wishlist and
+  the two search picks (`when`, `who`) back when another tab writes one.
+
+**Verification.** App `npm test` 1,329 pass, up 9; backend 1,123 with 1,121 pass and 2 skipped, unchanged.
+Both fixes were run against the tree with their own files reverted and all ten new assertions go red for the
+stated reason. `tsc --noEmit -p .` and `tsc -b` clean at the root, backend's own `tsc` clean but for TS5097.
+The rehearsal ran at the end, 57 of 57, on a Postgres 16 cluster built from scratch on port 5433 with SSL on and the
+on-disk Playwright Chromium. `STRIPE_SECRET_KEY`, `RESEND_API_KEY` and `GITHUB_TOKEN` were empty throughout.
+
+**Measured and left.** The other 14 keys are all correct, and for two different reasons worth writing down so
+nobody re-reads them. Read through on every access, so there is no copy to go stale: `outset.session.v1`,
+`outset.wallet.v1` and `outset.claimtoken.<id>` (`api.ts`, including `forgetClaim`, which re-reads the session
+before dropping a listing from it), `outset.place.v1`, `outset.metro.v1` and `outset.guess.v1` (`here.ts`),
+and both operator keys (`operator.ts`). Read, modified and written in one step at the moment of the change:
+`outset.concierge.v1` (`rememberTurn` and `forgetConversation` both start from `loadConversations()`) and
+`outset.dashboard.preview.v1` (`savePreviewPrefs` starts from `loadPreviewPrefs()`). `outset.guest` is a whole
+object of three fields that every one of its four writers writes all of, so last write wins is the right
+answer. `outset.admin.v1` has had its own `storage` listener since the admin-view run. No `sessionStorage`
+anywhere.
+
+**Needs Harshil.**
+
+- **`OperatorView`'s listener ignores a removal, and releasing a listing is a removal.** Its guard is `if
+  (e.key !== profileKey(id) || !e.newValue) return`, so a second tab of the dashboard hears nothing when the
+  first releases the listing, goes on showing that shop, and its next edit writes the profile key back. The
+  server has released it either way, so what survives is a dashboard on this device for a listing Outset no
+  longer publishes. Read rather than driven, and the question underneath it is a product one: what a released
+  shop's other tab should show.
+- **Two tabs chatting to the same shop at the same moment is the one case the chat merge does not resolve.**
+  It keeps the longer thread. Splicing two divergent message lists would need to tell an appended message from
+  the one `chatSettled` replaced in place, which the stored shape does not say.
+- Still open from earlier runs, unchanged: half of an A/B day's batch carries no unsubscribe link; the
+  cross-campaign cool-off is one-way; a reply to the pitch is not an unsubscribe; nothing comes back for money
+  a capture or a refund failed on; the crash screen's words are nobody's choice and nothing reports a fault
+  anywhere; "Open right now near you" is computed once a visit; the 108 operators with hacked websites have
+  not been told; the phone's browse is not ranked while the desktop's is; the phone confirmation offers no way
+  to reach the shop; a guest cannot cancel a booking at all; a price sort and a price filter compare two
+  dollars on six metros; the cards say "$" for a Canadian shop; `concierge/demand.ts` filters its crawl queue
+  by category and region and not by the town its own comment names; the 290 listings with no way to claim; a
+  flat cover only leaves the grids once a guest opens that listing; and no sync has run, so `kid`, `specs`,
+  `gap` and `extraNote` are still empty on every shipped row. **The brief's rehearsal path is
+  `backend/scripts/e2e-local.mts`, not `scripts/`**, sixteenth run to say so. **Local `main` was detached
+  again** and was reattached to `origin/main` before committing, twenty-sixth run in a row. `npm install` was
+  needed at the root and in `backend/`, and the Postgres 16 cluster still has to be built from scratch before
+  the brief's command line works.
+
 ## Coverage
 
 The catalog is 48,198 listings as of the 23 September sync, 1,873 of them Viator partner rows. Counts below
 that name 59,125 were taken before that sync and were whole at the time.
 
-**Verified so far.** The hard rule that a partner's product is never an operator, read as the checklist it is
+**Verified so far.** Every store the app keeps on the guest's own device, against a second
+writer for the same key: all 17 keys over 42 `localStorage` call sites in 11 modules, each read for a holder
+of a stale copy that writes the whole value back, with the three that had one fixed (the bookings, the chats
+and the wishlist) and the other 14 sorted into read-through, read-modify-write, whole-object and already
+listening. The hard rule that a partner's product is never an operator, read as the checklist it is
 written as and pressed against every door: the claim link (which was open and is now shut), outreach, Instant
 Book, a request and Otto, on the two guest surfaces, the claim picker, the admin link, the static `/l/`
 generator, its sitemap, `POST /bookings`, both `/voice` routes and every route that mints or widens a session.
@@ -12505,7 +12596,12 @@ counted over all 52,815 shipped detail files and on both confirmation screens an
 That no shipped guest text field is anything but a string, over `title`, `area`, `cover`, `metroId`, `art`
 and `blurb` on all 52,815.
 
-**Not yet checked.** Whether a claimed shop's own calendar should refuse a start its service cannot finish
+**Not yet checked.** What a second tab of the operator dashboard should show once the first
+releases the listing: `OperatorView`'s `storage` listener returns on a removal, so that tab goes on showing
+the shop and its next edit writes the profile key back, leaving a dashboard on the device for a listing
+Outset no longer publishes (see the hundred and fiftieth run's Needs Harshil). Whether two tabs chatting to
+one shop at the same moment should be spliced rather than resolved by keeping the longer thread, which needs
+the stored shape to tell an appended message from the one `chatSettled` replaced in place (see that run). Whether a claimed shop's own calendar should refuse a start its service cannot finish
 by closing time, the way an unclaimed listing's now does: the operator set those hours and that slot length
 themselves, so nothing there is invented, and a 16:00 on a 17:30 close is their own grid rather than our
 guess (see this run). Whether the shortest length anywhere on a shop's menu, rather than the one its page
