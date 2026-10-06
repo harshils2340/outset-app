@@ -11405,6 +11405,94 @@ anywhere.
   needed at the root and in `backend/`, and the Postgres 16 cluster still has to be built from scratch before
   the brief's command line works.
 
+## 2026-10-06 08:52 UTC, hundred and fifty-first run: what the reader's own client decides, where the product should have said
+
+**Chosen, and why.** Nothing has landed since the last entry except its own commits, and what is left on Not
+yet checked is still product questions, so the frontier was picked by kind again. The last run's kind was a
+store; this run's is a locale. Every formatter in `src/lib/format.ts` names "en-US" on purpose, and so do the
+52 call sites that format a dollar or a date by hand, so a price and a date read the same for every guest.
+Nothing had ever asked the same question of a **count**, or of the one served document in the product that
+declares no language at all. Both turned out to be handing the decision to the reader's browser or mail
+client.
+
+**The rehearsal.** Not run on arrival: the last entry says 57 of 57 on its final tree and nothing has landed
+since, which answers both of the brief's conditions. Run at the end, because this run's commits touch
+`src/lib`, `src/components` and `backend/src`, which it drives: **57 passed, 0 warned, 0 failed**, on a
+Postgres 16 cluster built from scratch on port 5433 with SSL on and the on-disk Playwright Chromium.
+`STRIPE_SECRET_KEY`, `RESEND_API_KEY` and `GITHUB_TOKEN` were empty throughout. Baseline on arrival: root
+`tsc --noEmit -p .` and `tsc -b` clean, backend `tsc` clean but for TS5097, backend 1,123 with 1,121 pass and
+2 skipped, app 1,331 pass.
+
+**Found and fixed.** Two commits, pushed.
+
+- **A count on browse reads the same grouping whatever locale the guest's browser is set to** (`4bd7ecc2`).
+  38 call sites over six files, on the desktop home, the phone feed and both search sheets, called bare
+  `toLocaleString()`. Driven in a real Chromium at four locales against the home's own footer line, before and
+  after: a fr-CA browser, which is an ordinary browser in the country holding half this catalog, read
+  "52 818 operators across the US and Canada" with a no-break space, a de-DE browser "52.818", and an ar-EG
+  browser drew the figure in Eastern Arabic numerals inside the English sentence (five of them, and the line
+  stopped matching a digit at all). Worse where one line carries both conventions: the same expressions hold
+  "Over 1,000" and "1,000+" as literals, so a guest read "Over 1,000 experiences" beside "1 234". All 38 now
+  go through `fmtCount`, the rule the rest of `format.ts` already keeps. `fmtReviews` was that rule under
+  another name and delegates to it; `plural` formats through it too, which below a thousand is identical to
+  the byte, so no agent or concierge answer moves and the one site that can exceed a thousand ("I found N
+  places") is grouped now. The sweep is a test of its own, like the em dash one.
+- **Every email Outset sends names the language it is written in** (`0c538ac5`). `emailTemplate.ts` builds all
+  of them, the sign-in code, the claim link, the three booking emails, the accept and decline notes, the
+  outreach pitch and the Otto pitch, and its document opened `<html>` with no `lang`, while `index.html`, both
+  static page generators, the unsubscribe page and the founder's sessions window all name `lang="en"`. With no
+  language declared a mail client falls back to the reader's own system language: a screen reader reads an
+  English confirmation in a French or German voice, and Outlook and Gmail offer to translate a message already
+  in the reader's language. One attribute, and a test over the three shapes the template draws.
+
+**Verification.** App `npm test` 1,335 pass, up 4; backend 1,125 with 1,123 pass and 2 skipped, up 2. Both
+fixes were run against the tree with their own files reverted: the source sweep names all 38 sites and goes
+red, and both email assertions go red. `tsc --noEmit -p .` and `tsc -b` clean at the root, backend's own `tsc`
+clean but for TS5097.
+
+**Measured and left.** The rest of the locale question is already right and is written down so nobody re-reads
+it. Pinned and correct: `money`, `moneyIn`, `fmtDate`, `dayPickLabel`, `fmtTime`, `clockOfMinutes`, every
+`toLocaleDateString` in the dashboard and on both guest surfaces, the admin page's figures, `openNow`'s two
+`Intl.DateTimeFormat` calls and the sync's `num`. The emails format their own days and months from hand-kept
+`DAYS` and `MONTHS` tables and `fmtMoney` names "en-US", so no mail reads the host's locale. The backend's own
+40 bare calls are all `console.log` progress lines, which nobody but the founder reads, and the two in
+`sessionsPage.ts` are browser-side code in the founder's own window, where their own locale is the right
+answer. No `toLocaleUpperCase`, `toLocaleLowerCase` or locale-free `Intl` constructor anywhere; the eight
+`localeCompare` calls order English names, where a reader's collation cannot change the answer. Every served
+document in the product now names `lang`: `index.html`, the eight static marketing pages, both page
+generators, `unsub.ts`, `sessionsPage.ts` and the email template. Also read and left as unreachable:
+`normalizeProfile` hardens hours, prices, counts, statuses and sources but not a booking's `date` or `slot`,
+and `relDay("")` would print "undefined, Invalid Date" on the dashboard; `POST /bookings` refuses anything
+that is not `YYYY-MM-DD` and a real date, `repo.ts` keeps the authoritative record in the `doc` JSONB and
+nulls the index column for anything else, and nothing on the device writes a booking without a date, so there
+is no way in and nothing was changed.
+
+**Needs Harshil.**
+
+- **An operator who types a price with a comma for the decimal point is charged a hundred times over.**
+  `cleanPrice` strips everything but digits and dots, which is right for "1,250" and wrong for "12,50": a
+  $12.50 add-on becomes $1,250 and the guest's card is charged it. The catalog covers Quebec and the rest of
+  French Canada, where a comma decimal is the ordinary way to write money. Not changed because the fix is a
+  judgement about which convention the field accepts, and guessing wrong turns a real "1,250" into $1.25.
+- **The emails tell a mail client nothing about dark mode.** The template hard-codes a white card and forest
+  ink, which Gmail on Android and Apple Mail invert on their own unless a `color-scheme` meta says not to. The
+  accent was chosen for 7.5:1 on white and auto-inversion throws that away. One line would say so, but it
+  changes how every email renders and nothing here can open one in a real client, so it is yours to call.
+- Still open from earlier runs, unchanged: `OperatorView`'s `storage` listener ignores a removal, so a second
+  tab keeps a released listing; two tabs chatting to one shop are resolved by keeping the longer thread; half
+  of an A/B day's batch carries no unsubscribe link; the cross-campaign cool-off is one-way; a reply to the
+  pitch is not an unsubscribe; nothing comes back for money a capture or a refund failed on; the crash
+  screen's words are nobody's choice; "Open right now near you" is computed once a visit; the 108 operators
+  with hacked websites have not been told; the phone's browse is not ranked while the desktop's is; the phone
+  confirmation offers no way to reach the shop; a guest cannot cancel a booking at all; a price sort and a
+  price filter compare two dollars on six metros; `concierge/demand.ts` filters its crawl queue by category
+  and region and not by the town its own comment names; the 290 listings with no way to claim; and no sync has
+  run, so `kid`, `specs`, `gap` and `extraNote` are still empty on every shipped row. **The brief's rehearsal
+  path is `backend/scripts/e2e-local.mts`, not `scripts/`**, seventeenth run to say so. **Local `main` was
+  detached again** and was reattached to `origin/main` before committing, twenty-seventh run in a row. `npm
+  install` was needed at the root and in `backend/`, and the Postgres 16 cluster still has to be built from
+  scratch, which here also means running `initdb` as the `postgres` user because the session is root.
+
 ## Coverage
 
 The catalog is 48,198 listings as of the 23 September sync, 1,873 of them Viator partner rows. Counts below
@@ -12596,7 +12684,19 @@ counted over all 52,815 shipped detail files and on both confirmation screens an
 That no shipped guest text field is anything but a string, over `title`, `area`, `cover`, `metroId`, `art`
 and `blurb` on all 52,815.
 
-**Not yet checked.** What a second tab of the operator dashboard should show once the first
+Which locale decides what a reader sees, over every `toLocale` call and every served document in both
+projects: the 38 counts on browse, on the desktop home and on both search sheets that asked the browser rather
+than saying, driven in a real Chromium at en-US, fr-CA, de-DE and ar-EG before and after; the 52 call sites
+that already named "en-US", the emails' own hand-kept day and month tables, the backend's 40 bare calls (all
+console progress) and the founder window's browser-side two, each read and left; `localeCompare`,
+`toLocaleUpperCase` and every `Intl` constructor; and the `lang` attribute on every document the product
+serves, which the email template alone did not carry.
+
+**Not yet checked.** Which convention a price field accepts when an operator types a comma: `cleanPrice`
+strips it, so "1,250" is right and the French Canadian "12,50" is charged as $1,250, and picking one
+convention breaks the other (see this run's Needs Harshil). Whether the emails should tell a mail client not
+to invert their colours, which would change how every email renders and cannot be opened in a real client
+from here (see that run). What a second tab of the operator dashboard should show once the first
 releases the listing: `OperatorView`'s `storage` listener returns on a removal, so that tab goes on showing
 the shop and its next edit writes the profile key back, leaving a dashboard on the device for a listing
 Outset no longer publishes (see the hundred and fiftieth run's Needs Harshil). Whether two tabs chatting to
