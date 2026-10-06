@@ -755,7 +755,7 @@ export function guestBookingsFor(p: OperatorProfile, guest: Booking[]): OpBookin
   return guest
     .filter((b) => b.listing === p.id)
     .map((b) => {
-      const { extras } = splitAddons(b.addons);
+      const { extras } = splitAddons(b.addons, (u?.addons || []).map((a) => a.name));
       // What the guest booked is what the booking wrote down at confirm time. The index in `addons` is only a
       // fallback for bookings made before that was recorded: it points into the live menu, so deleting or
       // reordering a service used to relabel every earlier booking row with whatever now sat at that position.

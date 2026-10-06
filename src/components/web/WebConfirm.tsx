@@ -38,7 +38,8 @@ export function WebConfirm({ booking, onDone, onOpen }: { booking: Booking; onDo
   const addressRaw = contact ? addressLine(contact) : null;
   const address = addressRaw ? tidyAddress(addressRaw) : null;
   const score = publicRating(item);
-  const { extras } = splitAddons(booking.addons);
+  // With the shop's own add-on names, so an extra they called "2" is their add-on and not a menu index.
+  const { extras } = splitAddons(booking.addons, (item.addons || []).map((a) => a.name));
   // What the booking itself wrote down, not whatever now sits at the index it stored: see bookedRow.
   const picked = bookedRow(booking, item.options);
   const [y, m, d] = booking.date.split("-").map(Number);

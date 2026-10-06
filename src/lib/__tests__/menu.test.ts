@@ -63,3 +63,33 @@ test("a booking's service and its extras are read apart", () => {
   assert.deepEqual(splitAddons([]), { optionIdx: null, extras: [] });
   assert.deepEqual(splitAddons(undefined), { optionIdx: null, extras: [] });
 });
+
+/**
+ * An add-on an operator names in digits alone.
+ *
+ * The Services editor takes whatever they type, and no shipped listing writes such a name: measured over all
+ * 52,815 detail files, zero add-on, option or service names are digits alone. So this is the operator's own to
+ * trigger, and both halves of "all digits is the index" were wrong for it. Their extra was read as a menu
+ * index, and every entry that looked like one was dropped from the extras, so a guest charged for an add-on
+ * called "2" saw it on no confirmation screen and the operator's own booking drawer did not list it either.
+ */
+
+test("an add-on the shop names in digits alone is its add-on, not a menu index", () => {
+  const names = ["2", "Dry bag"];
+  // The service index is still first and still read, and the add-on called "2" survives beside it.
+  assert.deepEqual(splitAddons(["1", "2", "Dry bag"], names), { optionIdx: 1, extras: ["2", "Dry bag"] });
+  // No service picked, which is how the API path stores a booking: names only, no index at all.
+  assert.deepEqual(splitAddons(["2"], names), { optionIdx: null, extras: ["2"] });
+  assert.deepEqual(splitAddons(["2", "Dry bag"], names), { optionIdx: null, extras: ["2", "Dry bag"] });
+  // A name with the shop's own spacing around it still matches the row it came from.
+  assert.deepEqual(splitAddons(["2"], [" 2 "]), { optionIdx: null, extras: ["2"] });
+});
+
+test("only the entry actually read as the index leaves the extras", () => {
+  // Nothing published under that name, so the first digits-only entry is the index, as before. The second is
+  // not a second index: it stays, rather than vanishing from a guest's confirmation along with it.
+  assert.deepEqual(splitAddons(["1", "7", "Dry bag"]), { optionIdx: 1, extras: ["7", "Dry bag"] });
+  // And the old readings are unchanged where nothing collides.
+  assert.deepEqual(splitAddons(["2", "Dry bag", "Photo pack"], ["Dry bag"]), { optionIdx: 2, extras: ["Dry bag", "Photo pack"] });
+  assert.deepEqual(splitAddons(["0"], []), { optionIdx: 0, extras: [] });
+});

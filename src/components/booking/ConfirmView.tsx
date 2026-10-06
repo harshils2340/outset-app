@@ -46,7 +46,9 @@ export function ConfirmView() {
      screen read the whole list as indexes, so the extras came out as nothing: a guest who added a $30 dry bag
      paid for it in the total and saw no dry bag anywhere on the screen that confirmed their booking. The
      desktop confirmation has named them all along. */
-  const split = splitAddons(b.addons);
+  // The shop's own add-on names, so an extra an operator called "2" is read as their add-on and not as a
+  // menu index: see `splitAddons`.
+  const split = splitAddons(b.addons, (u?.addons || []).map((a) => a.name));
   // The row the booking wrote down at confirm time, with the stored index only as its fallback: see bookedRow.
   // A hand-built listing stores its extras by id and has no menu to index into, so only the names a booking
   // of one wrote down can speak for it.

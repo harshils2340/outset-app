@@ -90,10 +90,17 @@ export function saveChats(chats: Record<string, ChatMessage[]>): void {
  * confirmation read the whole list as indexes, so a guest who added a $30 dry bag paid for it in the total and
  * saw no dry bag anywhere on the screen that confirmed their booking. One reading, in one place.
  */
-export function splitAddons(addons: string[] | undefined): { optionIdx: number | null; extras: string[] } {
+export function splitAddons(addons: string[] | undefined, addonNames: readonly string[] = []): { optionIdx: number | null; extras: string[] } {
   const list = addons || [];
-  const idx = list.find((a) => /^\d+$/.test(a));
-  return { optionIdx: idx == null ? null : Number(idx), extras: list.filter((a) => !/^\d+$/.test(a)) };
+  // Telling the two apart was "all digits is the index", and the two halves of that were both wrong for an
+  // add-on an operator names in digits alone. Their own Services editor takes whatever they type, and no
+  // shipped listing writes such a name (measured over all 52,815 detail files), so this is theirs to trigger:
+  // name an extra "2" and it was read as a menu index and dropped from the list of extras, which is the same
+  // $30-dry-bag bug as above, one row along. A name the listing publishes as an add-on is that add-on, and
+  // only the one entry actually read as the index leaves `extras`, not every entry that looks like one.
+  const known = new Set(addonNames.map((n) => n.trim()).filter(Boolean));
+  const at = list.findIndex((a) => /^\d+$/.test(a) && !known.has(a.trim()));
+  return { optionIdx: at < 0 ? null : Number(list[at]), extras: list.filter((_, i) => i !== at) };
 }
 
 /**
