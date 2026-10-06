@@ -55,3 +55,17 @@ export function pageTitle(item: { title?: string; area?: string } | null): strin
   const area = placeName((item?.area || "").trim());
   return name + (area ? " in " + area : "") + " · Outset";
 }
+
+/**
+ * What the tab, the bookmark and the history entry call the operator dashboard.
+ *
+ * `pageTitle` gave every guest screen its own name and the operator side was left on the site's default, so an
+ * owner with the dashboard open in a tab read "Book things to do near you · Outset", a bookmark of their own
+ * dashboard was filed under the guest marketplace, and two tabs (their listing and their dashboard) were two
+ * identical entries in the history. The business is named when the catalog has it, the same way the listing
+ * title names it, and the word "dashboard" keeps the two tabs apart.
+ */
+export function dashboardTitle(item: { title?: string } | null): string {
+  const name = (item?.title || "").trim();
+  return (name ? name + " dashboard" : "Operator dashboard") + " · Outset";
+}

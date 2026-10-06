@@ -26,7 +26,7 @@ import { availabilityNow, confirmPaid, fetchAvailability, hasApi, loadWalletId, 
 import { assistantOn, companyAnswer, companyGreeting, companyHandoff, companySuggestions } from "../lib/companyAgent";
 import { askOttoModel } from "../lib/ottoModel";
 import { currentLocation, type Place } from "../lib/places";
-import { pageTitle } from "../lib/site";
+import { dashboardTitle, pageTitle } from "../lib/site";
 import { priceFor, priceUnclaimed } from "../lib/pricing";
 import { applyStoredProfiles } from "../lib/operator";
 import { DEVICE_KEYS, loadBookings, loadChats, mergeBookings, mergeChats, saveBookings, saveChats } from "../lib/storage";
@@ -561,6 +561,15 @@ function atOperatorsPath(): boolean {
 }
 
 /**
+ * True when the URL is the metrics page, wherever the site is mounted. `App` has the same check for which view
+ * to render; this one exists so the provider around it knows not to name a page it is not drawing.
+ */
+function atAdminPath(): boolean {
+  const base = import.meta.env.BASE_URL.replace(/\/?$/, "/");
+  return window.location.pathname === base + "admin" || window.location.pathname === base + "admin/";
+}
+
+/**
  * The place the home opens on, folded into the state of the very first render.
  *
  * A GPS or typed point is a pin: the rails measure from it. A city the guest picked is their decision. A clock
@@ -1036,12 +1045,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // Keyed on the transition, not the mount, so React's development double-run of effects cannot undo it.
   const listingOpen = state.sheet === "request" && !!state.reqTargetId;
 
-  // The tab, the bookmark, the history entry and a screen reader name the listing the address bar already
-  // names. Keyed on the same state as the hash above, and on the catalog version because a link opened cold
-  // arrives before the listing it names does.
+  // The tab, the bookmark, the history entry and a screen reader name the page the address bar already names:
+  // the open listing on the guest side, the shop whose dashboard is open on the operator side. Keyed on the
+  // same state as the hash above, and on the catalog version because a link opened cold arrives before the
+  // listing it names does.
   useEffect(() => {
+    // `/admin` is its own page and names itself (AdminView); the provider renders none of it.
+    if (atAdminPath()) return;
+    if (state.screen === "operator") {
+      document.title = dashboardTitle(experienceById(state.operatorId));
+      return;
+    }
     document.title = pageTitle(listingOpen ? experienceById(state.reqTargetId) : null);
-  }, [listingOpen, state.reqTargetId, state.catalogVersion]);
+  }, [listingOpen, state.reqTargetId, state.screen, state.operatorId, state.catalogVersion]);
 
   const listingWasOpen = useRef(listingOpen);
   const homeScrollY = useRef(0);

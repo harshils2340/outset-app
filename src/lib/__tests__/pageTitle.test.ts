@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
-import { DEFAULT_TITLE, pageTitle } from "../site";
+import { DEFAULT_TITLE, dashboardTitle, pageTitle } from "../site";
 
 /**
  * What the browser tab calls an open listing.
@@ -59,7 +59,48 @@ test("the provider sets it from the state the address bar already tracks", () =>
   const src = readFileSync(new URL("../../state/AppProvider.tsx", import.meta.url), "utf8");
   assert.ok(/document\.title = pageTitle\(/.test(src), "the provider stopped naming the page");
   assert.ok(
-    /\[listingOpen, state\.reqTargetId, state\.catalogVersion\]/.test(src),
-    "a link opened cold arrives before the listing it names, so the catalog version has to be in the deps",
+    /\[listingOpen, state\.reqTargetId, state\.screen, state\.operatorId, state\.catalogVersion\]/.test(src),
+    "a link opened cold arrives before the listing it names, so the catalog version has to be in the deps, and the screen and the shop decide which name is used",
+  );
+});
+
+/**
+ * The operator dashboard, which `pageTitle` never had a name for.
+ *
+ * `/operators` read "Book things to do near you · Outset" on every screen of the dashboard: the owner's own
+ * tab, bookmark and history entry were the guest marketplace's, and their listing tab and their dashboard tab
+ * were two entries with one name.
+ */
+test("the dashboard is named for the shop it is open on", () => {
+  assert.equal(dashboardTitle({ title: "Alcatraz Tours" }), "Alcatraz Tours dashboard · Outset");
+  assert.equal(dashboardTitle({ title: "  Grand River Rafting  " }), "Grand River Rafting dashboard · Outset");
+});
+
+test("a dashboard with no shop yet, or one the catalog has not landed, is still not the guest marketplace", () => {
+  for (const t of [dashboardTitle(null), dashboardTitle({}), dashboardTitle({ title: "   " })]) {
+    assert.equal(t, "Operator dashboard · Outset");
+    assert.notEqual(t, DEFAULT_TITLE);
+  }
+});
+
+test("the dashboard title cannot be mistaken for the listing's own", () => {
+  // Both tabs name the same business, so the word that tells them apart has to be there.
+  assert.notEqual(dashboardTitle({ title: "Alcatraz Tours" }), pageTitle({ title: "Alcatraz Tours", area: "" }));
+});
+
+test("the provider leaves the metrics page to name itself", () => {
+  // `/admin` renders AdminView alone, which sets "Outset metrics" once on mount. The provider wraps it either
+  // way, so without this guard the catalog landing a moment later renamed the page to the guest home's title.
+  const src = readFileSync(new URL("../../state/AppProvider.tsx", import.meta.url), "utf8");
+  assert.ok(/if \(atAdminPath\(\)\) return;/.test(src), "the provider renames the metrics page over AdminView");
+  const view = readFileSync(new URL("../../components/admin/AdminView.tsx", import.meta.url), "utf8");
+  assert.ok(view.includes('document.title = "Outset metrics"'), "AdminView stopped naming itself");
+});
+
+test("the dashboard is named on the operator screen and nowhere else", () => {
+  const src = readFileSync(new URL("../../state/AppProvider.tsx", import.meta.url), "utf8");
+  assert.ok(
+    /if \(state\.screen === "operator"\) \{\s*\n\s*document\.title = dashboardTitle\(experienceById\(state\.operatorId\)\);/.test(src),
+    "the dashboard title is no longer taken from the shop the dashboard is open on",
   );
 });
