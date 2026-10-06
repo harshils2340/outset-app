@@ -6,7 +6,7 @@ import { countryOfArea } from "../../data/regions";
 import { bookedInstant, bookedRow, splitAddons } from "../../lib/storage";
 import { useApp } from "../../state/AppProvider";
 import { Markup } from "../Markup";
-import { Fragment } from "react";
+import { Fragment, useEffect, useRef } from "react";
 import { tidyAddress, tidyLength, tidyName } from "../web/WebListing";
 import { bookedName, meetPlace } from "../../lib/listingDerive";
 import { GUEST_AGENT } from "../../lib/flags";
@@ -14,6 +14,18 @@ import { GUEST_AGENT } from "../../lib/flags";
 export function ConfirmView() {
   const { state, openChat, openRequest, goto } = useApp();
   const b = state.booking;
+  /**
+   * Where the keyboard is on the one screen a guest keeps.
+   *
+   * A booking swaps this screen in for the sheet it was taken in, so the button that was pressed is gone and
+   * there is no navigation for a screen reader to notice. Focus went to the document body, which is to say
+   * the ticket, the code and the "Request sent" were on the screen and nothing said so. Focus goes to the
+   * heading that says it. Before the early return, because a hook cannot sit behind one.
+   */
+  const head = useRef<HTMLHeadingElement>(null);
+  useEffect(() => {
+    if (b) head.current?.focus();
+  }, [b?.code]);
   if (!b) return null;
   const l = LISTINGS.find((x) => x.id === b.listing);
   const u = experienceById(b.listing);
@@ -66,7 +78,7 @@ export function ConfirmView() {
       <div className="confmark">
         <Markup html={ICONS.checkbig} />
       </div>
-      <h1>{instant ? "Booked." : "Request sent."}</h1>
+      <h1 ref={head} tabIndex={-1}>{instant ? "Booked." : "Request sent."}</h1>
       {/* Nobody at the shop promised an answer within the day, so this says only that the request reached them
           and, where we have an address, that we pass their answer on. */}
       <p>{instant ? op + " has it on their board. No call needed." : op + " has your request. Nothing is charged until they confirm." + (b.guest?.email ? " You'll get an email the moment they answer." : "")}</p>

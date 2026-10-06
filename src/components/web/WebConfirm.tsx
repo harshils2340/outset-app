@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import "../../styles/air-listing.css";
 import { ICONS } from "../../data/icons";
 import type { Booking } from "../../data/types";
@@ -24,9 +24,19 @@ const PHONE = '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" strok
  * details on the left, a summary card with the photo, the booking and the total on the right.
  */
 export function WebConfirm({ booking, onDone, onOpen }: { booking: Booking; onDone: () => void; onOpen: (id: string) => void }) {
-  // The page opens where the booking form was scrolled to; the confirmation belongs at the top, in view.
+  /**
+   * The page opens where the booking form was scrolled to; the confirmation belongs at the top, in view.
+   *
+   * And in the keyboard's hands. A booking replaces the whole screen, taking the Reserve button that was
+   * pressed with it, and there is no navigation for a screen reader to notice: measured in a real Chromium at
+   * 1280px, `document.activeElement` was `BODY` after a booking went through, so the one thing a guest needs
+   * to hear, that they are booked, was said to nobody and the next Tab started at the top of the document.
+   * Focus goes to the heading that says it, which is where a screen reader then starts reading.
+   */
+  const head = useRef<HTMLHeadingElement>(null);
   useEffect(() => {
     window.scrollTo({ top: 0 });
+    head.current?.focus();
   }, [booking.code]);
   const item = experienceById(booking.listing);
   if (!item) return null;
@@ -92,7 +102,7 @@ export function WebConfirm({ booking, onDone, onOpen }: { booking: Booking; onDo
         <div className="alconfirm">
           <div className="alconfirmmain">
             <span className="alconfirmmark"><Markup html={ICONS.checkbig} /></span>
-            <h1 className="alconfirmtitle">{instant ? "You're booked" : "Request sent"}{first ? ", " + first : ""}</h1>
+            <h1 className="alconfirmtitle" ref={head} tabIndex={-1}>{instant ? "You're booked" : "Request sent"}{first ? ", " + first : ""}</h1>
             {/* No operator promised an answer within the day, so the lead says only that the request reached
                 them. When they answer is in the step list, and that is the one thing we do control. */}
             <p className="alconfirmlead">

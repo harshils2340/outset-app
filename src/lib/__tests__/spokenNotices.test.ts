@@ -59,3 +59,21 @@ test("the phone sheet's two steps hand the keyboard over to each other", () => {
   assert.match(src, /if \(!camePay\.current\) return;/, "a sheet opening on the listing step moves nothing");
   assert.match(src, /reserveRef\.current\?\.focus\(\);/, "focus comes back to the button that opened it");
 });
+
+test("a booking that went through hands the keyboard to the words that say so", () => {
+  const desk = read("../../components/web/WebConfirm.tsx");
+  const phone = read("../../components/booking/ConfirmView.tsx");
+  assert.match(desk, /<h1 className="alconfirmtitle" ref=\{head\} tabIndex=\{-1\}>/);
+  assert.match(desk, /head\.current\?\.focus\(\);/);
+  assert.match(phone, /<h1 ref=\{head\} tabIndex=\{-1\}>/);
+  assert.match(phone, /if \(b\) head\.current\?\.focus\(\);/);
+  // Keyed on the booking, so a second booking in the same session is read out as well as the first.
+  assert.match(desk, /\}, \[booking\.code\]\);/);
+  assert.match(phone, /\}, \[b\?\.code\]\);/);
+  // A heading is not a control, so no focus ring is drawn around it.
+  const air = read("../../styles/air-listing.css");
+  const app = read("../../styles/app.css");
+  assert.match(air, /\.alconfirmtitle:focus\{outline:none;\}/);
+  assert.match(app, /\.conf h1:focus\{outline:none;\}/);
+  assert.match(app, /\.reqpad:focus\{outline:none;\}/);
+});

@@ -534,6 +534,8 @@ a.alwhererow:hover b{text-decoration:underline;}
 /* ---- confirmation page, Airbnb's "Request sent" trip page ---- */
 .alconfirm{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,440px);gap:8.333%;align-items:start;padding:48px 0 24px;}
 .alconfirmmark{width:56px;height:56px;border-radius:50%;display:grid;place-items:center;background:var(--accent-tint);color:var(--accent);}
+/* Focused in code when a booking lands: a heading, not a control, so no ring. */
+.alconfirmtitle:focus{outline:none;}
 .alconfirmtitle{margin:24px 0 8px;font-family:var(--f-display);font-size:32px;line-height:36px;font-weight:600;letter-spacing:-.01em;}
 .alconfirmlead{margin:0 0 16px;font-size:18px;line-height:24px;color:var(--ink-soft);max-width:560px;}
 .alconfirmrow{display:flex;justify-content:space-between;gap:16px;padding:0 0 20px;}

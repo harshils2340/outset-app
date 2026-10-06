@@ -486,6 +486,10 @@ a.crow:active{background:var(--surface-2);}
 
 /* confirmation */
 .conf{padding:40px 24px 22px;text-align:center;}
+/* Focused in code when a booking lands, so a screen reader reads from the heading. Not a control: no ring,
+   the same rule `.sheet:focus` keeps for the sheet it is focused inside. */
+.conf h1:focus{outline:none;}
+.reqpad:focus{outline:none;}
 .confmark{width:64px;height:64px;border-radius:50%;background:var(--open-bg);color:var(--open);display:grid;place-items:center;margin:0 auto 18px;}
 .conf h1{font-family:var(--f-serif);font-weight:500;font-size:32px;letter-spacing:-.03em;margin:0 0 8px;}
 .conf p{color:var(--ink-soft);font-size:15px;margin:0;}
