@@ -5,6 +5,7 @@ import { isConcessionFare } from "../lib/fares.ts";
 import { readFeed } from "./readFeed.ts";
 import { isReadable, unreadableSql } from "./readable.ts";
 import { zoneForArea } from "../lib/zone.ts";
+import { currencyForArea } from "../payments/money.ts";
 import { Trace } from "./session.ts";
 import { recordDemand } from "./demand.ts";
 import { awaitingClock, nextNeed } from "./needs.ts";
@@ -1814,10 +1815,31 @@ export async function plan(text: string, opts: { ask?: number; prior?: Intent | 
     }
   }
 
-  // What it costs, across everything we found. This is the answer to "why not just use Google".
-  const prices = options.map(priceOf).filter((n): n is number => n != null);
+  /**
+   * What it costs, across everything we found. This is the answer to "why not just use Google".
+   *
+   * One currency, because a range is arithmetic and two currencies in it is none. Windsor, Ontario and
+   * Detroit, Michigan are ten kilometres apart and a 40 km radius holds both, so a question about Windsor was
+   * answered "$35.00 to $65.00 a head across 4 places" with the $35 in Canadian dollars and the $65 in
+   * American: measured against a filled catalog on 6 October 2026. The same river runs between Niagara Falls
+   * and Niagara Falls, Vancouver and Bellingham, Buffalo and Fort Erie.
+   *
+   * The town the guest asked about decides which currency the line is in, and a shop quoted in the other one
+   * keeps its own price on its own card and stays out of the range, the way a whole-room price already does.
+   * A shop whose area we cannot read a region out of is kept, because a gap in our own record is not a
+   * currency difference and dropping it would narrow the line for the wrong reason.
+   */
+  const areaOf = (city: string | null, region: string | null) => [city, region].filter(Boolean).join(", ");
+  const home = currencyForArea(intent.region ? areaOf(intent.city, intent.region) : options.length ? areaOf(options[0].city, options[0].region) : "");
+  const sameMoney = options.filter((o) => currencyForArea(areaOf(o.city, o.region), home) === home);
+  const prices = sameMoney.map(priceOf).filter((n): n is number => n != null);
   const compare = prices.length >= 2 ? { cheapest: Math.min(...prices), dearest: Math.max(...prices), count: prices.length } : null;
-  if (compare) tr.step("compare", "$" + compare.cheapest.toFixed(2) + " to $" + compare.dearest.toFixed(2) + " a head across " + compare.count + " places");
+  if (compare) tr.step("compare", "$" + compare.cheapest.toFixed(2) + " to $" + compare.dearest.toFixed(2) + " a head across " + plural(compare.count, "place"));
+  const otherMoney = options.length - sameMoney.length;
+  if (otherMoney > 0) {
+    tr.step("compare", plural(otherMoney, "place") + " priced in another currency, left out of the range",
+      { detail: "the range is in " + home.toUpperCase() });
+  }
 
   /**
    * What they were shown, kept for the next sentence. "Show me something else" needs to know what else means,

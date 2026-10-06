@@ -143,3 +143,16 @@ test("a count in a line the guest reads agrees with its noun", async () => {
     many.steps.filter((s) => s.kind === "catalog").map((s) => s.text).join(" | "));
 });
 
+test("the comparison line holds one currency, and says so when it has left a shop out", async () => {
+  const tr = new Trace();
+  const a = await plan("escape room in windsor ontario", { trace: tr });
+  assert.ok(a.compare, "no comparison at all");
+  // Windsor's own three, in Canadian dollars. Detroit's $65 is American and is not the top of this range.
+  assert.equal(a.compare!.cheapest, 35);
+  assert.equal(a.compare!.dearest, 42);
+  assert.equal(a.compare!.count, 3);
+  assert.ok(a.options.some((o) => o.city === "Detroit"), "the Detroit shop should still be offered");
+  const said = tr.steps.filter((s) => s.kind === "compare").map((s) => s.text);
+  assert.ok(said.some((t) => /another currency/.test(t)), "left a shop out of the range and did not say so: " + said.join(" | "));
+});
+
