@@ -49,3 +49,13 @@ test("every refusal the guest app prints under a form is announced", () => {
   assert.match(listing, /className="alfine center albookerror" role="alert"/, "the desktop booking refusal");
   assert.match(wallet, /className="walleterr" role="alert"/, "the saved card refusal");
 });
+
+test("the phone sheet's two steps hand the keyboard over to each other", () => {
+  const src = read("../../components/booking/Sheets.tsx");
+  // The pay step is what arrives when Request is pressed, and the button pressed goes with the old step.
+  assert.match(src, /<div className="reqpad airpay" key="pay" ref=\{payTop\} tabIndex=\{-1\}>/, "the step can take focus");
+  assert.match(src, /className="airaccent" onClick=\{reserve\} ref=\{reserveRef\}/, "the way back is held on to");
+  assert.match(src, /camePay\.current = true;\s*\n\s*payTop\.current\?\.focus\(\);/, "focus moves into the step");
+  assert.match(src, /if \(!camePay\.current\) return;/, "a sheet opening on the listing step moves nothing");
+  assert.match(src, /reserveRef\.current\?\.focus\(\);/, "focus comes back to the button that opened it");
+});

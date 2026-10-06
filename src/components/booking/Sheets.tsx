@@ -659,6 +659,33 @@ function RequestBody({
   useEffect(() => {
     if (!pay && padRef.current) padRef.current.scrollTop = listScroll.current;
   }, [pay]);
+  /**
+   * Where the keyboard is after the sheet swaps one step for the other.
+   *
+   * Pressing Request replaces the whole body with the pay step, and the button that was pressed goes with it,
+   * so focus fell to the document body: the next Tab started at the top of the page behind the sheet, and a
+   * screen reader was told nothing at all, because nothing moved and nothing was announced. Measured in a
+   * real Chromium at 390px, both ways: Request, and "Back to the listing" out of it, each left
+   * `document.activeElement` as `BODY`.
+   *
+   * Focus goes to the step that just arrived, which a screen reader then reads from its own heading, and back
+   * to the Request button on the way out, the way the desktop booking box keeps `reserveRef`. `camePay` keeps
+   * the first render from moving anything: a sheet that opens on the listing step has already had focus put
+   * into it by `Sheets`.
+   */
+  const payTop = useRef<HTMLDivElement>(null);
+  const reserveRef = useRef<HTMLButtonElement>(null);
+  const camePay = useRef(false);
+  useEffect(() => {
+    if (pay) {
+      camePay.current = true;
+      payTop.current?.focus();
+      return;
+    }
+    if (!camePay.current) return;
+    camePay.current = false;
+    reserveRef.current?.focus();
+  }, [pay]);
   const reserve = () => {
     if (ready) {
       listScroll.current = padRef.current?.scrollTop || 0;
@@ -697,7 +724,7 @@ function RequestBody({
     const cta = !emailOk ? BAD_EMAIL_CTA : !guestOk ? "Add your name and number" : cardNow ? (ottoNow ? "Book with Otto " : "Book and pay ") + moneyIn(p.total!, cur) : instant ? (p.total ? "Confirm and pay " + moneyIn(p.total, cur) : "Confirm booking") : "Request to book";
     return (
       <>
-        <div className="reqpad airpay" key="pay">
+        <div className="reqpad airpay" key="pay" ref={payTop} tabIndex={-1}>
           <div className="airpaytop">
             <button className="aircircle flat" type="button" onClick={() => setPay(false)} aria-label="Back to the listing">
               <IcBack size={16} />
@@ -1530,7 +1557,7 @@ function RequestBody({
           )}
           <span className={"when" + (nudge ? " nudge" : "")}>{nudge || (ready && time ? day.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" }) + " · " + fmtTime(time) : "Choose a date")}</span>
         </button>
-        <button type="button" className="airaccent" onClick={reserve}>
+        <button type="button" className="airaccent" onClick={reserve} ref={reserveRef}>
           {instant ? "Reserve" : "Request"}
         </button>
         {/* What `reserve` says when it cannot go on: "Choose a service first" or "Pick a start time". It is
