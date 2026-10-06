@@ -133,7 +133,7 @@ function htmlOf(e: EmailInput): string {
     : "";
   const after = (e.after || []).map((s) => p(s, `font-size:14px;line-height:22px;color:${SOFT};`)).join("");
   const footer = esc(e.footer || `Outset · ${SITE.replace(/^https?:\/\//, "").replace(/\/$/, "")} · Questions: ${SUPPORT}`);
-  return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>${esc(e.heading)}</title></head>
+  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>${esc(e.heading)}</title></head>
 <body style="margin:0;padding:0;background:${BG};">
 <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="background:${BG};padding:28px 12px;"><tr><td align="center">
 <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="max-width:560px;background:#ffffff;border-radius:14px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;">

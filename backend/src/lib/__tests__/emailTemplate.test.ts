@@ -50,3 +50,26 @@ test("the plain-text part carries the same content with no markup to escape", ()
   // the guarantee that matters is that the HTML half (tested above) never carries them unescaped.
   assert.ok(text.includes("Jane <script>alert(1)</script> booked Kayak Tour"));
 });
+
+/**
+ * Every email Outset sends is built here: the sign-in code, the claim link, the three booking emails, the
+ * accept and decline notes, the outreach pitch and the Otto pitch. The document said what language it was in
+ * nowhere, while `index.html`, the two static page generators, the unsubscribe page and the founder's own
+ * sessions window all name `lang="en"`. With no language declared a mail client falls back to the reader's
+ * own system language: a screen reader reads an English confirmation in a French or German voice, and Outlook
+ * and Gmail offer to translate a message that is already in the reader's language.
+ */
+test("the email names the language it is written in", () => {
+  const { html } = renderEmail({ heading: "You're booked", intro: ["See you Saturday."] });
+  assert.match(html, /^<!doctype html><html lang="en">/);
+  assert.ok(!/<html>/.test(html), "no copy of the tag may go out without the attribute");
+});
+
+test("the language is named on every shape of email this template draws", () => {
+  const shapes = [
+    { heading: "Your code is 123456", intro: ["Type it on the sign-in screen."] },
+    { eyebrow: "Sign in", heading: "Claim Bayside Jet Ski", intro: ["Open the dashboard."], cta: { label: "Open", url: "https://example.com" } },
+    { heading: "New booking", intro: ["Jane booked."], rows: [{ label: "When", value: "Sat, Oct 10 at 2:00 PM" }], lines: [{ label: "Total", amount: "$120.00", total: true }], priceNote: "Charged to your card.", after: ["Reply to reach them."], footer: "Outset" },
+  ];
+  for (const e of shapes) assert.match(renderEmail(e).html, /<html lang="en">/);
+});
