@@ -98,7 +98,9 @@ export function WalletCard({ compact }: { compact?: boolean }) {
           {busy || "Add a card on Stripe"}
         </button>
       )}
-      {err ? <p className="walleterr">{err}</p> : null}
+      {/* The one line said when Stripe refuses the card, so it is announced the way every other refusal in
+          the booking flow is. */}
+      {err ? <p className="walleterr" role="alert">{err}</p> : null}
     </section>
   );
 }

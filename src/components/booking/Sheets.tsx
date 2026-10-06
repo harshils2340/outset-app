@@ -1533,6 +1533,12 @@ function RequestBody({
         <button type="button" className="airaccent" onClick={reserve}>
           {instant ? "Reserve" : "Request"}
         </button>
+        {/* What `reserve` says when it cannot go on: "Choose a service first" or "Pick a start time". It is
+            written into the price button's own second line, which is not the button that was pressed, so a
+            guest using a screen reader pressed Request, the page scrolled, and nothing was said. The desktop
+            booking box moves focus to the field it is waiting on, which announces itself; this bar scrolls a
+            section into view instead, so the reason is read out here. Empty the rest of the time. */}
+        <span className="vh" role="status" aria-live="polite">{nudge || ""}</span>
         </>
         )}
       </div>
