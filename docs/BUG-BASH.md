@@ -11199,6 +11199,125 @@ passes because the link it tests is the one `signOff` would have built.
   `ubuntu`, own socket directory, own generated certificate) before the brief's command line works.
 
 
+## 6 October 2026, hundred and forty-ninth run (06:21 to 07:00 UTC)
+
+**Chosen, and why.** Nothing has landed since the last entry, and what is left on Not yet checked is still
+product questions, so the frontier was picked by kind rather than by area. The last run read 75
+`react-hooks` findings over `src/`; what it never ran is a **project-aware** linter, the kind that needs the
+type checker to answer at all, and no run has ever pointed one at `backend/src`. So that first: eslint 9 and
+typescript-eslint in a scratch directory, aimed at both projects' own tsconfigs, with the rules only types can
+decide (`no-floating-promises`, `no-misused-promises`, `await-thenable`, `no-unnecessary-condition`,
+`no-base-to-string`, `no-misused-spread`, `switch-exhaustiveness-check`, `require-atomic-updates` and nine
+more). **It found no defect of its own**, and the reading of its 1,237 findings is in Measured and left. What
+it did do is put a line about image bytes in front of this run, and behind that line is a part of the product
+no run has looked at: what a browser does to a picture on a canvas. That holds four real bugs, all of one root
+cause, and all of them seen by a guest.
+
+**The rehearsal.** Skipped on arrival: the last entry says 57 of 57 at the end and nothing has landed since,
+which answers rules (a) and (b). Run at the end, because this run's own commits touch `src/lib` and
+`src/components`, which it drives. Baseline on arrival: root `tsc --noEmit -p .` and `tsc -b` clean, backend
+`tsc` clean but for TS5097, backend 1,123 with 1,121 pass and 2 skipped, app 1,309 pass.
+
+**Found and fixed.** Four commits, pushed. One root cause behind all four: **a fresh canvas is transparent,
+and a transparent pixel reads back as black.** Each number below was taken in the Playwright Chromium on this
+disk, through the same code the app runs.
+
+- **A transparent PNG an operator uploads no longer comes back with a black background** (`c59a31c6`). The
+  browser makes the upload: it draws the operator's photo onto a fresh canvas and encodes that canvas as
+  JPEG. JPEG carries no alpha channel and the canvas spec says what becomes of one, a transparent pixel is
+  composited onto solid black, so a PNG with a transparent background, a logo, a badge or a cut-out boat, came
+  back **black behind the subject**: in the operator's own photo grid, as their listing's hero, in the guest's
+  gallery, and in a public commit that is never rewritten. Driven through the exact four passes `uploadPhoto`
+  runs, the opaque pixel survives at (76, 81, 75) and every transparent one reads back **(0, 2, 0)**. The
+  canvas is painted opaque white first, which is what every surface that draws these photos sits on.
+- **The flat-photo screen measures a picture against the white its tile sits on, not against black**
+  (`580e37df`). `probePhotos` drops a photo close to one colour so a blank never reaches a guest's photo grid,
+  and it measured on a fresh canvas, so every picture with an alpha channel was scored against a background
+  the page never shows. The shape that matters is the commonest logo there is, a light mark drawn for a dark
+  header: with the same 24x24 sample and the same bar of 14, a near-white glyph on a transparent ground scores
+  **118.9** that way and **4.8** against white. It was kept, and what the guest got was the blank white tile
+  this screen exists to drop, on a catalog shipping 39,039 photo URLs that can carry alpha across 13,011
+  listings, 6,290 of them a cover. Nothing else moves, measured in the same run: a dark glyph on alpha is kept
+  either way (14.9, then 95), a flat opaque tile scores 0 both ways, and the 255,428 shipped photo URLs with
+  no alpha read identically.
+- **A cover the probe refuses as flat leaves the grids, the way a cover that will not load already does**
+  (`3974f0e3`). `lib/deadCovers.ts` is the rule browse runs on: a photo grid promises a photograph, so a
+  listing whose cover will not load leaves every grid rather than standing in it with a generated
+  illustration. Both listing surfaces refuse two kinds of cover, a URL that does not answer and a picture that
+  is flat, and **only the first ever reached that store**, through `Photo`'s `onBroken`. The second loads
+  perfectly, so the grids kept the listing and drew a white rectangle where a photograph was promised, which
+  is the exact thing the store was written to prevent. Both are the same fact about the same cover and now
+  report the same way, on the desktop listing and the phone sheet alike; the listing's own page is unchanged
+  and still falls back to its other photos.
+- **An add-on a shop names in digits alone is their add-on, not an index into their menu** (`009e29c0`). Not
+  from the canvas family: this was the one entry on Not yet checked that is a defect rather than a question. A
+  booking's `addons` list holds the service, as an index into the listing's menu, and every extra by name, and
+  "all digits is the index" was wrong in both directions for an extra an operator names in digits alone. Their
+  own Services editor takes whatever they type, and **no shipped listing writes such a name**, measured over
+  all 52,815 detail files, so this is theirs to trigger: name an add-on "2" and a guest charged for it saw it
+  on neither confirmation screen, and the operator's own booking drawer did not list it either, because every
+  entry that looked like an index was dropped from the extras. That is the same $30-dry-bag bug `splitAddons`
+  was written to fix, one row along. A name the listing publishes as an add-on is now that add-on, and only
+  the one entry actually read as the index leaves the extras.
+
+**Verification.** App `npm test` 1,320 pass, up 11; backend `npm test` 1,123 with 1,121 pass and 2 skipped,
+unchanged. Every new rule was run against the tree with its own fix reverted and goes red for the stated
+reason: the upload's ground, the flat screen's ground, both surfaces' cover report, and the two add-on
+readings. `tsc --noEmit -p .` and `tsc -b` clean at the root, backend's own `tsc` clean but for TS5097. The
+**rehearsal ran at the end, twice, 57 of 57 both times**: once after the first three commits, and again on the
+final tree, because the fourth landed while the first run's browser steps were already past the build. Both
+ran on a Postgres 16 cluster built from scratch on port 5433 with SSL on and the on-disk Playwright Chromium. `STRIPE_SECRET_KEY`, `RESEND_API_KEY` and `GITHUB_TOKEN` were empty
+throughout.
+
+**Measured and left.** The project-aware lint, read in full so the next run need not: over `backend/src`,
+1,237 findings, of which 1,153 are `test(...)` in `__tests__` (node:test returns a promise and floating it is
+how every one of these suites is written). Of the 84 left, 45 are `no-unnecessary-type-assertion` and 7
+`no-unnecessary-boolean-literal-compare`, both style; the 28 `require-atomic-updates`, four of them in
+`POST /bookings`'s money path, are all a request-local record assigned after an await, which no second request
+can see; both `switch-exhaustiveness-check` errors are a `null` the `default` arm already answers; and the one
+`no-floating-promises`, in `/concierge/stream`, is a promise that was given both handlers and cannot reject.
+A second pass with the rules that read values turned up 190 `no-unnecessary-condition`, 30 `no-base-to-string`
+and 5 `no-misused-spread`: the base-to-string sites are all `String(v ?? "")` over a crawled JSON field typed
+`unknown`, and **no shipped field is anything but a string**, measured over `title`, `area`, `cover`,
+`metroId`, `art` and `blurb` on all 52,815 detail files, so none of them can print "[object Object]" today;
+the spread sites are `...(init.headers || {})` and four like it, where every caller in the repository passes a
+plain object and a `Headers` or a pair array would spread to indices. Over the app's `src`, 110
+`no-unnecessary-condition` and the same `api.ts` headers line. Every "always falsy" and "no overlap" one of
+those was read, the `sanitizeSvg.ts` pair first because a check that cannot fire inside a sanitizer would
+matter: all of them are guards against a runtime shape the types do not model, an unmatched regex group, a
+`JSON.parse` result, an index past the end of an array, `navigator.geolocation` off a browser. Correct
+defensive code that a stricter `noUncheckedIndexedAccess` would stop complaining about. So: a mechanical
+sweep worth having run once, and worth not running again until the rules change.
+
+**Needs Harshil.**
+
+- **White is now the ground in two places, and that is a decision about the product, not about canvases.** A
+  logo drawn for a dark header reads correctly on white, which is what every surface in the app sits on today,
+  so white is right today. If a listing hero or a photo grid ever goes dark, both grounds have to follow, and
+  nothing in the code will say so.
+- **A flat cover still only leaves the grids once a guest opens that listing.** The fix above is the same
+  progressive guard `deadCovers` already is: it learns a cover is blank from the one page that pays for the
+  pixel read. Nothing screens a cover at card level, where 6,290 alpha-capable covers sit, because that is a
+  pixel read per card on a grid of sixty. The durable half is where the dead-cover comment already says it is,
+  in a sync that can repoint a blank cover at a photo that is not blank, and no sync can run from here. Two
+  covers and ten photos on six listings are `.svg` or `.gif`, which skip the proxy, so their canvas is tainted
+  and they are screened by nothing at all.
+- Still open from earlier runs, unchanged: half of an A/B day's batch carries no unsubscribe link; the
+  cross-campaign cool-off is one-way until `outreach-pool-sync.mts` publishes listing sends into
+  `outreach_sends`; a reply to the pitch is not an unsubscribe; nothing comes back for money a capture or a
+  refund failed on; the crash screen's words are nobody's choice and nothing reports a fault anywhere; "Open
+  right now near you" is computed once a visit; the 108 operators with hacked websites have not been told; the
+  phone's browse is not ranked while the desktop's is; the phone confirmation offers no way to reach the shop;
+  a guest cannot cancel a booking at all; a price sort and a price filter compare two dollars on six metros;
+  the cards say "$" for a Canadian shop; `concierge/demand.ts` still filters its crawl queue by category and
+  region and not by the town its own comment names; the 290 listings with no way to claim; and no sync has
+  run, so `kid`, `specs`, `gap` and `extraNote` are still empty on every shipped row. **The brief's rehearsal
+  path is `backend/scripts/e2e-local.mts`, not `scripts/`**, fifteenth run to say so. **Local `main` was
+  detached again** and was reattached to `origin/main` before committing, twenty-fifth run in a row. `npm
+  install` was needed at the root and in `backend/`, and the Postgres 16 cluster still has to be built from
+  scratch (as `ubuntu`, own socket directory, own generated certificate) before the brief's command line
+  works.
+
 ## Coverage
 
 The catalog is 48,198 listings as of the 23 September sync, 1,873 of them Viator partner rows. Counts below
@@ -12372,6 +12491,20 @@ dashboard's test chat and the Inbox chat's prefetch. The cross-campaign spacing 
 databases it now lives in, which is the laptop's SQLite and the cloud sender's Postgres. What the daily
 Otto run does when Gmail answers nothing at all, as against answering Promotions.
 
+What a browser does to a picture on a canvas, on all three surfaces of the product that put one there,
+driven in the Playwright Chromium on this disk against four picture shapes: the ground an operator's uploaded
+photo is flattened onto before it is encoded as JPEG, the ground the flat-photo screen measures a picture
+against, and which refusals of a cover reach the shared dead-cover store. With the alpha-capable share of the
+catalog counted: 39,039 of all 294,467 shipped photo URLs across 13,011 listings, 6,290 of them a cover, and
+2 covers and 10 photos on 6 listings that skip the proxy entirely. Both projects under a project-aware
+linter, the kind that needs the type checker to answer at all: floating and misused promises, awaiting a
+non-promise, unnecessary conditions, base-to-string, misused spread, switch exhaustiveness and atomic
+updates, over `backend/src` and `src` alike, read in full and counted by rule. Which rows of a booking's
+`addons` list are the service and which are the extras, against a row an operator names in digits alone,
+counted over all 52,815 shipped detail files and on both confirmation screens and the operator's own feed.
+That no shipped guest text field is anything but a string, over `title`, `area`, `cover`, `metroId`, `art`
+and `blurb` on all 52,815.
+
 **Not yet checked.** Whether a claimed shop's own calendar should refuse a start its service cannot finish
 by closing time, the way an unclaimed listing's now does: the operator set those hours and that slot length
 themselves, so nothing there is invented, and a 16:00 on a 17:30 close is their own grid rather than our
@@ -12912,4 +13045,13 @@ which only the laptop's own operators table can say, the shipped catalog carryin
 Whether an unread placement test should send the approved copy or hold, now that it sends: a day with no
 measurement is a day nobody is watching the reputation the whole channel runs on. Whether this repo should
 have a linter in `package.json` after all, now that running one found a guest-facing bug on the first pass
-and 74 findings that were not one (see that run).
+and 74 findings that were not one (see that run). Whether a cover should be screened for
+flatness at card level rather than only on the one page that pays for the pixel read, which is 6,290
+alpha-capable covers against a pixel read per card on a grid of sixty, and whose durable half is a sync that
+can repoint a blank cover and that nothing here can run (see the hundred and forty-ninth run's Needs
+Harshil). Whether the white that both canvas grounds now use should follow a surface that ever goes dark,
+which nothing in the code would say. Whether a `.svg` or `.gif` cover should be screened at all, given that
+both skip the proxy, so the canvas that would read them is tainted and the flat screen keeps them by rule: 2
+covers and 10 photos on 6 listings. Whether `splitAddons` should be handed the shop's own add-on names in
+`bookedRow` as well, which is the one of its four readers that still has only the menu to go on, and which
+only a booking written before `service` existed can reach.
