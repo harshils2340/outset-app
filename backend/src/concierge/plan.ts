@@ -1116,6 +1116,25 @@ export function vendorName(vendor: string): string {
   return VENDOR_NAME[vendor] || vendor;
 }
 
+/**
+ * The whole phrase, because three of the ids a reader may report are not brands at all.
+ *
+ * `LiveRead["vendor"]` is wider than the list of vendors `readerFor` routes to: `replay` is our own word for
+ * an endpoint we sniffed off a shop's own page, `agent` is the browser on a hand-built form, and `none` means
+ * we hold no booking link. Those went through `vendorName`, whose fallback hands back whatever it was given,
+ * so a Checkfront shop's card read "Read from their replay calendar just now" on the one line whose job is to
+ * say these times are the shop's own. Driven against a filled catalog on 6 October 2026; the Checkfront
+ * driver was also reporting `replay` although `readerFor` had routed it as Checkfront, and now says so.
+ *
+ * A shop with no booking link has nothing to attribute, so it gets no line rather than a sentence about
+ * nothing.
+ */
+export function viaPhrase(vendor: string): string | null {
+  if (vendor === "none") return null;
+  if (vendor === "replay" || vendor === "agent") return "their own booking page";
+  return "their " + vendorName(vendor) + " calendar";
+}
+
 /** The date a guest means. "tonight" is today; "weekend" is the next Saturday. */
 export function windowFor(when: Intent["when"], now = new Date()): { from: Date; days: number } {
   if (when === "tomorrow") return { from: new Date(now.getTime() + 86400_000), days: 1 };
@@ -1641,7 +1660,7 @@ export async function plan(text: string, opts: { ask?: number; prior?: Intent | 
           o.widened = true;
         }
       }
-      if (live) o.via = "their " + vendorName(live.vendor) + " calendar";
+      if (live) o.via = viaPhrase(live.vendor) ?? undefined;
 
       /**
        * Nearest the time they asked for, not earliest in the day.

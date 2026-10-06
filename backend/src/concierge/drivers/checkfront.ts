@@ -266,7 +266,7 @@ export async function checkfrontLive(
     if (!ids.length) {
       return {
         business: account,
-        vendor: "replay",
+        vendor: "checkfront",
         departures: [],
         note: listed.live
           ? "Their booking page lists nothing bookable in the next fortnight."
@@ -392,7 +392,7 @@ export async function checkfrontLive(
   const out = [...found.values()].sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time)).slice(0, 8);
   return {
     business: account,
-    vendor: "replay",
+    vendor: "checkfront",
     departures: out,
     note: out.length ? null : (note ?? "Nothing bookable on their page for that day."),
   };
