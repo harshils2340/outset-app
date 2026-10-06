@@ -11493,6 +11493,116 @@ is no way in and nothing was changed.
   install` was needed at the root and in `backend/`, and the Postgres 16 cluster still has to be built from
   scratch, which here also means running `initdb` as the `postgres` user because the session is root.
 
+## 2026-10-06 10:12 UTC, hundred and fifty-second run: what the screen says to somebody who cannot see it
+
+**Chosen, and why.** Nothing has landed since the last entry except its own commits, and what is left on Not
+yet checked is still product questions, so the frontier was picked by kind again. The last run's kind was a
+locale; this run's is a sentence the screen says without changing. `aria-live` appears nowhere in thirteen
+thousand lines of this log, and the brief's own accessibility line was answered once, for focus order, input
+labels and disabled buttons on the booking flow. Nothing had ever asked what the product says when a press
+does not go the way it was meant to, or when it does. So: **every notice the app gives without navigating**,
+on both sides, driven in a real Chromium rather than read.
+
+**The rehearsal.** Not run on arrival: the last entry says 57 of 57 on its final tree and nothing has landed
+since, which answers both of the brief's conditions. Run at the end, twice, because this run's commits touch
+`src/components`, `src/lib` and `src/styles`, which it drives: **57 passed, 0 warned, 0 failed** both times, on
+a Postgres 16 cluster built from scratch on port 5433 with SSL on and the on-disk Playwright Chromium.
+`STRIPE_SECRET_KEY`, `RESEND_API_KEY` and `GITHUB_TOKEN` were empty throughout. Baseline on arrival: root `tsc
+--noEmit -p .` and `tsc -b` clean, backend `tsc` clean but for TS5097, backend 1,125 with 1,123 pass and 2
+skipped, app 1,335 pass.
+
+**Found and fixed.** Five commits, pushed. Each was measured before and after in a real Chromium at 390px and
+1280px, with the API stubbed to answer the way the case needs.
+
+- **A booking the shop just lost is said out loud, not only shown** (`f9763dcb`). The guest app's toast is the
+  only notice a refused booking gets on the phone: the request sheet drops what `confirmUnclaimed` hands back,
+  so "That time was just booked. Pick another time." arrives in the pill and nowhere else. The pill was a
+  plain div. Driven against a stubbed 409: one POST, the pill up, and **zero live regions on the whole page**,
+  so what a guest using a screen reader got was the button going back from "Sending…" to "Request to book".
+  The toast is a live region now and still always mounted, so the text is what changes. The booking bar's own
+  nudge, "Choose a service first" and "Pick a start time", which `reserve` writes into the price button beside
+  the one that was pressed, got a region of its own: the desktop box moves focus to the field it is waiting
+  on, this bar only scrolls. The saved-card refusal joined the two bad-email lines that were already alerts.
+- **What the dashboard says back is said out loud, Accept and the claim link with it** (`ce358d5e`). One pill
+  carries all 32 of the dashboard's messages, every refusal included, from "Could not save that. Check your
+  connection and try again." after an Accept whose PATCH failed to "Could not release the listing. Nothing was
+  changed." Driven at 390px: the Home feed held zero live regions, and the Accepting switch put "Paused.
+  Guests can't book new times." on the screen with nothing in the accessibility tree to say so. The pill shows
+  and a region beside it speaks, the shape `OpServices` already uses for its reorder announcements. The way in
+  got the same read: eight of the claim and sign-in screens' nine error lines were plain paragraphs, among
+  them a wrong sign-in code, an address that is not on the business's website and an expired claim link, with
+  the ninth already an alert. A bad claim link opened in the browser printed its line with `role: null` on a
+  page holding no live region at all. The already-claimed banner, the only thing telling an owner somebody
+  walked in through a forwarded link, is a status like its signed-out twin, and Settings' two field errors now
+  match the booking box's.
+- **The phone's pay step takes the keyboard with it, and gives it back** (`81191949`). Pressing Request swaps
+  the whole sheet body for the pay step and unmounts the button that was pressed. Measured both ways:
+  `document.activeElement` was `BODY` after Request and after "Back to the listing" out of it, so the next Tab
+  started at the top of the page behind the sheet and nothing was announced although the screen had changed
+  completely. Focus goes to the step that arrived, which reads from its own heading, and back to the Request
+  button on the way out, the way the desktop box has always kept `reserveRef`. The Tab ring inside the step
+  was then walked: Back, Edit, Edit, the three guest fields, in that order, all labelled, with `autocomplete`
+  and `inputmode` set.
+- **A guest who has just booked is told so, on both confirmation screens** (`4a58da57`). A booking replaces
+  the whole screen, and this app has no router, so there is no navigation for a screen reader to notice.
+  Measured on both surfaces against a 200: after "Request to book" went through, `document.activeElement` was
+  `BODY`. The ticket, the check-in code and "Request sent" were on the screen and nothing said a word, on the
+  one screen a guest keeps. Focus goes to the heading that says it, keyed on the booking code so a second
+  booking is read out as well as the first, with the ring suppressed the way `.sheet:focus` already does.
+- **Answering a request leaves the operator in the queue, not at the top of the page** (`5457250b`). An
+  answered request leaves the New bucket, so the Accept that was pressed goes with its row: `BODY` again, on
+  the one page whose whole job is working through the requests that are waiting. The next request's Accept
+  takes the keyboard, which React already has on the screen, and the toast beside it names the guest who was
+  answered. Both buttons on the row go through it, so the Home feed gets the same.
+
+One existing test went red on the way and was corrected rather than worked around (`3cb51db4`): `apiSilent`
+matched the whole tag around the offline claim sentence, and its assertion is about which of three failures
+that line blames, which is inside the tag and not on it.
+
+**Verification.** App `npm test` 1,345 pass, up 10; backend 1,125 with 1,123 pass and 2 skipped, unchanged and
+untouched. `tsc --noEmit -p .` and `tsc -b` clean at the root, backend's own `tsc` clean but for TS5097. Two
+sweep tests of their own, `spokenNotices` and `spokenDashboard`, each read against the tree with its own files
+reverted. Every fix above was also re-driven in the browser afterwards: the refusal lands in a mounted empty
+`role=status`, the nudge in its own region, the pay step and the confirmation headings take focus, and Accept
+hands off to the next request's Accept.
+
+**Measured and left.** The guest booking box's own double-press guard holds: one POST for two taps, on both
+surfaces, which is what `sending` is for. The pay step's three fields are properly labelled, with
+`autocomplete` and `inputmode`, which is what an earlier run recorded. The desktop listing's flash ("Link
+copied", "Saved") is a `role="status"` that is mounted together with its text, which is the weaker of the two
+live-region shapes and was left as it is; the two toasts are now the strong shape. Two consecutive identical
+toasts are announced once, because the text does not change, and the visible pill has the same wrinkle: its
+timer is not restarted either. The bad-email line is an alert but is not tied to its field with
+`aria-describedby`, and the field carries no `aria-invalid`; the button's own label says what is missing. The
+last request in a queue has no next Accept to hand to and still lands on the body. The concierge's time chips
+can be tapped twice before `sendBook` has sent once, which is two bookings with two codes, latent behind two
+switches that are both off (`GUEST_AGENT`, `AGENT_MODE_LIVE`).
+
+**Needs Harshil.**
+
+- **Every other screen change in the app is silent too.** The two confirmations and the pay step are handled
+  now, but a tab change, a listing opening, the chat screen and the dashboard's own nine pages all swap the
+  screen without moving focus or saying anything. A blanket rule (focus the new screen's heading on every
+  change) is a change in how the whole app behaves, including for sighted keyboard users, so it is yours to
+  call rather than something to land at four in the morning.
+- **The words on the crash screen are still nobody's choice**, and so are the words a screen reader now reads
+  on the two confirmations: they are the headings that were written to be looked at, not to be read out first.
+- Still open from earlier runs, unchanged: an operator typing a comma for a decimal point is charged a hundred
+  times over; the emails say nothing about dark mode; `OperatorView`'s `storage` listener ignores a removal;
+  two tabs chatting to one shop are resolved by keeping the longer thread; half of an A/B day's batch carries
+  no unsubscribe link; the cross-campaign cool-off is one-way; a reply to the pitch is not an unsubscribe;
+  nothing comes back for money a capture or a refund failed on; "Open right now near you" is computed once a
+  visit; the 108 operators with hacked websites have not been told; the phone's browse is not ranked while the
+  desktop's is; the phone confirmation offers no way to reach the shop; a guest cannot cancel a booking at
+  all; a price sort and a price filter compare two dollars on six metros; `concierge/demand.ts` filters its
+  crawl queue by category and region and not by the town its own comment names; the 290 listings with no way
+  to claim; and no sync has run, so `kid`, `specs`, `gap` and `extraNote` are still empty on every shipped
+  row. **The brief's rehearsal path is `backend/scripts/e2e-local.mts`, not `scripts/`**, eighteenth run to
+  say so. **Local `main` was detached again** and was reattached to `origin/main` before committing,
+  twenty-eighth run in a row. `npm install` was needed at the root and in `backend/`, and the Postgres 16
+  cluster still has to be built from scratch, which here also means running `initdb` as the `postgres` user
+  because the session is root.
+
 ## Coverage
 
 The catalog is 48,198 listings as of the 23 September sync, 1,873 of them Viator partner rows. Counts below
@@ -11545,7 +11655,13 @@ hours, and the three orders a cut deliberately refuses, with the app's reader an
 identically on all 14,509. The booking box price lines, including a service with no price. Phone width at
 400px on the guest listing, the booking flow, every dashboard page, and the Trips, Inbox, chat and Profile
 tabs. Accessibility on the booking flow and on the assistant chat: focus order, input labels, disabled buttons.
-Colour contrast on the accent. What Otto actually has in hand when it answers: that all three surfaces which
+Colour contrast on the accent. Every notice the product gives without navigating, driven in a real Chromium on
+both sides rather than read: the guest toast, which is the only word a refused booking gets on the phone, the
+booking bar's nudge, the dashboard's one pill and all 32 messages through it, the claim and sign-in screens'
+nine error lines, the already-claimed banner and Settings' field errors, each read for whether anything in the
+accessibility tree says it. Where the keyboard lands when a screen is swapped rather than navigated to: the
+phone sheet's two steps both ways, both confirmation screens after a booking the API accepted, and the Accept
+that answers a request and takes its own row away with it. What Otto actually has in hand when it answers: that all three surfaces which
 ask it a question fill in the shop's own booking calendar, that a claimed shop's empty vendor window does not
 close it, and that a listing whose owner paused bookings or took it down is never told to a guest as bookable
 here. The API unreachable and the API slow. The Availability page and the setup
@@ -12692,7 +12808,18 @@ console progress) and the founder window's browser-side two, each read and left;
 `toLocaleUpperCase` and every `Intl` constructor; and the `lang` attribute on every document the product
 serves, which the email template alone did not carry.
 
-**Not yet checked.** Which convention a price field accepts when an operator types a comma: `cleanPrice`
+**Not yet checked.** Whether every other screen change in the app should move focus and say so: a tab
+change, a listing opening, the chat screen and the dashboard's own nine pages all swap the screen in silence,
+and a blanket rule changes how the whole app behaves for sighted keyboard users too (see the hundred and
+fifty-second run's Needs Harshil). Whether two consecutive identical toasts should be announced twice, which
+needs the region's text to change and which the visible pill does not do either, its timer not being restarted
+on the second. Whether the desktop listing's flash ("Link copied", "Saved") should be a mounted region the way
+the two toasts now are, rather than a `role="status"` that arrives with its own text. Whether a bad-email line
+should be tied to its field with `aria-describedby` and an `aria-invalid`, given that the button's own label
+already says what is missing. Whether the last request in a queue should hand the keyboard somewhere once
+there is no next Accept, which is the empty state and which does not exist until after the re-render. Whether
+the headings a screen reader now reads first on the two confirmations are the right words, having been written
+to be looked at (see that run). Which convention a price field accepts when an operator types a comma: `cleanPrice`
 strips it, so "1,250" is right and the French Canadian "12,50" is charged as $1,250, and picking one
 convention breaks the other (see this run's Needs Harshil). Whether the emails should tell a mail client not
 to invert their colours, which would change how every email renders and cannot be opened in a real client
