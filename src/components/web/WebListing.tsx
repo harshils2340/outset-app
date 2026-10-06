@@ -818,7 +818,14 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
   // dead URL or a 40 px logo never claims a tile; a tile that still fails later drops out and the grid re-picks.
   const candidates = photoCandidates(item);
   const [broken, setBroken] = useState<Set<string>>(new Set());
-  const drop = (src: string) => setBroken((b) => (b.has(src) ? b : new Set(b).add(src)));
+  // A cover that will not load teaches the shared store, so the listing leaves every photo grid: see
+  // lib/deadCovers. A cover the probe refuses because it is flat, a blank or a logo on a plain ground, told
+  // nobody, and that one loads, so the grids kept it and drew a white rectangle where a photograph was
+  // promised. The two are the same fact about the same cover, so they report the same way.
+  const drop = (src: string) => {
+    if (src === item.cover) reportDeadCover(item.id);
+    setBroken((b) => (b.has(src) ? b : new Set(b).add(src)));
+  };
   const media = listingMedia(item, broken);
   const hasVideo = media[0]?.kind !== "photo" && media.length > 0;
   // Only the first five ever render in the hero, and each probe is a real image fetch competing with the hero

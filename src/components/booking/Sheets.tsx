@@ -40,6 +40,7 @@ import { AGENT_MODE_LIVE } from "../../lib/concierge";
 import { useApp } from "../../state/AppProvider";
 import { SIZES, srcSet, thumb } from "../../lib/images";
 import { embedAutoplay, listingMedia, photoCandidates, probePhotos, type Media } from "../../lib/media";
+import { reportDeadCover } from "../../lib/deadCovers";
 import { cleanDesc, durationLabel, groupCap, meetPlace, minAge, notAlreadyShown, placeName, splitPolicies, variantPickLabel } from "../../lib/listingDerive";
 import { minutesIn } from "../../lib/duration";
 import { freeCancelBadge } from "../../lib/cancellation";
@@ -403,7 +404,12 @@ function RequestBody({
   // The hero shows only media that really loads: no placeholder art on a listing. Photos are probed at thumbnail
   // size up front, and a slide that still fails drops out of the strip and the count.
   const [broken, setBroken] = useState<Set<string>>(new Set());
-  const drop = (src: string) => setBroken((b) => (b.has(src) ? b : new Set(b).add(src)));
+  // The same report the desktop listing makes: a cover the probe refuses, dead or flat, is a cover that
+  // cannot stand in a photo grid. See lib/deadCovers.
+  const drop = (src: string) => {
+    if (src === item.cover) reportDeadCover(item.id);
+    setBroken((b) => (b.has(src) ? b : new Set(b).add(src)));
+  };
   const media = listingMedia(item, broken);
   const [slide, setSlide] = useState(0);
   const padRef = useRef<HTMLDivElement>(null);
