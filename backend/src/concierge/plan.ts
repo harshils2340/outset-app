@@ -238,8 +238,13 @@ export function readIntent(text: string, prior?: Intent | null, device?: { lat: 
    * escape room with a minimum of two: every one of them `partyStated`, so the agent never asked how many and
    * the answer stated the guess as a fact. The same sentences written with a space read correctly throughout,
    * so the hyphen was the whole of it.
+   *
+   * An age is not a headcount either, and a year is the one unit the list never held, with or without the
+   * hyphen: "for 8-year-olds", "for a 10 year old" and "go karts for a 12-year-old birthday" were parties of
+   * eight, ten and twelve. A parent booking one child's birthday is about the most ordinary sentence a
+   * trampoline park or a kart track gets, and `months?` was already here for the babies.
    */
-  const NOT_HEADS = "(?!\\s*[-\\u2010-\\u2015]?\\s*(?:hours?|hrs?|h\\b|mins?|minutes?|days?|nights?|weeks?|months?))";
+  const NOT_HEADS = "(?!\\s*[-\\u2010-\\u2015]?\\s*(?:hours?|hrs?|h\\b|mins?|minutes?|days?|nights?|weeks?|months?|years?|yrs?))";
   const m =
     t.match(new RegExp("\\bfor\\s+(?:a\\s+)?" + COUNTED + "\\b" + NOT_HEADS)) ||
     t.match(new RegExp("\\b" + N + "\\s+(?:" + HEADWORD + ")\\b")) ||

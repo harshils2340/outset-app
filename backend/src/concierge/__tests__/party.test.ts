@@ -49,6 +49,24 @@ test("a party inside the range is still read and still stated", () => {
   }
 });
 
+test("an age is not a headcount", () => {
+  for (const sentence of [
+    "escape room in waterloo for 8-year-olds",
+    "escape room in waterloo for a 10 year old",
+    "trampoline park in tampa for 6-year-olds",
+    "go karts in orlando for a 12-year-old birthday",
+    "soft play in tampa for an 18 month old",
+  ]) {
+    const i = readIntent(sentence);
+    assert.equal(i.party, 2, sentence);
+    assert.ok(!i.partyStated, "an age is not a party stated: " + sentence);
+    assert.equal(nextNeed(i)?.id, "party", "so it is asked: " + sentence);
+  }
+  const both = readIntent("escape room in waterloo for 4 kids aged 8");
+  assert.equal(both.party, 4, "a sentence that states both still counts the heads");
+  assert.ok(both.partyStated);
+});
+
 test("a sentence that counts no heads is still unstated, as before", () => {
   for (const sentence of ["escape room in waterloo", "escape room in waterloo tonight", "fishing charter in tampa for 4 hours"]) {
     const i = readIntent(sentence);
