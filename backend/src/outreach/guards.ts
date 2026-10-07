@@ -107,3 +107,38 @@ export function outreachBlockers(c: OutreachChecks): string[] {
 
   return out;
 }
+
+/**
+ * A business whose catalog "website" is a page on somebody else's site, with an address at that site: the
+ * address belongs to the host, not the business. On 7 October 2026 "A Great Escape", a shop listed at
+ * gardnervillage.com/a-great-escape, was pitched and followed up at marketing@gardnervillage.com, and Gardner
+ * Village's marketing manager wrote back "I'm not A Great Escape. Please reach out to their company." The same
+ * shape across the pool (866 of 161,496 rows): a shopping village, a hotel's spa page, a city's golf course
+ * page, a tourism board's directory listing, a barre studio's page standing in for a massage studio.
+ *
+ * Read: the website is a page below the domain's root, the address is at that domain, and nothing in the
+ * business's name shows up in the domain (a word of the name, or its initials: abcbrew.com is Appalachian
+ * Brewing Company's own). Some of these are a parent company that would answer for the venue; they are left
+ * out anyway, because a pitch that reaches the wrong business is a complaint about Outset, not a lead.
+ */
+const GENERIC = new Set(["the", "and", "escape", "room", "rooms", "tour", "tours", "adventure", "adventures", "rental", "rentals",
+  "center", "centre", "club", "studio", "studios", "spa", "golf", "park", "fun", "games", "game", "entertainment", "company",
+  "course", "lounge", "museum", "theatre", "theater", "arena", "rink", "pool", "marina", "campground", "resort", "winery", "brewing"]);
+export function hostPageAddress(r: { name: string; domain: string; website: string | null; email: string }): boolean {
+  let path = "";
+  try {
+    path = new URL(r.website || "").pathname.replace(/\/(index\.\w+)?$/i, "");
+  } catch {
+    return false;
+  }
+  if (path.length <= 1) return false;
+  const host = r.domain.toLowerCase().replace(/^www\./, "");
+  if (!r.email.toLowerCase().trim().endsWith("@" + host)) return false;
+  const label = host.split(".")[0].replace(/[^a-z0-9]/g, "");
+  if (label.length < 4) return false;
+  const words = r.name.toLowerCase().normalize("NFKD").replace(/[^a-z0-9& ]/g, " ").split(/\s+/).filter(Boolean);
+  if (words.filter((w) => w.length >= 3 && !GENERIC.has(w)).some((w) => label.includes(w))) return false;
+  const initials = words.filter((w) => !["the", "a", "an", "of", "and", "&"].includes(w)).map((w) => w[0]).join("");
+  if (initials.length >= 2 && label.startsWith(initials)) return false;
+  return true;
+}

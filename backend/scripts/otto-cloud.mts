@@ -1,7 +1,7 @@
 import "../src/env.ts";
 import { sendMail, smtpIdentities } from "../src/lib/mail.ts";
 import { emailHash, loadSuppression, mailPostal, unsubPageUrl } from "../src/lib/unsub.ts";
-import { outreachBlockers, UNREADABLE_ADDRESS } from "../src/outreach/guards.ts";
+import { hostPageAddress, outreachBlockers, UNREADABLE_ADDRESS } from "../src/outreach/guards.ts";
 import { isDeliverable, siteResolves } from "../src/outreach/deliverable.ts";
 import { ARMS, COPY_LADDER, COPY_VERSION, armOf, draftOttoBump, draftOttoCopy, type CopyStyle } from "../src/outreach/ottoDrafts.ts";
 import { recordSend } from "../src/lib/outreachLog.ts";
@@ -307,6 +307,12 @@ async function sendBatch(limit: number, quota: Record<string, number>): Promise<
       continue;
     }
     seen.add(to);
+    if (hostPageAddress({ name: r.name, domain: r.domain, website: r.website, email: to })) {
+      console.log("skipped " + to + ": the address is " + r.domain + "'s, whose page only lists " + r.name);
+      if (!dry) await recordTouch({ operatorId: r.operator_id, email: to, status: "failed" }).catch(() => undefined);
+      out.skipped++;
+      continue;
+    }
     if (!(await isDeliverable(to))) {
       console.log("skipped " + to + ": domain takes no mail");
       if (!dry) await recordTouch({ operatorId: r.operator_id, email: to, status: "failed" }).catch(() => undefined);

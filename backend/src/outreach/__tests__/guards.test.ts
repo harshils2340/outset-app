@@ -118,3 +118,17 @@ test("a placeholder you@ and a phone number glued to the address are unreadable,
   assert.ok(!UNREADABLE_ADDRESS.test("escape2020@gmail.com"));
   assert.ok(!UNREADABLE_ADDRESS.test("info@4005551234.com"));
 });
+
+test("an address at a host site whose page stands in for the business is not the business's", async () => {
+  const { hostPageAddress } = await import("../guards.ts");
+  const row = (name: string, website: string, email: string) => ({ name, website, email, domain: new URL(website).hostname.replace(/^www\./, "") });
+  // The 7 October 2026 reply: "I'm not A Great Escape. Please reach out to their company."
+  assert.ok(hostPageAddress(row("A Great Escape", "https://www.gardnervillage.com/a-great-escape", "marketing@gardnervillage.com")));
+  assert.ok(hostPageAddress(row("LaVida Massage of Rochester Hills", "https://thebarrecode.com/studio/rochester-hills/", "mountpleasant@thebarrecode.com")));
+  assert.ok(hostPageAddress(row("Angels Camp Museum", "https://www.gocalaveras.com/business/attractions/angels-camp-museum-gift-shop/", "info@gocalaveras.com")));
+  // The business's own site, a location page on its own brand, or its initials: kept.
+  assert.ok(!hostPageAddress(row("Appalachian Brewing Company", "https://www.abcbrew.com/gettysburg", "abcinfo@abcbrew.com")));
+  assert.ok(!hostPageAddress(row("The Great Escape Room", "https://thegreatescaperoom.com/akron", "chicago@thegreatescaperoom.com")));
+  assert.ok(!hostPageAddress(row("Perplexity Escape Games", "https://perplexity.ca/", "info@perplexity.ca")));
+  assert.ok(!hostPageAddress(row("Fond du Lac Escape", "http://thegreatescapefdl.com/escape-rooms", "thegreatescapefdl@gmail.com")), "a free-mail address is not the host's");
+});
