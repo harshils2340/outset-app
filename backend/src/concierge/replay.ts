@@ -1,6 +1,7 @@
 import { db } from "../db/client.ts";
 import { UNNAMED_RATE, type Departure, type LiveRead } from "./live.ts";
 import { isConcessionFare } from "../lib/fares.ts";
+import { addDays, zonedNow, zonedYmd } from "./shopday.ts";
 
 /**
  * Reading a shop's own booking system from an endpoint we discovered once.
@@ -54,8 +55,6 @@ export function endpointFor(domain: string): StoredEndpoint | null {
   return row ?? null;
 }
 
-const ymd = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-
 /**
  * Point a recorded request at a different day.
  *
@@ -63,9 +62,11 @@ const ymd = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart
  * now in the past. Any query parameter that looked like a date is rewritten; so is an ISO date sitting in a
  * POST body. A request with no date in it at all is sent unchanged, because plenty of these endpoints return
  * a whole month and do their own filtering.
+ *
+ * The day is a calendar date where the shop is, as `YYYY-MM-DD`, rather than an instant: which day a guest
+ * means is a question about the shop's zone and `replayLive` has already answered it.
  */
-export function forDate(ep: StoredEndpoint, day: Date): { url: string; body: string | null } {
-  const iso = ymd(day);
+export function forDate(ep: StoredEndpoint, iso: string): { url: string; body: string | null } {
   let url = ep.endpoint;
   try {
     const u = new URL(ep.endpoint);
@@ -191,7 +192,8 @@ async function read(url: string, method: string, body: string | null, contentTyp
  */
 export async function replayLive(
   domain: string,
-  opts: { from?: Date; days?: number } = {},
+  /** `tz` is the shop's own zone, from the catalog, because every date and clock below is a calendar day where the shop is. */
+  opts: { from?: Date; days?: number; tz?: string | null } = {},
 ): Promise<LiveRead | null> {
   const ep = endpointFor(domain);
   if (!ep) return null;
@@ -200,10 +202,23 @@ export async function replayLive(
   // Two days, not a fortnight: each is a request, and a guest asking about tonight does not need next week.
   const horizon = Math.min(opts.days ?? 2, 4);
   const out: Departure[] = [];
+  /**
+   * The window and the clock are the shop's, not this machine's. `render.yaml` sets no TZ for `outset-api`,
+   * so "local" on the host is UTC: from eight in the evening Eastern this asked every shop about tomorrow,
+   * and at ten in the morning Pacific it called every slot before five o'clock already started. Every other
+   * reader in here goes through `shopday.ts` for exactly this; see its own first paragraph.
+   */
+  const today = zonedNow(opts.tz);
+  const startDate = zonedYmd(start, opts.tz);
 
-  for (let i = 0; i <= horizon && out.length < 8; i += 1) {
-    const day = new Date(start.getTime() + i * 86400_000);
-    const { url, body } = forDate(ep, day);
+  // `i < horizon`, not `i <= horizon`: a one-day window is that day. See `lastDayOf` in `shopday.ts`.
+  for (let i = 0; i < horizon && out.length < 8; i += 1) {
+    /**
+     * `addDays` on the calendar rather than `+ 86400_000` on the clock: adding a day of elapsed time steps
+     * over a date the night a zone springs forward and repeats one the night it falls back.
+     */
+    const date = addDays(startDate, i);
+    const { url, body } = forDate(ep, date);
     const payload = await read(url, ep.method, body, ep.contentType);
     if (!payload) continue;
 
@@ -223,9 +238,8 @@ export async function replayLive(
       if (!seen || (f.price != null && (seen.price == null || f.price < seen.price))) byTime.set(f.time, f);
     }
 
-    const date = ymd(day);
-    // Today's slots that have already started are not availability.
-    const nowMin = date === ymd(new Date()) ? new Date().getHours() * 60 + new Date().getMinutes() : -1;
+    // Today's slots that have already started are not availability, on the shop's clock rather than ours.
+    const nowMin = date === today.date ? today.minutes : -1;
     for (const f of [...byTime.values()].sort((a, b) => a.time.localeCompare(b.time))) {
       const mins = Number(f.time.slice(0, 2)) * 60 + Number(f.time.slice(3));
       if (mins <= nowMin) continue;
