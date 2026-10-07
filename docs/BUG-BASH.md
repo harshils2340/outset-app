@@ -11793,6 +11793,97 @@ are refs.
   be built from scratch, as the `postgres` user because the session is root.
 
 
+## 2026-10-07 05:15 UTC, hundred and fifty-fifth run: what the concierge thinks a number means
+
+**Chosen, and why.** Every area the brief lists is on Verified, and the only commits since the last entry
+touch `backend/src/outreach`, so there were two things worth doing and the brief's rule ("do not re-verify
+unless a commit since then touched that code") picks both. First, the four outreach commits of 6 October: the
+A/B/C test, the placement test's Trash move, the bounce-notice archive and the Sent reconnect, none of them
+ever reviewed, and the SQL behind them never once executed by anything in this repo. Second, the concierge,
+which is the newest surface, the one Harshil demos, and the one where 6 of 15 modules (`agent.ts`, `needs.ts`,
+`sniff.ts`, `replay.ts`, `demand.ts`, `readFeed.ts`, about 1,400 lines) have no test of their own at all. The
+sentence reader is where a wrong answer costs a booking, so it got the night.
+
+**The rehearsal.** Run, because commits since the last entry touch `backend/src`, which is the brief's second
+condition. Twice: **56 passed, 0 warned, 1 failed** on arrival, where the one failure was this session's own
+(`tsc` read a new test file at the moment its module was stashed for a does-this-test-actually-fail check),
+then **57 passed, 0 warned, 0 failed** on the committed tree. Postgres 16 built from scratch on port 5433 with
+SSL on, `STRIPE_SECRET_KEY`, `RESEND_API_KEY`
+and `GITHUB_TOKEN` empty throughout. Baseline on arrival: root `tsc --noEmit -p .` and `tsc -b` clean, backend
+`tsc` clean but for TS5097, backend 1,138 with 1,136 pass and 2 skipped, app 1,350 pass.
+
+**Found and fixed.** Three commits, all in the concierge's sentence reader, all measured before and after
+through the real `readIntent`. They are one family: a number beside a unit was being counted as people.
+
+- **A length a guest states is never counted as a headcount** (`64569902`). "looking for a 90-minute massage
+  in tampa" came back as a party of **ninety**, with `partyStated` set, so the agent quoted ninety heads,
+  filtered the menu for ninety and never asked how many. "for a 4-hour charter" was a party of four, "for a
+  1-hour room" a party of one at an escape room with a minimum of two. `NOT_HEADS` put only `\s*` between the
+  number and its unit, so it crossed a space and not a hyphen, which is how most people write a length in
+  front of the thing they are buying; every one of those sentences written with a space read correctly. The
+  reader that decides whether to ask "how long?" had the same blind spot and two more: `\d{1,2}` could not
+  reach "120 minutes", and its closing `\b` sat straight after "min", so it refused every "minute" and
+  "minutes" ever written and only the clipped "90 min" was ever read. A spa guest opening with "a 120 minute
+  massage" was asked "How long were you thinking?", which `needs.ts` says in its own first paragraph never to
+  do. Now `STATED_LENGTH`. Four tests.
+- **A headcount nobody could book here is not a party stated** (`246fdd11`). "600 people, escape room in
+  waterloo" was quoted for two. The range check has always replaced a figure outside 1 to 500 with two, and
+  `saidParty` counted the sentence as having stated a party all the same, so the agent never asked and the
+  answer did not own the two as a guess: `assumed` only names it when nothing was stated. A conference
+  organiser got a two-person quote back as though that were what they asked for. A figure we refuse now leaves
+  the party unstated. A sentence counting one head is untouched, since `heads` of 1 reaches the check through
+  its own sentinel and carries no figure.
+- **An age a guest names is not a headcount** (`55902527`). "escape room in waterloo for 8-year-olds" was a
+  party of eight, "for a 10 year old" ten, "go karts in orlando for a 12-year-old birthday" twelve. A year was
+  the one unit `NOT_HEADS` never held, with or without the hyphen; `months?` was already there for the babies.
+  A parent booking one child's birthday is about the most ordinary sentence a trampoline park or a kart track
+  gets. "for 4 kids aged 8" still counts the heads.
+
+**Verification.** Backend 1,144 pass and 2 skipped, up 8 (eight new tests in two new files); app 1,350
+unchanged and untouched. `tsc --noEmit -p .` and `tsc -b` clean at the root, backend's own `tsc` clean but for
+TS5097. Each fix was checked against the old code as well as the new: 3 of 4 and 1 of 4 of the new tests fail
+on the parent commit.
+
+**Measured and left.** The outreach SQL driven against a real Postgres for the first time, every query in
+`touches.ts` that no test can reach because it is a template string inside its function rather than an
+exported clause: `bumpCandidates` (the A/B/C test's "forgot" arm came back at 20 hours and first, the other
+arms only at 70, the pre-test and `nolink` first emails filed as arm A), `armStats` (four arms counted apart,
+`fallback` its own row), `poolCandidates` with `POOL_UNTOUCHED` and `POOL_ORDER`, `poolUpsertSql`'s
+owner-work `case`, `otherCampaignHolds` and `sentTodayByMailbox`. All correct, nothing to change. The three
+unreviewed outreach commits read through: `archiveBounceNotices` marks `\Seen` and drops `\Inbox` as a Gmail
+label in the folder the UIDs came from, which is right; a notice naming no address at all is the one that is
+never archived and is re-read until it falls out of the three-day window. `SentThreads` self-heals a
+connection that dies mid-search, because the next `getMailboxLock` on the cached dead box throws and drops it.
+`draftOttoCopy`'s subject does not depend on the style, so a follow-up that cannot find its thread still
+opens with the right "Re:". The concierge's clock reader against sixteen spellings: `4:30pm`, `430pm`,
+`16:30`, `9 am`, `12:30am`, `noon` and the bare evening hours all right, `25:00` and `9:75` refused, "at
+midnight", "half past 4" and "between 2 and 4" read as no time at all, which is the safe answer. All four
+refine verbs and the "instead"/"make it" rewrites against a prior intent: correct, and nothing loses the town,
+the activity or the party. The place reader's metro fallback is keyed on the metro's own `name`, so a guest
+typing "tampa" rather than "tampa bay" is resolved by the catalog's own rows and not by the table; harmless in
+production and unverifiable here, where the scratch catalog is empty.
+
+**Needs Harshil.**
+
+- **"for 0 people" and "for 2.5 people" still read as something.** Both now leave the party unstated, which is
+  the right end state, but they get there by the range check rather than by being understood: "2.5" is read as
+  a party of five, because the reader sees the "5". Nobody types either, so nothing was built for them.
+- Still open from earlier runs, unchanged: a concierge card prints a bare dollar sign for a shop in the other
+  country's money; every other screen change in the app is silent to a screen reader; an operator typing a
+  comma for a decimal point is charged a hundred times over; the emails say nothing about dark mode;
+  `OperatorView`'s `storage` listener ignores a removal; two tabs chatting to one shop are resolved by keeping
+  the longer thread; half of an A/B day's batch carries no unsubscribe link, which the `ask` arm's own
+  `askSignOff` is now the whole of; the cross-campaign cool-off is one-way; nothing comes back for money a
+  capture or a refund failed on; the 108 operators with hacked websites have not been told; a guest cannot
+  cancel a booking at all; the 290 listings with no way to claim; the unsubscribe page says nothing a screen
+  reader can hear; and no sync has run, so `kid`, `specs`, `gap` and `extraNote` are still empty on every
+  shipped row.
+  **The brief's rehearsal path is `backend/scripts/e2e-local.mts`, not `scripts/`**, twenty-first run to say
+  so. **Local `main` was detached again** and was fast-forwarded to `origin/main` before committing,
+  thirty-first run in a row. `npm install` was needed at the root and in `backend/`, and the Postgres 16
+  cluster still has to be built from scratch, as the `postgres` user because the session is root.
+
+
 ## Coverage
 
 The catalog is 48,198 listings as of the 23 September sync, 1,873 of them Viator partner rows. Counts below
@@ -13021,6 +13112,19 @@ its vendor, against the phrase it puts on a card. Every address `demo-server.mts
 the routes it actually answers. The group-price rule and the party-size rule, pressed against live answers
 rather than hand-shaped ones.
 
+The concierge's sentence reader against a number beside a unit, driven through the real `readIntent` rather
+than read: a length ("90-minute massage", "4-hour charter", "half-day"), an age ("8-year-olds", "a 10 year
+old", "a 12-year-old birthday") and a headcount outside 1 to 500, each against the party the agent then quotes
+and against whether it counts as a party the guest stated; the reader that decides whether to ask "how long?"
+over twelve spellings of a stated length and four that are not one; the clock reader over sixteen spellings,
+including the three it refuses and the two it reads as no time at all; and all four refine verbs plus the
+"instead" and "make it" rewrites against a prior intent. The outreach SQL executed against a real Postgres for
+the first time, every query in `touches.ts` that no test can reach because it is a template string inside its
+own function: `bumpCandidates` and its per-arm follow-up delay, `armStats`, `poolCandidates` with
+`POOL_UNTOUCHED` and `POOL_ORDER`, `poolUpsertSql`'s owner-work `case`, `otherCampaignHolds` and
+`sentTodayByMailbox`. The three unreviewed outreach commits of 6 October read through: the bounce-notice
+archive, the placement test's move to Trash, and the Sent connection that reconnects mid-run.
+
 **Not yet checked.** Whether every other screen change in the app should move focus and say so: a tab
 change, a listing opening, the chat screen and the dashboard's own nine pages all swap the screen in silence,
 and a blanket rule changes how the whole app behaves for sighted keyboard users too (see the hundred and
@@ -13601,4 +13705,16 @@ and `public/` holds no `/p/` at all, but nothing says so when it drifts. Whether
 the number of listing pages it wrote rather than the number it would offer a search engine, which with the
 marketplace out of search is none of them. Whether `render.yaml`'s build should run `tsc -b` the way
 `npm run build` does, and whether `npm run build` should run `copy-operators.mjs` before `build-pages` when
-that leaves the copy it makes holding the stale block.
+that leaves the copy it makes holding the stale block. Whether the concierge's own
+`agent.ts`, `sniff.ts`, `replay.ts`, `demand.ts` and `readFeed.ts` should have a test between them: `needs.ts`
+got one tonight and the other five, about 1,100 lines of the newest surface, still have none, and `readFeed`'s
+vendor mapping and `demand`'s queue are both one wrong line away from a guest being told the wrong thing.
+Whether a bounce notice that names no address at all should be archived too, which `archiveBounceNotices`
+cannot do because it is handed bounces rather than notices, so that one notice is re-read every run until it
+falls out of the three-day window. Whether the concierge's metro fallback should match a metro's towns as well
+as its own `name`, so "tampa" rather than "tampa bay" does not rest entirely on the catalog carrying a Tampa
+row. Whether "for 0 people" and "for 2.5 people" should be understood rather than merely refused by the range
+check, which is what reads the "5" in "2.5" as a party of five (see the hundred and fifty-fifth run's Needs
+Harshil). Whether a stated length should also know its words ("an hour", "a couple of hours") and its days
+("for 3 days"), which `STATED_LENGTH` reads neither of, where the first is a real spelling and the second is a
+unit the reader has never held.
