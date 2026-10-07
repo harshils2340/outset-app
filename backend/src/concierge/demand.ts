@@ -125,6 +125,19 @@ export function demandedTargets(limit: number): DemandTarget[] {
   const out = [...shown];
   for (const p of pairs) {
     if (out.length >= limit) break;
+    /**
+     * A pair that narrows nothing is not demand.
+     *
+     * The two filters below are the whole of what a pair knows, and when a question carries neither the
+     * `WHERE` collapsed to the three conditions every pending operator satisfies: one row selected the
+     * entire backlog, in the same review-count order the ordinary queue already walks, and labelled every
+     * one of them as a business somebody asked for. Since the queue is a prefix, that filled it to the limit
+     * and pushed out the pairs that do name a place. A question with no place at all never reaches
+     * `recordDemand` (`plan.ts` asks "where are you?" and returns first), so this wants a town whose catalog
+     * rows carry no region: the town is written down and nothing in the pair can be filtered on. Dropping
+     * the pair leaves the ordinary queue to fill those slots, which is what it is there for.
+     */
+    if (!p.category_id && !p.region) continue;
     const where: string[] = ["o.website IS NOT NULL", "o.origin != 'demo'", "NOT EXISTS (SELECT 1 FROM sources s WHERE s.operator_id = o.id AND s.extractor = 'site-structure')"];
     const args: (string | number)[] = [];
     if (p.category_id) { where.push("o.category_id = ?"); args.push(p.category_id); }
@@ -135,7 +148,9 @@ export function demandedTargets(limit: number): DemandTarget[] {
     for (const r of rows) {
       if (seen.has(r.id)) continue;
       seen.add(r.id);
-      out.push({ ...r, asks: p.asks, reason: "asked for " + (p.category_id || "something") + " near " + (p.city || p.region) });
+      // Whoever reads this queue is told what was asked for. "near null" told them nothing.
+      const place = p.city || p.region || "nowhere named";
+      out.push({ ...r, asks: p.asks, reason: "asked for " + (p.category_id || "something") + " near " + place });
       if (out.length >= limit) break;
     }
   }
