@@ -15,12 +15,12 @@ const copy = (o: Partial<OttoOp> = {}, style?: "ask" | "full" | "nolink" | "min"
  * October a side-by-side test pinned it on the opening and pitch wording, so these hold that body word for word.
  * An edit that changes it fails here before it fails in 100 inboxes; change them together, after a placement test.
  */
-test("full: the 2 October note, word for word", () => {
+test("full: the 2 October note, word for word, with the 7 October booking-system line", () => {
   const c = copy();
   assert.equal(c.subject, "Missed calls at " + op.name);
   assert.ok(c.body.includes("When everyone at " + op.name + " is busy with guests or you've closed for the day, where do the calls go?"), c.body);
   assert.ok(c.body.includes("For most operators it's voicemail, and the caller hangs up and books with the next place that picks up."), c.body);
-  assert.ok(c.body.includes("I built Outset, a 24/7 customer service line for your phone. It picks up those calls and answers only from your own company info, prices and terms, so it never makes anything up, then takes the booking down for you. You get a summary of every call."), c.body);
+  assert.ok(c.body.includes("I built Outset, a 24/7 customer service line for your phone. It picks up those calls, connects directly with your booking or reservation system, and answers only from your own company info, prices and terms, so it never makes anything up, then takes the booking down for you. You get a summary of every call."), c.body);
   assert.ok(c.body.includes("Here's a 40-second recording of it on a real call: https://onoutset.com/otto"), c.body);
   assert.ok(c.body.includes("I'll set it up on your line for free, and you only keep it if it books you a guest. Worth a quick reply?"), c.body);
   assert.equal(c.variant, COPY_VERSION);
@@ -58,11 +58,15 @@ test("no take-down line in any email (Harshil, 5 October 2026)", () => {
 
 test("the live-calendar claim is made only where Otto really reads the calendar", () => {
   const fh = copy({ calendar_vendor: "fareharbor" }).body;
-  assert.ok(fh.includes("FareHarbor booking system and terms") && fh.includes("tells the caller what's actually open and sends them the link to book that exact slot"), fh);
-  for (const v of [null, "calendly", "resova"]) {
-    const b = copy({ calendar_vendor: v }).body;
-    assert.ok(!b.includes("actually open"), `${v}: no calendar claim it cannot back`);
-    assert.ok(b.includes("takes the booking down for you"), b);
+  assert.ok(fh.includes("connects directly with your FareHarbor booking system") && fh.includes("tells the caller what's actually open and sends them the link to book that exact slot"), fh);
+  assert.ok(copy({ calendar_vendor: "peek" }, "ask").body.includes("connects directly with your Peek booking system"));
+  for (const v of [null, "calendly", "resova", "bookeo"]) {
+    for (const style of ["full", "ask", "min"] as const) {
+      const b = copy({ calendar_vendor: v }, style).body;
+      assert.ok(!b.includes("actually open"), `${v}: no calendar claim it cannot back`);
+      assert.ok(b.includes("connects directly with your booking or reservation system"), `${v} ${style}: the system is not named where Otto does not read it: ` + b);
+    }
+    assert.ok(copy({ calendar_vendor: v }).body.includes("takes the booking down for you"));
   }
 });
 

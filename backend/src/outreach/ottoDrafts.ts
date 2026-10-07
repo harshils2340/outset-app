@@ -49,12 +49,22 @@ function link(href: string, label: string): string {
  * and takes the booking details down for them.
  */
 function whatOttoDoes(id: string | null): string {
-  const name = vendorLabel(id);
-  // Harshil, 2 October 2026: say it answers only from the business's own info, booking system and terms, so
-  // an owner knows it never makes things up. "Booking system" is said only where Otto really reads one.
-  if (id && LIVE_CALENDAR.has(id) && name)
-    return "It picks up those calls and answers only from your own company info, " + name + " booking system and terms, so it never makes anything up. It tells the caller what's actually open and sends them the link to book that exact slot.";
-  return "It picks up those calls and answers only from your own company info, prices and terms, so it never makes anything up, then takes the booking down for you.";
+  // Harshil, 2 October 2026: say it answers only from the business's own info and terms, so an owner knows it
+  // never makes things up. "What's actually open" is said only where Otto really reads the calendar.
+  if (live(id))
+    return "It picks up those calls, connects directly with " + yourSystem(id) + ", and answers only from your own company info and terms, so it never makes anything up. It tells the caller what's actually open and sends them the link to book that exact slot.";
+  return "It picks up those calls, connects directly with " + yourSystem(id) + ", and answers only from your own company info, prices and terms, so it never makes anything up, then takes the booking down for you.";
+}
+
+const live = (id: string | null | undefined): boolean => !!id && LIVE_CALENDAR.has(id) && !!vendorLabel(id);
+
+/**
+ * "We connect directly with your booking / reservation system" (Harshil, 7 October 2026). Named only where the
+ * catalog knows the vendor and Otto reads its calendar live (FareHarbor, Peek, Xola); everywhere else it is the
+ * owner's system in general words, which setup connects by hand.
+ */
+function yourSystem(id: string | null | undefined): string {
+  return live(id) ? "your " + vendorLabel(id) + " booking system" : "your booking or reservation system";
 }
 
 /**
@@ -80,13 +90,15 @@ export function plainName(name: string): string {
 // 2026-10-03: the product is named Outset in the body ("I built Outset"); Otto stays the assistant's name on calls.
 // 2026-10-05: first line by kind of business, "Can I set it up for X? ... It's free", recording merged into the
 // pitch paragraph. Gmail filed it under Promotions (3 of 3 on the 5 October canary, batch held).
+// 2026-10-07: every rung says it "connects directly with" the owner's booking or reservation system (Harshil), by
+// name where Otto reads that vendor's calendar live. Placement-tested beside 2026-10-06 before it shipped.
 // 2026-10-06: back to the 10-02 body, which a side-by-side test on 5 October still put in Primary 3 of 3 while the
 // 10-05 body went to Promotions in every variant tried (the old offer, no "Founder" line, the old pitch
 // paragraph, the old sign-off: each still Promotions on at least two of three). The trigger was the opening
 // and the pitch wording, not HTML (plain text did the same), the links or the sign-off. The take-down line is
 // gone from every email (Harshil, 5 October 2026: "remove this from emails"); the unsubscribe link, the
 // reply-"no" opt-out and the postal address stay.
-export const COPY_VERSION = "2026-10-06";
+export const COPY_VERSION = "2026-10-07";
 
 /**
  * The pitch in decreasing length, all of it approved wording. The daily run (scripts/otto-cloud.mts) tests every
@@ -151,10 +163,10 @@ export function draftOttoCopy(op: OttoOp, email?: string, opts?: { greet?: strin
   const hearText = "Here's a 40-second recording of it on a real call: " + OTTO;
   const hearHtml = "Here's a 40-second recording of it on a real call: " + link(OTTO, "give it a listen");
   const offer = "I'll set it up on your line for free, and you only keep it if it books you a guest. Worth a quick reply?";
-  const minWhat = "I built Outset, a 24/7 customer service line that picks up when your team can't, answers only from your own info, and takes the booking down for you.";
+  const minWhat = "I built Outset, a 24/7 customer service line that picks up when your team can't, connects directly with " + yourSystem(op.calendar_vendor) + ", and answers only from your own info.";
   const minOffer = "I'll set it up for " + name + " for free. Worth a quick reply?";
   if (style === "ask") {
-    const pitch = "I built Outset, a 24/7 customer service line that picks up those calls, answers only from your own info, and takes the booking down for you.";
+    const pitch = "I built Outset, a 24/7 customer service line that picks up those calls, connects directly with " + yourSystem(op.calendar_vendor) + ", and answers only from your own info.";
     const ask = "Can I send you a 40-second recording of it on a real call?";
     const sig = askSignOff();
     const body = [hi, "", question, "", pitch + " " + ask, "", ...sig.lines].join("\n");
