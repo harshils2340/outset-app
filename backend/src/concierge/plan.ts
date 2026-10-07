@@ -254,6 +254,19 @@ export function readIntent(text: string, prior?: Intent | null, device?: { lat: 
   if (heads > 1) party = heads;
   else if (m && m[1]) party = num(m[1]) || 2;
   else if (/\b(me and my|my partner and i|just us two|date night)\b/.test(t)) party = 2;
+  /**
+   * A headcount nobody could book here is not an answer, so it must not read as one.
+   *
+   * The range check below has always quietly replaced it with two, and `saidParty` counted the sentence as
+   * having stated a party all the same: "600 people, escape room in waterloo" was quoted for two, was never
+   * asked how many, and the answer did not own the two as a guess because `assumed` only names it when
+   * nothing was stated. A conference organiser got a two-person quote back as though that were what they had
+   * asked for. So a figure outside 1 to 500 leaves the party unstated, which is what makes the agent ask and
+   * the answer say "assuming two of you". A sentence that counts one head is untouched: `heads` of 1 reaches
+   * here through its own sentinel, which carries no figure.
+   */
+  const counted = heads > 1 ? heads : m?.[1] != null ? num(m[1]) : null;
+  const unusable = counted != null && (counted < 1 || counted > 500);
   if (party < 1 || party > 500) party = 2;
 
   /**
@@ -655,7 +668,7 @@ export function readIntent(text: string, prior?: Intent | null, device?: { lat: 
    * Said-or-not is the test, never truthiness: party defaults to two, so a prior party of six would be
    * overwritten by every later sentence that happens not to count heads.
    */
-  const saidParty = !!m || /\b(me and my|my partner and i|just us two|date night)\b/.test(t);
+  const saidParty = (!!m && !unusable) || /\b(me and my|my partner and i|just us two|date night)\b/.test(t);
   const saidWhen = when !== "any";
   const saidPlace = !!(city || region);
   const assumed: string[] = [];
