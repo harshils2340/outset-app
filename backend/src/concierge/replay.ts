@@ -70,6 +70,19 @@ export function forDate(ep: StoredEndpoint, iso: string): { url: string; body: s
   let url = ep.endpoint;
   try {
     const u = new URL(ep.endpoint);
+    /**
+     * A date in the path, not only in the query.
+     *
+     * `varsByDate` in `sniff.ts` is the gate an endpoint has to pass before it is written down at all, and it
+     * proves the endpoint is a calendar by asking it about two days a fortnight apart. It substitutes the
+     * date everywhere in the request string, path included, so `/availability/2026-01-01/slots` passes. This
+     * only ever rewrote query parameters, so the same endpoint then replayed the day it was discovered on for
+     * every day of the window: the shop's January answer, stamped with tonight's date and tomorrow's. The one
+     * thing the gate proved was the one thing the replay could not do.
+     */
+    u.pathname = u.pathname
+      .replace(/\d{4}-\d{2}-\d{2}/g, iso)
+      .replace(/\d{4}\/\d{2}\/\d{2}/g, iso.replace(/-/g, "/"));
     for (const [k, v] of [...u.searchParams]) {
       if (/^\d{4}-\d{2}-\d{2}/.test(v)) u.searchParams.set(k, iso);
       else if (/^\d{4}\/\d{2}\/\d{2}/.test(v)) u.searchParams.set(k, iso.replace(/-/g, "/"));

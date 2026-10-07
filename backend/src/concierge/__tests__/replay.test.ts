@@ -150,3 +150,24 @@ test("a price under a snake_case key is still a price", async () => {
   const read = await replayLive(domain, { from: new Date(), days: 1 });
   assert.equal(read?.departures[0]?.fromPrice, 44);
 });
+
+test("a date in the endpoint's path moves with the day, as the gate that admitted it did", async () => {
+  /**
+   * `varsByDate` substitutes the date across the whole request string before it will write an endpoint down,
+   * so an endpoint carrying its date in the path is admitted on the strength of a substitution `forDate`
+   * never made. Every day of the window then asked for the day the widget was discovered on, and the answer
+   * was stamped with tonight's date.
+   */
+  const asked: string[] = [];
+  const domain = stubShop("https://ex.test/availability/2026-01-01/slots", [{ time: LATE, name: "Room A", price: 40 }], asked);
+  const today = zonedNow(null).date;
+  await replayLive(domain, { from: new Date(), days: 1 });
+  assert.deepEqual(asked, [`https://ex.test/availability/${today}/slots`]);
+});
+
+test("a path date written with slashes keeps its separators", () => {
+  const domain = stubShop("https://ex.test/cal/2026/01/01", []);
+  const ep = endpointFor(domain);
+  assert.ok(ep);
+  assert.equal(forDate(ep, "2026-10-20").url, "https://ex.test/cal/2026/10/20");
+});
