@@ -190,6 +190,18 @@ export function awaitingClock(intent: Pick<Intent, "categoryId" | "atMinute" | "
   return asked.has("need:when") && !asked.has("need:party");
 }
 
+/**
+ * A length the guest has already stated, so it is never asked for again.
+ *
+ * Three figures, not two; a hyphen as good as a space; and the unit spelled out. `\d{1,2}\s*(?:hour|hr|min)\b`
+ * could not reach "120 minutes" at all, would not cross the hyphen in "30-minute deep tissue" or in
+ * "half-day charter", and its closing boundary sat straight after "min", so it refused every "minute" and
+ * "minutes" ever written: only the clipped "90 min" was ever read. So a spa guest who opened with "a 120
+ * minute massage" or "30-minute deep tissue" was asked "How long were you thinking?", which is the one thing
+ * this file says never to do.
+ */
+export const STATED_LENGTH = /\b(?:\d{1,3}\s*[-\u2010-\u2015]?\s*(?:hours?|hrs?|h|mins?|minutes?)|(?:half|full|all)[-\u2010-\u2015\s]days?|overnight)\b/i;
+
 /** Has the guest already settled this, one way or another? */
 export function known(intent: Intent, id: NeedId): boolean {
   if (id === "party") return !!intent.partyStated;
@@ -200,7 +212,7 @@ export function known(intent: Intent, id: NeedId): boolean {
     return intent.when !== "any" || intent.atMinute != null;
   }
   if (id === "budget") return intent.maxPerPerson != null;
-  if (id === "duration") return /\b(\d{1,2}\s*(?:hour|hr|min)|half day|full day|all day|overnight)\b/i.test(intent.text);
+  if (id === "duration") return STATED_LENGTH.test(intent.text);
   return false;
 }
 

@@ -229,8 +229,17 @@ export function readIntent(text: string, prior?: Intent | null, device?: { lat: 
    * branch below reads "for a guest" the way it always has.
    */
   const COUNTED = "(\\d{1,3}|" + Object.keys(NUM_WORDS).filter((w) => w !== "a").join("|") + ")";
-  /** A length is not a headcount: "for 4 hours" and "for a 3 day charter" count no people. */
-  const NOT_HEADS = "(?!\\s*(?:hours?|hrs?|h\\b|mins?|minutes?|days?|nights?|weeks?|months?))";
+  /**
+   * A length is not a headcount: "for 4 hours" and "for a 3 day charter" count no people.
+   *
+   * The separator is a space or a hyphen, because a hyphen is how most people write a length in front of the
+   * thing they are buying. With only a `\s*` between the number and the unit, "looking for a 90-minute massage"
+   * was a party of ninety, "for a 4-hour charter" a party of four, and "for a 1-hour room" a party of one at an
+   * escape room with a minimum of two: every one of them `partyStated`, so the agent never asked how many and
+   * the answer stated the guess as a fact. The same sentences written with a space read correctly throughout,
+   * so the hyphen was the whole of it.
+   */
+  const NOT_HEADS = "(?!\\s*[-\\u2010-\\u2015]?\\s*(?:hours?|hrs?|h\\b|mins?|minutes?|days?|nights?|weeks?|months?))";
   const m =
     t.match(new RegExp("\\bfor\\s+(?:a\\s+)?" + COUNTED + "\\b" + NOT_HEADS)) ||
     t.match(new RegExp("\\b" + N + "\\s+(?:" + HEADWORD + ")\\b")) ||
