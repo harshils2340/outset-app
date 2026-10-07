@@ -2,6 +2,7 @@ import { chromium, type Browser, type Frame, type Page, type Route } from "playw
 import { UNNAMED_RATE, type Departure, type LiveRead } from "./live.ts";
 import { isConcessionFare } from "../lib/fares.ts";
 import { vendorOf } from "./vendors.ts";
+import { addDays, zonedNow, zonedYmd } from "./shopday.ts";
 
 /**
  * Reading a shop's availability by driving its own booking widget.
@@ -42,6 +43,19 @@ import { vendorOf } from "./vendors.ts";
 const UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36";
 
 const ymd = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+
+/**
+ * A calendar date as a `Date` whose own fields read back as that date.
+ *
+ * `pickDate` clicks a cell by this machine's `getDate()` and by the written month and day, so the day the
+ * guest means has to be carried as a calendar date and turned back into one of these, not kept as an instant
+ * whose fields are whatever the host's clock says. Noon, so no zone this machine might be set to can read it
+ * back as the day either side.
+ */
+export function atNoon(iso: string): Date {
+  const [y, m, d] = iso.split("-").map(Number);
+  return new Date(y, m - 1, d, 12);
+}
 
 /** A clock value a shop would sell a slot at: inside trading hours, on a neat five minutes. */
 function slotTimes(text: string): string[] {
@@ -268,6 +282,14 @@ export type AgentOptions = {
   browser?: Browser;
   /** The day the guest asked about. */
   date?: Date;
+  /**
+   * The shop's own zone, from the catalog, as every reader in here takes it.
+   *
+   * Which day that instant falls on, and whether a slot has already started, are both questions about the
+   * shop's clock. Without one they were asked of the host's, and `render.yaml` sets no TZ for `outset-api`:
+   * see the first paragraph of `shopday.ts`.
+   */
+  tz?: string | null;
   /** How long to spend in total before giving up on this shop. */
   budgetMs?: number;
 };
@@ -322,13 +344,19 @@ export async function agentLive(bookingUrl: string, opts: AgentOptions = {}): Pr
     await wakeWidget(page);
     await openWidget(page);
 
-    const wanted = opts.date ?? new Date();
+    // The day the guest means is the day that instant falls on where the shop is.
+    const wantedDate = zonedYmd(opts.date ?? new Date(), opts.tz);
+    const wanted = atNoon(wantedDate);
     /**
      * Two days, and the second only to prove the first. If the same times come back for a day a fortnight
      * apart, the page is showing opening hours or a static list and we have learned nothing about
      * availability. This is the whole honesty gate.
+     *
+     * A fortnight on the calendar rather than 14 x 86,400,000 milliseconds. From noon that arithmetic cannot
+     * name the wrong day, so this is the family's own convention rather than a fix: `addDays` is what every
+     * other reader in here counts a window with, and it stays right wherever the clock starts.
      */
-    const control = new Date(wanted.getTime() + 14 * 86400_000);
+    const control = atNoon(addDays(wantedDate, 14));
 
     const readFor = async (d: Date): Promise<Row[]> => {
       let clicked = await pickDate(page, d);
@@ -366,8 +394,10 @@ export async function agentLive(bookingUrl: string, opts: AgentOptions = {}): Pr
           const seen = byTime.get(r.time);
           if (!seen || (r.price != null && (seen.price == null || r.price < seen.price))) byTime.set(r.time, r);
         }
-        const date = ymd(wanted);
-        const nowMin = date === ymd(new Date()) ? new Date().getHours() * 60 + new Date().getMinutes() : -1;
+        const date = wantedDate;
+        // Today's slots that have already started are not availability, on the shop's clock rather than ours.
+        const today = zonedNow(opts.tz);
+        const nowMin = date === today.date ? today.minutes : -1;
         for (const r of [...byTime.values()].sort((a, b) => a.time.localeCompare(b.time))) {
           const mins = Number(r.time.slice(0, 2)) * 60 + Number(r.time.slice(3));
           if (mins <= nowMin) continue;
