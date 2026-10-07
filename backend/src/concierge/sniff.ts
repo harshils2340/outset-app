@@ -60,10 +60,21 @@ const AVAIL_WORD = /avail|slot|time|calendar|schedul|session|booking|book|reserv
 /**
  * Clock times in a payload, however it writes them. The strongest single signal: an analytics beacon does not
  * come back with a list of times, and an availability endpoint almost always does.
+ *
+ * Exported for its own test: it decides the score that admits an endpoint, it is what `varsByDate` compares
+ * two days by, and the times it finds are written down beside the endpoint as the evidence for it.
+ *
+ * The negative lookahead is the one `slotTimes` in `agent.ts` already carries, and it is load-bearing: the
+ * 24-hour pattern reads "7:00" out of "7:00 PM" quite happily, so without it every afternoon slot was
+ * counted twice, once at its real hour and once twelve hours earlier. A page listing a 7pm and a 9pm came
+ * back as four slot-shaped times, which is the threshold that scores +4 rather than +1, so a page with two
+ * slots on it was scored like a page with four. That is generosity in the one direction this whole module
+ * is written to resist, and the morning hours it invented were then written down as the endpoint's evidence
+ * and reported as times a guest could see on the page.
  */
-function findTimes(text: string): string[] {
+export function findTimes(text: string): string[] {
   const out = new Set<string>();
-  for (const m of text.matchAll(/\b([01]?\d|2[0-3]):([0-5]\d)(?::[0-5]\d)?\b/g)) {
+  for (const m of text.matchAll(/\b([01]?\d|2[0-3]):([0-5]\d)(?::[0-5]\d)?\b(?!\s*[ap]\.?m)/gi)) {
     out.add(String(Number(m[1])).padStart(2, "0") + ":" + m[2]);
   }
   for (const m of text.matchAll(/\b(1[0-2]|0?[1-9]):([0-5]\d)\s*([ap])\.?m\.?/gi)) {
