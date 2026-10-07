@@ -1,4 +1,5 @@
 import { ImapFlow } from "imapflow";
+import { mailboxClient } from "./imap.ts";
 import { sendMail, smtpIdentities, type SmtpIdentity } from "../lib/mail.ts";
 
 /**
@@ -53,7 +54,7 @@ export async function placementMatrix(
   for (const to of ids) {
     const mine = sent.filter((s) => s.to.user === to.user);
     if (!mine.length) continue;
-    const c = new ImapFlow({ host: "imap.gmail.com", port: 993, secure: true, auth: { user: to.user, pass: to.pass }, logger: false });
+    const c = mailboxClient(to);
     try {
       await c.connect();
       const trash = await trashFolder(c);

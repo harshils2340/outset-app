@@ -1,4 +1,5 @@
 import { ImapFlow } from "imapflow";
+import { mailboxClient } from "./imap.ts";
 import { nowIso } from "../db/client.ts";
 import { smtpIdentities } from "../lib/mail.ts";
 import { recordUnsub } from "../lib/unsub.ts";
@@ -31,8 +32,7 @@ export async function collectBounces(days: number): Promise<Bounce[]> {
   const own = new Set(ids.map((i) => i.user.toLowerCase()));
   const found = new Map<string, Bounce>();
   for (const id of ids) {
-    const host = id.host === "smtp.gmail.com" ? "imap.gmail.com" : id.host.replace(/^smtp\./, "imap.");
-    const client = new ImapFlow({ host, port: 993, secure: true, auth: { user: id.user, pass: id.pass }, logger: false });
+    const client = mailboxClient(id);
     try {
       await client.connect();
       const lock = await client.getMailboxLock("INBOX");
@@ -81,8 +81,7 @@ export async function archiveBounceNotices(bounces: Bounce[]): Promise<number> {
   for (const id of smtpIdentities()) {
     const uids = [...new Set(byMailbox.get(id.user) || [])];
     if (!uids.length) continue;
-    const host = id.host === "smtp.gmail.com" ? "imap.gmail.com" : id.host.replace(/^smtp\./, "imap.");
-    const client = new ImapFlow({ host, port: 993, secure: true, auth: { user: id.user, pass: id.pass }, logger: false });
+    const client = mailboxClient(id);
     try {
       await client.connect();
       const lock = await client.getMailboxLock("INBOX");
@@ -201,8 +200,7 @@ export async function collectReplies(days: number, index: { byEmail: Map<string,
   const own = new Set(ids.map((i) => i.user.toLowerCase()));
   const out: Reply[] = [];
   for (const id of ids) {
-    const host = id.host === "smtp.gmail.com" ? "imap.gmail.com" : id.host.replace(/^smtp\./, "imap.");
-    const client = new ImapFlow({ host, port: 993, secure: true, auth: { user: id.user, pass: id.pass }, logger: false });
+    const client = mailboxClient(id);
     try {
       await client.connect();
       // Spam too: a reply forwarded through hello@onoutset.com can be filed there, and nobody reads it.
@@ -215,12 +213,22 @@ export async function collectReplies(days: number, index: { byEmail: Map<string,
       }
       try {
         const uids = (await client.search({ since }, { uid: true })) || [];
-        for await (const msg of client.fetch(uids, { uid: true, envelope: true, headers: ["auto-submitted", "x-autoreply", "x-autorespond", "precedence"], bodyParts: ["1"] }, { uid: true })) {
+        // Envelopes first, bodies only for the few that match a business we mailed. One sending inbox is Harshil's
+        // own, and on 7 October 2026 fetching the body of every message from 14 days of it ran five minutes until
+        // Gmail closed the connection.
+        const match = new Map<number, Set<string>>();
+        for await (const msg of client.fetch(uids, { uid: true, envelope: true }, { uid: true })) {
           const from = (msg.envelope?.from?.[0]?.address || "").toLowerCase();
           if (!from || own.has(from) || /mailer-daemon|postmaster/.test(from)) continue;
           const domain = from.split("@")[1] || "";
           const byName = subjectBusinesses(msg.envelope?.subject || "").map((n) => index.byName?.get(n)).find(Boolean);
           const ops = index.byEmail.get(from) || index.byDomain.get(domain) || byName;
+          if (ops) match.set(Number(msg.uid), ops);
+        }
+        if (!match.size) continue;
+        for await (const msg of client.fetch([...match.keys()], { uid: true, envelope: true, headers: ["auto-submitted", "x-autoreply", "x-autorespond", "precedence"], bodyParts: ["1"] }, { uid: true })) {
+          const from = (msg.envelope?.from?.[0]?.address || "").toLowerCase();
+          const ops = match.get(Number(msg.uid));
           if (!ops) continue;
           const subject = msg.envelope?.subject || "";
           const c = classifyReply({ from, subject, headers: msg.headers?.toString("utf8") || "", body: msg.bodyParts?.get("1")?.toString("utf8") || "", own });

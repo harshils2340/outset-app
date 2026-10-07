@@ -1,4 +1,5 @@
 import { ImapFlow } from "imapflow";
+import { mailboxClient } from "./imap.ts";
 import { smtpIdentities } from "../lib/mail.ts";
 
 /**
@@ -45,10 +46,7 @@ export class SentThreads {
   private static async login(mailbox: string): Promise<Box | null> {
     const id = smtpIdentities().find((i) => i.user.toLowerCase() === mailbox.toLowerCase());
     if (!id) return null;
-    const host = id.host === "smtp.gmail.com" ? "imap.gmail.com" : id.host.replace(/^smtp\./, "imap.");
-    const client = new ImapFlow({ host, port: 993, secure: true, auth: { user: id.user, pass: id.pass }, logger: false });
-    // A dropped socket emits "error"; unhandled, that would end the process before find() can reconnect.
-    client.on("error", (e: Error) => console.error(`${mailbox}: Sent connection error: ${e.message.slice(0, 80)}`));
+    const client = mailboxClient(id);
     try {
       await client.connect();
       const boxes = await client.list();
