@@ -1,7 +1,8 @@
 import "../src/env.ts";
 import { sendMail, smtpIdentities } from "../src/lib/mail.ts";
 import { emailHash, loadSuppression, mailPostal, unsubPageUrl } from "../src/lib/unsub.ts";
-import { hostPageAddress, outreachBlockers, UNREADABLE_ADDRESS } from "../src/outreach/guards.ts";
+import { outreachBlockers, UNREADABLE_ADDRESS } from "../src/outreach/guards.ts";
+import { loadPoolContext, wrongRecipient } from "../src/outreach/recipient.ts";
 import { isDeliverable, siteResolves } from "../src/outreach/deliverable.ts";
 import { ARMS, COPY_LADDER, COPY_VERSION, armOf, draftOttoBump, draftOttoCopy, type CopyStyle } from "../src/outreach/ottoDrafts.ts";
 import { recordSend } from "../src/lib/outreachLog.ts";
@@ -261,6 +262,8 @@ type Row = PoolRow & { kind: string; sent_to?: string; sent_from?: string | null
 
 // Turns kept apart, so the first emails rotate through every arm evenly. A resend gets no follow-up, so it only
 // rotates through the arms that work without one: never "forgot", whose link comes in the follow-up.
+// Is each address the business's own (src/outreach/recipient.ts)? The pool's shared addresses and place names, read once.
+const poolCtx = await loadPoolContext();
 let firstTurn = 0;
 let resendTurn = 0;
 function styleFor(kind: string): CopyStyle {
@@ -307,8 +310,9 @@ async function sendBatch(limit: number, quota: Record<string, number>): Promise<
       continue;
     }
     seen.add(to);
-    if (hostPageAddress({ name: r.name, domain: r.domain, website: r.website, email: to })) {
-      console.log("skipped " + to + ": the address is " + r.domain + "'s, whose page only lists " + r.name);
+    const wrong = wrongRecipient({ operator_id: r.operator_id, name: r.name, domain: r.domain, website: r.website, email: to, city: r.city }, poolCtx);
+    if (wrong) {
+      console.log("skipped " + to + " (" + wrong.kind + "): " + wrong.why);
       if (!dry) await recordTouch({ operatorId: r.operator_id, email: to, status: "failed" }).catch(() => undefined);
       out.skipped++;
       continue;

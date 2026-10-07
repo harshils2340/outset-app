@@ -137,8 +137,17 @@ export function hostPageAddress(r: { name: string; domain: string; website: stri
   const label = host.split(".")[0].replace(/[^a-z0-9]/g, "");
   if (label.length < 4) return false;
   const words = r.name.toLowerCase().normalize("NFKD").replace(/[^a-z0-9& ]/g, " ").split(/\s+/).filter(Boolean);
+  const whole = words.join("").replace(/[^a-z0-9]/g, "");
+  // The domain is the business's own: a word of its name, the whole name (escapetheroom.com is "Escape the
+  // Room", every word of it generic), or its initials (abcbrew.com).
   if (words.filter((w) => w.length >= 3 && !GENERIC.has(w)).some((w) => label.includes(w))) return false;
+  if (whole.length >= 5 && (label.includes(whole) || whole.includes(label))) return false;
   const initials = words.filter((w) => !["the", "a", "an", "of", "and", "&"].includes(w)).map((w) => w[0]).join("");
   if (initials.length >= 2 && label.startsWith(initials)) return false;
+  // The address is the business's own inbox at its host: escapeworx@bingemans.com is EscapeworX's, run by
+  // Bingemans; adventureoutpost@stonemountainpark.com is the Adventure Outpost's.
+  const local = r.email.toLowerCase().split("@")[0].replace(/[^a-z0-9]/g, "");
+  if (words.filter((w) => w.length >= 4 && !GENERIC.has(w)).some((w) => local.includes(w))) return false;
+  if (whole.length >= 5 && (local.includes(whole) || (local.length >= 6 && whole.includes(local)))) return false;
   return true;
 }
