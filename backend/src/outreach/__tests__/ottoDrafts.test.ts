@@ -59,7 +59,7 @@ test("no take-down line in any email (Harshil, 5 October 2026)", () => {
 test("the live-calendar claim is made only where Otto really reads the calendar", () => {
   const fh = copy({ calendar_vendor: "fareharbor" }).body;
   assert.ok(fh.includes("connects directly with your FareHarbor booking system") && fh.includes("tells the caller what's actually open and sends them the link to book that exact slot"), fh);
-  assert.ok(copy({ calendar_vendor: "peek" }, "ask").body.includes("connects directly with your Peek booking system"));
+  assert.ok(copy({ calendar_vendor: "peek" }, "ask").body.includes("connects directly with your Peek Pro booking system"));
   for (const v of [null, "calendly", "resova", "bookeo"]) {
     for (const style of ["full", "ask", "min"] as const) {
       const b = copy({ calendar_vendor: v }, style).body;
