@@ -316,21 +316,23 @@ export const BUMP_KIND = "otto_bump";
  * Skips a business that replied, bounced, was handed off or already got one, and an address that ever bounced,
  * failed or replied.
  */
-export async function bumpCandidates(limit: number): Promise<(PoolRow & { sent_to: string; sent_from: string | null; last_at: string })[]> {
+export async function bumpCandidates(limit: number): Promise<(PoolRow & { sent_to: string; sent_from: string | null; last_at: string; first_variant: string | null })[]> {
   await ensureTouchTables();
-  return query<PoolRow & { sent_to: string; sent_from: string | null; last_at: string }>(
+  // The A/B/C test's "forgot" arm (ottoDrafts.ts ARMS) follows up the next day, since a slip-up noticed three days
+  // later is not a slip-up, and goes first so a day's budget cannot push it back; every other arm waits 66 hours.
+  return query<PoolRow & { sent_to: string; sent_from: string | null; last_at: string; first_variant: string | null }>(
     `with firsts as (
-       select distinct on (operator_id) operator_id, lower(email) as sent_to, mailbox as sent_from, at as last_at
+       select distinct on (operator_id) operator_id, lower(email) as sent_to, mailbox as sent_from, at as last_at, variant as first_variant
          from outreach_sends
         where kind = 'otto' and status = 'sent' and variant >= $2 and variant not like 'followup-%'
         order by operator_id, at desc
      )
-     select p.*, f.sent_to, f.sent_from, f.last_at::text as last_at
+     select p.*, f.sent_to, f.sent_from, f.last_at::text as last_at, f.first_variant
        from firsts f join outreach_pool p on p.operator_id = f.operator_id
-      where f.last_at < now() - interval '66 hours'
+      where f.last_at < now() - (case when f.first_variant like '%-forgot' then interval '18 hours' else interval '66 hours' end)
         and not exists (select 1 from outreach_sends s where s.operator_id = f.operator_id and (s.kind in ($3, $4) or s.status in ('replied', 'bounce', 'handoff')))
         and not exists (select 1 from outreach_sends s where s.email = f.sent_to and s.status in ('bounce', 'failed', 'replied'))
-      order by f.last_at, p.operator_id
+      order by (f.first_variant like '%-forgot') desc, f.last_at, p.operator_id
       limit $1`,
     [limit, RESEND_BEFORE, BUMP_KIND, RESEND_KIND],
   );
@@ -360,6 +362,34 @@ export async function resendCandidates(limit: number, primarySince: string = RES
       order by first.last_at desc, p.operator_id
       limit $1`,
     [limit, primarySince],
+  );
+}
+
+/**
+ * The A/B/C test's numbers: every business whose first email went out from `since`, by arm, with how many bounced,
+ * got their follow-up, and replied (a human reply, any answer). Replies are listed by business so Harshil can read
+ * which were interested.
+ */
+export async function armStats(since: string): Promise<{ arm: string; sent: number; bounced: number; followed: number; replied: number; names: string[] }[]> {
+  await ensureTouchTables();
+  return query<{ arm: string; sent: number; bounced: number; followed: number; replied: number; names: string[] }>(
+    `with firsts as (
+       select distinct on (operator_id) operator_id, variant from outreach_sends
+        where kind = 'otto' and status = 'sent' and at >= $1::timestamptz order by operator_id, at
+     ), tagged as (
+       select f.operator_id,
+              case when f.variant like '%-ask' then 'B ask' when f.variant like '%-forgot' then 'C forgot' when f.variant like '%-nolink' or f.variant like '%-min' then 'fallback' else 'A full' end as arm,
+              exists (select 1 from outreach_sends s where s.operator_id = f.operator_id and s.status = 'bounce') as bounced,
+              exists (select 1 from outreach_sends s where s.operator_id = f.operator_id and s.kind = $2 and s.status = 'sent') as followed,
+              exists (select 1 from outreach_sends s where s.operator_id = f.operator_id and s.status = 'replied') as replied
+         from firsts f
+     )
+     select t.arm, count(*)::int as sent, count(*) filter (where t.bounced)::int as bounced,
+            count(*) filter (where t.followed)::int as followed, count(*) filter (where t.replied)::int as replied,
+            coalesce(array_agg(p.name) filter (where t.replied), '{}') as names
+       from tagged t left join outreach_pool p on p.operator_id = t.operator_id
+      group by t.arm order by t.arm`,
+    [since, BUMP_KIND],
   );
 }
 

@@ -99,13 +99,29 @@ export const COPY_VERSION = "2026-10-06";
  *   nolink  the same without the recording paragraph (one link fewer)
  *   min     three sentences and the sign-off
  */
-export type CopyStyle = "ask" | "full" | "nolink" | "min";
+export type CopyStyle = "ask" | "full" | "nolink" | "min" | "forgot";
 export const COPY_LADDER: { style: CopyStyle; version: string }[] = [
   { style: "ask", version: COPY_VERSION + "-ask" },
   { style: "full", version: COPY_VERSION },
   { style: "nolink", version: COPY_VERSION + "-nolink" },
   { style: "min", version: COPY_VERSION + "-min" },
 ];
+
+/**
+ * The A/B/C test, first emails from 7 October 2026 (Harshil: "A/B/C test this for a week"). Each arm is a first
+ * email and the follow-up that goes with it:
+ *
+ *   A  full    the full pitch with the recording link, then the "free test line" follow-up three days later
+ *   B  ask     no link, "Can I send you a 40-second recording?", then a follow-up that sends it three days later
+ *   C  forgot  the full pitch without the recording paragraph, then the next day "Shoot, forgot to put this in
+ *              my last email" with the link: the Ramp sequence from George Jefferson's LinkedIn post (6 October
+ *              2026), a slip-up on purpose so the sequence reads as a person. Claude advised against faking a
+ *              mistake to small owners; Harshil chose to measure it.
+ *
+ * "forgot" is an arm, not a fallback rung: its first email is the nolink body, so its placement is nolink's.
+ */
+export const FORGOT_VERSION = COPY_VERSION + "-forgot";
+export const ARMS: CopyStyle[] = ["full", "ask", "forgot"];
 
 /**
  * The 2 October 2026 pitch. 596 sends of the 1 October copy earned one human reply, and a placement test
@@ -120,7 +136,7 @@ export const COPY_LADDER: { style: CopyStyle; version: string }[] = [
 export function draftOttoCopy(op: OttoOp, email?: string, opts?: { greet?: string | null; style?: CopyStyle }): { subject: string; body: string; html: string; variant: string } {
   const to = (email || "").trim().toLowerCase();
   const style: CopyStyle = opts?.style || "full";
-  const variant = COPY_LADDER.find((r) => r.style === style)!.version;
+  const variant = style === "forgot" ? FORGOT_VERSION : COPY_LADDER.find((r) => r.style === style)!.version;
   // "Hi Ron," only when the shop's own site names Ron as the owner and the mailbox is his by that same word
   // (owner.ts, from the owners crawl's facts): never a guessed first name, which is the one mistake an owner
   // cannot miss. A caller with no catalog at hand (the cloud sender, from the published pool) passes the name
@@ -140,11 +156,9 @@ export function draftOttoCopy(op: OttoOp, email?: string, opts?: { greet?: strin
   if (style === "ask") {
     const pitch = "I built Outset, a 24/7 customer service line that picks up those calls, answers only from your own info, and takes the booking down for you.";
     const ask = "Can I send you a 40-second recording of it on a real call?";
-    const postal = mailPostal();
-    const sig = ["Harshil", "Founder, Outset" + (postal ? ", " + postal.replace(/^Outset,\s*/i, "") : "")];
-    const ps = "PS. If you're not interested, just reply \"stop\" and I won't email you again.";
-    const body = [hi, "", question, "", pitch + " " + ask, "", "--", ...sig, "", ps].join("\n");
-    const html = '<div dir="ltr"><p>' + esc(hi) + "</p><p>" + esc(question) + "</p><p>" + esc(pitch + " " + ask) + "</p><p>--<br>" + sig.map(esc).join("<br>") + "</p><p>" + esc(ps) + "</p></div>";
+    const sig = askSignOff();
+    const body = [hi, "", question, "", pitch + " " + ask, "", ...sig.lines].join("\n");
+    const html = '<div dir="ltr"><p>' + esc(hi) + "</p><p>" + esc(question) + "</p><p>" + esc(pitch + " " + ask) + "</p>" + sig.html + "</div>";
     return { subject, body, html, variant };
   }
   const paras: { text: string; html: string }[] =
@@ -160,6 +174,14 @@ export function draftOttoCopy(op: OttoOp, email?: string, opts?: { greet?: strin
   const body = [hi, "", ...paras.flatMap((p) => [p.text, ""]), ...off.lines].join("\n");
   const html = '<div dir="ltr"><p>' + esc(hi) + "</p>" + paras.map((p) => "<p>" + p.html + "</p>").join("") + off.html + "</div>";
   return { subject, body, html, variant };
+}
+
+/** The "ask" arm's sign-off: no link at all, the stop is a reply. Its follow-up ends the same way. */
+function askSignOff(): { lines: string[]; html: string } {
+  const postal = mailPostal();
+  const sig = ["Harshil", "Founder, Outset" + (postal ? ", " + postal.replace(/^Outset,\s*/i, "") : "")];
+  const ps = "PS. If you're not interested, just reply \"stop\" and I won't email you again.";
+  return { lines: ["--", ...sig, "", ps], html: "<p>--<br>" + sig.map(esc).join("<br>") + "</p><p>" + esc(ps) + "</p>" };
 }
 
 /**
@@ -184,21 +206,48 @@ function signOff(to: string): { lines: string[]; html: string } {
   };
 }
 
-/** The follow-up's copy version, stored on outreach_sends.variant like COPY_VERSION. */
+/** The follow-ups' copy versions, stored on outreach_sends.variant like COPY_VERSION: one per arm. */
 export const BUMP_VERSION = "bump-2026-10-05";
+export const BUMP_ASK_VERSION = "bump-2026-10-07-ask";
+export const BUMP_FORGOT_VERSION = "bump-2026-10-07-forgot";
+
+/** Which arm a first email was, by the variant it was sent with. Anything before the test counts as A. */
+export function armOf(firstVariant: string | null | undefined): "full" | "ask" | "forgot" {
+  if (firstVariant?.endsWith("-forgot")) return "forgot";
+  if (firstVariant?.endsWith("-ask")) return "ask";
+  return "full";
+}
 
 /**
- * The one follow-up, a few days after a first email that landed in Primary and drew no answer: two lines in the
- * same thread ("Re:" the first subject, sent as a reply to it from the same mailbox), the offer made concrete.
- * Most cold-email replies come from the follow-up, not the first note.
+ * The one follow-up to a first email that drew no answer: a short note in the same thread ("Re:" the first
+ * subject, sent as a reply to it from the same mailbox). Most cold-email replies come from the follow-up, not
+ * the first note. What it says depends on the arm the first email was (ARMS above).
  */
-export function draftOttoBump(op: OttoOp, email: string, opts: { greet?: string | null; subject: string }): { subject: string; body: string; html: string; variant: string } {
+export function draftOttoBump(op: OttoOp, email: string, opts: { greet?: string | null; subject: string; firstVariant?: string | null }): { subject: string; body: string; html: string; variant: string } {
   const to = (email || "").trim().toLowerCase();
   const hi = opts.greet ? "Hi " + opts.greet + "," : "Hi,";
   const subject = /^re:/i.test(opts.subject) ? opts.subject : "Re: " + opts.subject;
-  const ask = "Following up in case this got buried. Would it help if I set up a free test line for " + plainName(op.name) +
-    ", built from your own info, so you can call it and hear how it handles your callers?";
+  const OTTO = "https://onoutset.com/otto";
+  const name = plainName(op.name);
+  const arm = armOf(opts.firstVariant);
+  if (arm === "ask") {
+    const hearText = "Here's the recording in case it's quicker than replying: " + OTTO + ". It's a real call, about 40 seconds.";
+    const hearHtml = "Here's the recording in case it's quicker than replying: " + link(OTTO, "give it a listen") + ". It's a real call, about 40 seconds.";
+    const offer = "If it'd help, I can set one up for " + name + " for free so you can call it yourself.";
+    const sig = askSignOff();
+    const body = [hi, "", hearText, "", offer, "", ...sig.lines].join("\n");
+    const html = '<div dir="ltr"><p>' + esc(hi) + "</p><p>" + hearHtml + "</p><p>" + esc(offer) + "</p>" + sig.html + "</div>";
+    return { subject, body, html, variant: BUMP_ASK_VERSION };
+  }
   const off = signOff(to);
+  if (arm === "forgot") {
+    const lead = "Shoot, forgot to put this in my last email. Here's a 40-second recording of it on a real call: ";
+    const body = [hi, "", lead + OTTO, "", ...off.lines].join("\n");
+    const html = '<div dir="ltr"><p>' + esc(hi) + "</p><p>" + esc(lead) + link(OTTO, "give it a listen") + "</p>" + off.html + "</div>";
+    return { subject, body, html, variant: BUMP_FORGOT_VERSION };
+  }
+  const ask = "Following up in case this got buried. Would it help if I set up a free test line for " + name +
+    ", built from your own info, so you can call it and hear how it handles your callers?";
   const body = [hi, "", ask, "", ...off.lines].join("\n");
   const html = '<div dir="ltr"><p>' + esc(hi) + "</p><p>" + esc(ask) + "</p>" + off.html + "</div>";
   return { subject, body, html, variant: BUMP_VERSION };

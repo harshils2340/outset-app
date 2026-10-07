@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { BUMP_VERSION, COPY_LADDER, COPY_VERSION, draftOttoBump, draftOttoCopy, plainName, type OttoOp } from "../ottoDrafts.ts";
+import { ARMS, BUMP_ASK_VERSION, BUMP_FORGOT_VERSION, BUMP_VERSION, COPY_LADDER, COPY_VERSION, FORGOT_VERSION, armOf, draftOttoBump, draftOttoCopy, plainName, type OttoOp } from "../ottoDrafts.ts";
 import { readFileSync } from "node:fs";
 import { pickRung, placementRead, type PlacementResult } from "../placement.ts";
 
@@ -8,7 +8,7 @@ const op: OttoOp = {
   id: "op-1", domain: "clockwiseescape.com", name: "Clockwise Escape Room Boise", email: "info@clockwiseescape.com",
   phone: "(208) 555-0100", city: "Boise", region: "ID", calendar_vendor: null,
 };
-const copy = (o: Partial<OttoOp> = {}, style?: "ask" | "full" | "nolink" | "min") => draftOttoCopy({ ...op, ...o }, "info@clockwiseescape.com", style ? { style } : undefined);
+const copy = (o: Partial<OttoOp> = {}, style?: "ask" | "full" | "nolink" | "min" | "forgot") => draftOttoCopy({ ...op, ...o }, "info@clockwiseescape.com", style ? { style } : undefined);
 
 /**
  * The 2 October body reached Gmail's Primary tab; the 1 October and 5 October copies went to Promotions. On 5
@@ -178,4 +178,43 @@ test("the daily run holds on a verdict and sends the approved copy when it could
   const unread = after.slice(0, after.indexOf("\n}\n"));
   assert.doesNotMatch(unread, /process\.exit\(0\)/, "an unread test must not stop the day's outreach");
   assert.match(unread, /could not be read/, "and the alert has to say that is what happened");
+});
+
+test("A/B/C: each arm's first email and the follow-up that goes with it", () => {
+  assert.deepEqual(ARMS, ["full", "ask", "forgot"]);
+  const subject = "Missed calls at " + op.name;
+  const to = "info@clockwiseescape.com";
+  // C: the first email is the pitch without the recording; the next day's follow-up "forgot" it.
+  const c1 = copy({}, "forgot");
+  assert.equal(c1.variant, FORGOT_VERSION);
+  assert.equal(c1.body, copy({}, "nolink").body, "the same body as the nolink rung, so its placement is nolink's");
+  assert.ok(!c1.body.includes("onoutset.com/otto") && !/recording/i.test(c1.body), c1.body);
+  const c2 = draftOttoBump(op, to, { subject, firstVariant: c1.variant });
+  assert.equal(c2.variant, BUMP_FORGOT_VERSION);
+  assert.ok(c2.body.includes("Shoot, forgot to put this in my last email. Here's a 40-second recording of it on a real call: https://onoutset.com/otto"), c2.body);
+  assert.ok(c2.html.includes('<a href="https://onoutset.com/otto">give it a listen</a>'), c2.html);
+  // B: the first email asks; the follow-up sends what it asked to send, and keeps the no-link sign-off.
+  const b2 = draftOttoBump(op, to, { subject, firstVariant: copy({}, "ask").variant });
+  assert.equal(b2.variant, BUMP_ASK_VERSION);
+  assert.ok(b2.body.includes("Here's the recording in case it's quicker than replying: https://onoutset.com/otto. It's a real call, about 40 seconds."), b2.body);
+  assert.ok(b2.body.includes("I can set one up for " + op.name + " for free so you can call it yourself."), b2.body);
+  assert.ok(b2.body.includes('just reply "stop"') && !b2.body.includes("unsubscribe"), b2.body);
+  assert.equal((b2.html.match(/<a /g) || []).length, 1, "the recording, nothing else");
+  // A, and anything sent before the test: the free-test-line follow-up.
+  assert.equal(draftOttoBump(op, to, { subject, firstVariant: COPY_VERSION }).variant, BUMP_VERSION);
+  assert.equal(draftOttoBump(op, to, { subject, firstVariant: "2026-10-03" }).variant, BUMP_VERSION);
+  assert.equal(draftOttoBump(op, to, { subject }).variant, BUMP_VERSION);
+  for (const b of [b2, c2]) {
+    assert.equal(b.subject, "Re: " + subject);
+    assert.ok(!b.body.includes("—") && !/!/.test(b.body), b.body);
+    assert.ok(b.body.split("--")[0].split("\nHarshil\n")[0].split(/\s+/).length < 50, "a short note");
+  }
+});
+
+test("a first email's arm is read off its variant", () => {
+  assert.equal(armOf(FORGOT_VERSION), "forgot");
+  assert.equal(armOf(COPY_VERSION + "-ask"), "ask");
+  assert.equal(armOf(COPY_VERSION), "full");
+  assert.equal(armOf(COPY_VERSION + "-nolink"), "full", "a fallback rung follows up like the full pitch");
+  assert.equal(armOf(null), "full");
 });

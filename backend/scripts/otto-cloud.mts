@@ -3,14 +3,14 @@ import { sendMail, smtpIdentities } from "../src/lib/mail.ts";
 import { emailHash, loadSuppression, mailPostal, unsubPageUrl } from "../src/lib/unsub.ts";
 import { outreachBlockers, UNREADABLE_ADDRESS } from "../src/outreach/guards.ts";
 import { isDeliverable, siteResolves } from "../src/outreach/deliverable.ts";
-import { COPY_LADDER, COPY_VERSION, draftOttoBump, draftOttoCopy, type CopyStyle } from "../src/outreach/ottoDrafts.ts";
+import { ARMS, COPY_LADDER, COPY_VERSION, armOf, draftOttoBump, draftOttoCopy, type CopyStyle } from "../src/outreach/ottoDrafts.ts";
 import { recordSend } from "../src/lib/outreachLog.ts";
 import { recordRun, rungFor, type RampState } from "../src/outreach/ramp.ts";
 import { MAILBOX_ERROR, NETWORK_ERROR, dayStartIso, pickIdentity } from "../src/outreach/mailboxes.ts";
 import { archiveBounceNotices, collectBounces, collectReplies, markRedirect, markReplied, suppressBounce } from "../src/outreach/bounceSweep.ts";
 import { pickRung, placementMatrix, placementRead } from "../src/outreach/placement.ts";
 import {
-  BUMP_KIND, RESEND_KIND, bumpCandidates, handedOffOperators, loadRamp, mailedIndex, poolCandidates, recordTouch, repliedOperators, resendCandidates, saveRamp, sentTodayByMailbox, type PoolRow,
+  BUMP_KIND, RESEND_KIND, armStats, bumpCandidates, handedOffOperators, loadRamp, mailedIndex, poolCandidates, recordTouch, repliedOperators, resendCandidates, saveRamp, sentTodayByMailbox, type PoolRow,
 } from "../src/outreach/touches.ts";
 import { SentThreads } from "../src/outreach/thread.ts";
 import { todayIn } from "../src/lib/zone.ts";
@@ -38,6 +38,8 @@ type OttoState = RampState & {
   mailboxes?: Record<string, RampState>;
   /** The last inbox-placement check: when, against which copy, what Gmail did with it. */
   placement?: { day: string; version: string; summary: string; hold: boolean };
+  /** Days the A/B/C report has already gone to Harshil, so a re-run of the same day does not send it twice. */
+  abcReported?: string[];
 };
 const notifyTo = (process.env.OUTREACH_ALERT_TO || "harshils2340@gmail.com").trim();
 
@@ -127,6 +129,30 @@ if (state.ranDays.includes(today) && !dry && !resume) {
 // Every day of the week (Harshil, 2 October 2026, and again 5 October: a weekend skipped is unused reach-out).
 // A 4 October change had skipped Saturday and Sunday; it is gone.
 
+// The A/B/C test's report, by email: after a week of first emails (13 October) and again a week later (20 October),
+// once every arm's follow-up has had time to go out and be answered.
+const ABC_SINCE = "2026-10-06T04:00:00Z";
+const ABC_REPORT_DAYS = ["2026-10-13", "2026-10-20"];
+if (!dry && ABC_REPORT_DAYS.includes(today) && !(state.abcReported || []).includes(today)) {
+  try {
+    const rows = await armStats(ABC_SINCE);
+    const pct = (a: number, b: number) => (b ? ((100 * a) / b).toFixed(1) + "%" : "-");
+    const table = rows.map((r) => `${r.arm}: ${r.sent} first emails, ${r.bounced} bounced, ${r.followed} followed up, ${r.replied} replied (${pct(r.replied, r.sent - r.bounced)} of delivered)` +
+      (r.names.length ? "\n   replied: " + r.names.join(", ") : "")).join("\n");
+    await notify(`Otto A/B/C test, ${today === ABC_REPORT_DAYS[0] ? "one week in" : "final"}`,
+      "Every business first emailed since 6 October, by the version it got:\n\n" + table +
+      "\n\nA full: the full pitch with the recording link, then \"free test line\" three days later.\n" +
+      "B ask: no link, \"Can I send you a 40-second recording?\", then the recording three days later.\n" +
+      "C forgot: the pitch without the recording, then the next day \"Shoot, forgot to put this in my last email\" with the link.\n" +
+      "Replies count any human answer, a no included: the names are there so you can see which were interested." +
+      (today === ABC_REPORT_DAYS[0] ? "\n\nThe last week's follow-ups are still going out; the final numbers come on " + ABC_REPORT_DAYS[1] + "." : ""));
+    state.abcReported = [...(state.abcReported || []), today];
+    await saveRamp("otto", state);
+  } catch (e) {
+    console.error("otto-cloud: A/B/C report failed, sending anyway: " + (e as Error).message);
+  }
+}
+
 const asCopy = (r: PoolRow, style: CopyStyle = "full") => draftOttoCopy(
   { id: r.operator_id, domain: r.domain, name: r.name, email: r.email, phone: r.phone, city: r.city, region: r.region, calendar_vendor: r.calendar_vendor, family: r.family },
   r.email, { greet: r.greet, style });
@@ -138,26 +164,30 @@ const asCopy = (r: PoolRow, style: CopyStyle = "full") => draftOttoCopy(
 // skipped for the day when theirs does not. Until 5 October 2026 one copy was checked and a Promotions verdict
 // held the batch until someone rewrote the copy by hand (Harshil: "this shouldn't keep happening").
 let style: CopyStyle = "full";
-// The A/B (Harshil, 5 October 2026: "if this works then we can keep it"): when both the no-link ask and the full
-// pitch reach Primary, the batch alternates between them, and outreach_sends.variant says which one each business
-// got, so the reply rate decides which stays.
+// The A/B/C test (ottoDrafts.ts ARMS; Harshil, 6 October 2026: "A/B/C test this for a week"): the arms whose
+// first email reaches Primary take turns, and outreach_sends.variant says which one each business got, so the
+// reply rate decides which stays. Each arm's follow-up is placement-tested too, and an arm whose follow-up misses
+// Primary skips its follow-ups for the day.
 let abStyles: CopyStyle[] = [];
-let bumpsOk = true;
+const bumpOk: Record<string, boolean> = { full: true, ask: true, forgot: true };
+const armRung = (arm: CopyStyle): CopyStyle => (arm === "forgot" ? "nolink" : arm);
 if (!dry) {
   const pool = await poolCandidates(ids.length);
-  const bumpSamples = pool.map((r) => {
+  const bumpSamples = (arm: CopyStyle) => pool.map((r) => {
     const op = { id: r.operator_id, domain: r.domain, name: r.name, email: r.email, phone: r.phone, city: r.city, region: r.region, calendar_vendor: r.calendar_vendor, family: r.family };
-    const c = draftOttoBump(op, r.email, { greet: r.greet, subject: asCopy(r).subject });
+    const first = asCopy(r, arm);
+    const c = draftOttoBump(op, r.email, { greet: r.greet, subject: first.subject, firstVariant: first.variant });
     return { subject: c.subject, text: c.body, html: c.html };
   });
   const matrix = await placementMatrix([
     ...COPY_LADDER.map((rung) => ({ key: rung.style, samples: pool.map((r) => asCopy(r, rung.style)).map((c) => ({ subject: c.subject, text: c.body, html: c.html })) })),
-    { key: "bump", samples: bumpSamples },
+    ...ARMS.map((arm) => ({ key: "bump-" + arm, samples: bumpSamples(arm) })),
   ], { replyTo: process.env.MAIL_REPLY_TO || undefined });
   const report = [...matrix].map(([k, rs]) => `${k}: ${rs.map((r) => `${r.from} -> ${r.to}: ${r.placement}`).join("; ")}`);
   for (const line of report) console.log("placement: " + line);
   const pick = pickRung(COPY_LADDER.map((rung) => ({ key: rung.style, results: matrix.get(rung.style) || [] })));
-  bumpsOk = pickRung([{ key: "bump", results: matrix.get("bump") || [] }])?.strict === true;
+  for (const arm of ARMS) bumpOk[arm] = pickRung([{ key: "bump-" + arm, results: matrix.get("bump-" + arm) || [] }])?.strict === true;
+  const bumpsMissed = ARMS.filter((a) => !bumpOk[a]);
   const version = pick ? COPY_LADDER.find((r) => r.style === pick.key)!.version : COPY_VERSION;
   /**
    * Gmail answering nothing is not a verdict. Every result reads "unknown" when nothing could be measured: an
@@ -173,12 +203,13 @@ if (!dry) {
   if (pick) {
     state.placement = { day: today, version, summary: pick.summary, hold: false };
     style = pick.key as CopyStyle;
-    abStyles = (["ask", "full"] as CopyStyle[]).filter((k) => pickRung([{ key: k, results: matrix.get(k) || [] }]));
+    abStyles = ARMS.filter((k) => pickRung([{ key: k, results: matrix.get(armRung(k)) || [] }]));
     if (abStyles.length < 2) abStyles = [];
-    console.log(`otto-cloud: sending copy ${abStyles.length ? "A/B " + abStyles.join(" + ") : version} (${pick.summary})${bumpsOk ? "" : "; follow-ups skipped today, their copy did not reach Primary"}`);
-    if (!["ask", "full"].includes(style) || !bumpsOk)
+    const skipped = bumpsMissed.length ? `; follow-ups skipped today for ${bumpsMissed.join(", ")}, their copy did not reach Primary` : "";
+    console.log(`otto-cloud: sending copy ${abStyles.length ? "arms " + abStyles.join(" + ") : version} (${pick.summary})${skipped}`);
+    if (!["ask", "full"].includes(style) || bumpsMissed.length)
       await notify(`Otto outreach fell back to copy ${version}`,
-        `Neither the no-link ask nor the full pitch reached Primary today, so the batch went out with the "${style}" rung, which did.${bumpsOk ? "" : " Follow-ups were skipped today: theirs did not reach Primary."}\n\n` +
+        `${["ask", "full"].includes(style) ? "The first emails reached Primary." : `Neither the no-link ask nor the full pitch reached Primary today, so the batch went out with the "${style}" rung, which did.`}${bumpsMissed.length ? ` Follow-ups were skipped today for the ${bumpsMissed.join(", ")} arm(s): theirs did not reach Primary.` : ""}\n\n` +
         report.join("\n") + "\n\nNothing to do unless this repeats for several days.");
   } else if (measured) {
     state.placement = { day: today, version, summary: "no rung reached Primary", hold: true };
@@ -191,7 +222,7 @@ if (!dry) {
     // Nothing was measured, so nothing is held: the approved copy goes out and the alert says what happened.
     // `style` is already COPY_VERSION's rung and the follow-up's copy is unchanged, so both carry on as before.
     state.placement = { day: today, version: COPY_VERSION, summary: "no placement could be read", hold: false };
-    bumpsOk = true;
+    for (const arm of ARMS) bumpOk[arm] = true;
     await saveRamp("otto", state);
     console.log(`otto-cloud: sending copy ${COPY_VERSION} (no placement could be read)`);
     await notify("Otto: today's placement test could not be read, sending the approved copy",
@@ -226,15 +257,26 @@ async function planToday(): Promise<{ limit: number; quota: Record<string, numbe
   return { limit, quota };
 }
 
-type Row = PoolRow & { kind: string; sent_to?: string; sent_from?: string | null; last_at?: string };
+type Row = PoolRow & { kind: string; sent_to?: string; sent_from?: string | null; last_at?: string; first_variant?: string | null };
 
-let abTurn = 0;
+// Turns kept apart, so the first emails rotate through every arm evenly. A resend gets no follow-up, so it only
+// rotates through the arms that work without one: never "forgot", whose link comes in the follow-up.
+let firstTurn = 0;
+let resendTurn = 0;
+function styleFor(kind: string): CopyStyle {
+  if (!abStyles.length) return style;
+  if (kind === RESEND_KIND) {
+    const arms = abStyles.filter((a) => a !== "forgot");
+    return arms.length ? arms[resendTurn++ % arms.length] : style;
+  }
+  return abStyles[firstTurn++ % abStyles.length];
+}
 async function sendBatch(limit: number, quota: Record<string, number>): Promise<{ sent: number; resent: number; bumped: number; skipped: number; failed: number; retired: { mailbox: string; error: string }[] }> {
   const out = { sent: 0, skipped: 0, failed: 0, resent: 0, bumped: 0, retired: [] as { mailbox: string; error: string }[] };
   // Up to 40% of today's allowance to the follow-up (businesses that already saw a first email in Primary, so
   // the likeliest to answer), up to 20% to the resend (whose first email went to Promotions; mostly water, out of
   // season), and the rest to businesses never mailed; taking turns so a cut-short day still does some of each.
-  const bumps: Row[] = bumpsOk ? (await bumpCandidates(Math.ceil(limit * 0.4) * 2)).map((r) => ({ ...r, kind: BUMP_KIND })) : [];
+  const bumps: Row[] = (await bumpCandidates(Math.ceil(limit * 0.4) * 2)).filter((r) => bumpOk[armOf(r.first_variant)]).map((r) => ({ ...r, kind: BUMP_KIND }));
   const resends: Row[] = (await resendCandidates(Math.ceil(limit * 0.2) * 2)).map((r) => ({ ...r, kind: RESEND_KIND }));
   const fresh: Row[] = (await poolCandidates(limit * 2)).map((r) => ({ ...r, kind: "otto" }));
   const budget: Record<string, number> = {
@@ -283,8 +325,8 @@ async function sendBatch(limit: number, quota: Record<string, number>): Promise<
     const greet = !bump || to === r.email.trim().toLowerCase() ? r.greet : null;
     const thread = bump && !dry ? await threads.find(from, to, new Date(r.last_at || Date.now())).catch(() => null) : null;
     const copy = bump
-      ? draftOttoBump(op, to, { greet, subject: thread?.subject || draftOttoCopy(op, to).subject })
-      : draftOttoCopy(op, to, { greet, style: abStyles.length ? abStyles[(abTurn++) % abStyles.length] : style });
+      ? draftOttoBump(op, to, { greet, subject: thread?.subject || draftOttoCopy(op, to).subject, firstVariant: r.first_variant })
+      : draftOttoCopy(op, to, { greet, style: styleFor(r.kind) });
     if (dry) {
       console.log("would " + (bump ? "FOLLOW UP with " : r.kind === RESEND_KIND ? "RESEND to " : "send to ") + to + (greet ? " (Hi " + greet + ")" : "") + " [variant " + copy.variant + "]: " + copy.subject);
       out.sent++;
