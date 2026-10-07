@@ -378,7 +378,7 @@ export async function armStats(since: string): Promise<{ arm: string; sent: numb
         where kind = 'otto' and status = 'sent' and at >= $1::timestamptz order by operator_id, at
      ), tagged as (
        select f.operator_id,
-              case when f.variant like '%-ask' then 'B ask' when f.variant like '%-forgot' then 'C forgot' when f.variant like '%-nolink' or f.variant like '%-min' then 'fallback' else 'A full' end as arm,
+              case when f.variant like 'manual-%' then 'sent by hand' when f.variant like '%-ask' then 'B ask' when f.variant like '%-forgot' then 'C forgot' when f.variant like '%-nolink' or f.variant like '%-min' then 'fallback' else 'A full' end as arm,
               exists (select 1 from outreach_sends s where s.operator_id = f.operator_id and s.status = 'bounce') as bounced,
               exists (select 1 from outreach_sends s where s.operator_id = f.operator_id and s.kind = $2 and s.status = 'sent') as followed,
               exists (select 1 from outreach_sends s where s.operator_id = f.operator_id and s.status = 'replied') as replied
