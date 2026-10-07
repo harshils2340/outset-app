@@ -11883,6 +11883,121 @@ production and unverifiable here, where the scratch catalog is empty.
   thirty-first run in a row. `npm install` was needed at the root and in `backend/`, and the Postgres 16
   cluster still has to be built from scratch, as the `postgres` user because the session is root.
 
+## 2026-10-07 06:26 UTC, hundred and fifty-sixth run: the five concierge modules nobody had tested
+
+**Chosen, and why.** Every area the brief lists is on Verified and there are no commits since the last entry,
+so the pick was the one its own Needs Harshil named: `agent.ts`, `sniff.ts`, `replay.ts`, `demand.ts` and
+`readFeed.ts`, about 1,100 lines of the newest surface with no test between them. Two of those are on a live
+path. `recordDemand` runs on every answered concierge question and `enrich/structure.ts` reads its queue back
+as a prefix on what the crawler looks at next, so it decides which of 315,284 untouched sites get read first;
+`readFeed` is what both routes that ask a shop's booking system go through. `replay.ts` and `agent.ts` are
+written and wired to nothing yet, which is said plainly below, but they are two of the four fulfilment routes
+the concierge's own AGENTS.md table names and they carry the long tail.
+
+**The rehearsal.** Run, because the commits are in `backend/src`, which is the brief's second condition, even
+though a grep says the rehearsal never reaches the concierge at all. **57 passed, 0 warned, 0 failed.**
+Postgres 16 built from scratch on port 5433 with SSL on, Playwright's Chromium 1194 off disk,
+`STRIPE_SECRET_KEY`, `RESEND_API_KEY` and `GITHUB_TOKEN` empty throughout. Baseline on arrival matched the
+last entry exactly: root `tsc --noEmit -p .` and `tsc -b` clean, backend `tsc` clean but for TS5097, backend
+1,144 pass and 2 skipped, app 1,350 pass.
+
+**Found and fixed.** Seven commits. Five are defects, four of one family: a reader deciding what day it is,
+and whether a time has gone, on the host's clock.
+
+- **The replay reader asks the shop's own calendar about the shop's own day** (`b44e681f`). Three of the four
+  traps `concierge/AGENTS.md` lists, all in one module, every one of them already fixed in the nine vendor
+  readers written before it. `i <= horizon`, so a one-day window read two days: "escape room tonight" came
+  back carrying tomorrow evening under the line that says what is actually free, which is the bug
+  `resova.ts` carries a comment about in those words. Days walked by adding 86,400,000 milliseconds, which
+  steps over a date the night a zone springs forward. And `ymd(new Date())` against `new Date().getHours()`
+  for "has this started", where `render.yaml` gives `outset-api` no TZ: at ten in the morning Pacific every
+  slot before five o'clock read as gone, which is most of a west coast shop's trading day. All three go
+  through `shopday.ts` now and `replayLive` takes `tz`, as all twelve readers do. Five tests, four red on the
+  parent.
+- **A child's fare never heads a slot an adult is reading** (`b8443d8d`). `isConcessionFare` was called on
+  the key the figure sat under rather than the name beside it, and a key almost never spells the word: the
+  rule matches `child` whole, and neither `child_price` nor `childPrice` has a boundary after it. So
+  `{"time":"19:00","name":"Child","price":25}` beside its adult row at $60 headlined the slot at $25, and the
+  cheapest-variant rule then threw the adult row away, leaving a card whose only rate was a ticket the guest
+  could not buy. That is the lie of omission `lib/fares.ts` was written for, and it says there that both
+  readers of this data should use the rule. Three tests, two red on the parent.
+- **A replayed endpoint moves the date in its path** (`ef8f01ba`). `varsByDate` is the gate an endpoint must
+  pass to be written down at all, and it proves the endpoint is a calendar by substituting the date across
+  the whole request string, path included. `forDate` only rewrote query parameters, so
+  `/availability/2026-01-01/slots`, admitted precisely because its path date makes the answer vary, was then
+  replayed with its discovery day for every day of the window: one stale January answer, stamped with
+  tonight's date and tomorrow's. Two tests, both red on the parent.
+- **The browser agent reads a shop's calendar on the shop's clock** (`5fb4e640`). Same family, the other
+  unwired module: `agentLive` took no zone, so both the day it clicked on the shop's own calendar and the
+  minute it compared a time against came from the host. It takes `tz` now and both come from one
+  `shopday.ts` read. The first of its four tests is the sweep that found this and `replay.ts`: nothing under
+  `src/concierge` may read the host's wall clock with no zone in sight, by `shopday.ts` or by its own `Intl`
+  twin. It names `agent.ts` on the parent.
+- **An afternoon slot the sniffer finds is one time, not that time and a morning one** (`1e55c06b`).
+  `findTimes` ran two patterns over the same text and the 24-hour one reads "7:00" out of "7:00 PM", so every
+  afternoon was counted twice, once twelve hours early. A page listing a 7pm and a 9pm came back as four
+  times, and `scoreOf` gives +4 for three or more slot-shaped times against +1 for fewer, so a page with two
+  slots scored like a calendar. Every phantom was a morning hour on the same neat minute as the slot it came
+  from, so the cheap filter caught none, and a shop's 7pm was written down beside its endpoint as a 7am. The
+  guard is the lookahead `slotTimes` in `agent.ts` has carried all along. Five tests, three red on the parent.
+- **One question the crawl queue can filter on nothing does not take the whole queue** (`f28800f7`). A
+  `search_demand` pair knows a category and a region, and a row with neither built a `WHERE` of the three
+  conditions every pending operator satisfies: it selected the entire backlog, in the same review-count order
+  the ordinary queue already walks, labelled "asked for something near null". The queue is a prefix, so that
+  one row filled it to the limit and pushed out every pair that did name a place. Seven tests, one red.
+- **The twelve-way reader dispatch is driven rather than read** (`13c496aa`). No defect: all twelve branches
+  call the right reader. But `liveFor.test.ts` only reads the file as text, which `case "peek": return
+  resovaLive(...)` satisfies exactly, and one wrong line there is a whole vendor's shops going quiet. Each
+  vendor's own link shape now goes through `readFeed` with the network stubbed and the host reached says
+  which reader ran. Thirteen tests; swapping the Peek branch for Resova turns the third red.
+
+**Verification.** Backend 1,183 pass and 2 skipped, up 39 in five new files; app 1,350 unchanged and
+untouched. Root `tsc --noEmit -p .` and `tsc -b` clean, backend `tsc` clean but for TS5097. Rehearsal 57/0/0.
+Every fix was measured against the old code as well as the new, by probe before the fix and by running the
+new tests on the stashed module after: 12 of the 39 fail on the parent, and the three that are guards on
+behaviour already right are marked as such above.
+
+**Measured and left.** `demandedTargets`' town scoping, confirmed live again and still the judgement run 153
+left it as. `openNow.ts`'s `openState`, which reads the guest's browser clock for a shop's hours and has no
+caller anywhere: the live path is `itemOpenState`, which goes through `clockIn(zoneFor(item))`, so this is a
+trap rather than a bug. `recordDemand` keys `search_demand` on a lowered city but stores the city as given;
+harmless, because the city it stores comes from the catalog's own column. `harvest` in `replay.ts` recurses
+into an object it has already counted, so a slot nested inside a slot would be read twice; no payload shape
+seen here does that. The pure readers of `sniff.ts` against the three copies of "a clock value in a payload"
+in this folder, which now agree.
+
+**Needs Harshil.**
+
+- **`varsByDate`'s first clause defeats its own argument.** It returns `a !== b || times(a) !== times(b)`,
+  and the whole paragraph above it is about refusing a locations list and a price sheet that merely contain
+  clock values. Any byte difference satisfies the first clause, so an endpoint carrying a `generated_at`, a
+  nonce or a request id passes a gate meant to ask whether the *times* moved. Dropping the clause is not
+  obviously right either: a real calendar can publish the same times two days running and vary only in its
+  seat counts. Left as it is, because which half is the signal is a call about what these endpoints look like
+  in the wild, and nothing here can measure that.
+- **`replay.ts` and `agent.ts` are still wired to nothing.** Five of tonight's fixes are in them and no
+  guest can reach either: `replayLive` and `agentLive` have no caller in `src/` or `scripts/`, while the
+  discovery half that fills `booking_endpoints` does run. So the sniff finds endpoints nobody reads. Whether
+  to wire the replay into `readFeed`'s default branch, which is where a shop with no vendor currently gets
+  `null`, is the one decision that would turn the long tail on.
+- **Whether a `search_demand` pair should be able to name a town with no region at all.** Tonight's guard
+  drops the pair rather than queue the catalog, but the row is written because `operators.region` is nullable
+  and `plan.ts`'s town lookup does not require one. How many catalog rows carry a town and no region could
+  not be counted here, there being no `backend/data/outset.db`.
+- Still open from earlier runs, unchanged: a concierge card prints a bare dollar sign for a shop in the other
+  country's money; every other screen change in the app is silent to a screen reader; an operator typing a
+  comma for a decimal point is charged a hundred times over; the emails say nothing about dark mode;
+  `OperatorView`'s `storage` listener ignores a removal; two tabs chatting to one shop are resolved by
+  keeping the longer thread; half of an A/B day's batch carries no unsubscribe link; the cross-campaign
+  cool-off is one-way; nothing comes back for money a capture or a refund failed on; the 108 operators with
+  hacked websites have not been told; a guest cannot cancel a booking at all; the 290 listings with no way to
+  claim; the unsubscribe page says nothing a screen reader can hear; and no sync has run, so `kid`, `specs`,
+  `gap` and `extraNote` are still empty on every shipped row.
+  **The brief's rehearsal path is `backend/scripts/e2e-local.mts`, not `scripts/`**, twenty-second run to say
+  so. **Local `main` was detached again** and was reset to `origin/main` before any work, thirty-second run in
+  a row. `npm install` was needed at the root and in `backend/`, and the Postgres 16 cluster still has to be
+  built from scratch, as the `postgres` user because the session is root.
+
 
 ## Coverage
 
@@ -13125,6 +13240,8 @@ own function: `bumpCandidates` and its per-arm follow-up delay, `armStats`, `poo
 `sentTodayByMailbox`. The three unreviewed outreach commits of 6 October read through: the bounce-notice
 archive, the placement test's move to Trash, and the Sent connection that reconnects mid-run.
 
+The five concierge modules that had no test between them, two of them live: `readFeed`'s twelve-way dispatch driven rather than read as source text, each vendor's own link shape against the host its reader reaches, with Rezdy's hand-rolled HTTP/2 session named as the one left out; `demand.ts` end to end against a scratch database, both its tables, the three reasons a business is queued, the ordering between a business somebody was shown and a place people keep asking about, the summary, and the pair that could be filtered on nothing; `replay.ts`'s window, its calendar arithmetic, its clock, its concession rule and `forDate` against a date in the path as well as the query; `agent.ts`'s calendar day and its already-started check; and `sniff.ts`'s `findTimes` against the afternoon it was counting twice. Whose clock a slot's start is judged on, now a sweep of its own over every module under `src/concierge`: nothing there may read the host's wall clock without a zone in sight, by `shopday.ts` or by its own `Intl` twin. The same sweep over the rest of `backend/src` and over the app, where `openNow.ts`'s live path goes through `clockIn(zoneFor(item))` and the dashboard's greeting is the operator's own browser on purpose.
+
 **Not yet checked.** Whether every other screen change in the app should move focus and say so: a tab
 change, a listing opening, the chat screen and the dashboard's own nine pages all swap the screen in silence,
 and a blanket rule changes how the whole app behaves for sighted keyboard users too (see the hundred and
@@ -13717,4 +13834,4 @@ row. Whether "for 0 people" and "for 2.5 people" should be understood rather tha
 check, which is what reads the "5" in "2.5" as a party of five (see the hundred and fifty-fifth run's Needs
 Harshil). Whether a stated length should also know its words ("an hour", "a couple of hours") and its days
 ("for 3 days"), which `STATED_LENGTH` reads neither of, where the first is a real spelling and the second is a
-unit the reader has never held.
+unit the reader has never held. Whether `varsByDate`'s first clause defeats its own argument: it admits an endpoint on any byte difference between two days, where the paragraph above it is about whether the times moved, and an endpoint carrying a `generated_at` or a nonce passes a gate meant to refuse a locations list (see the hundred and fifty-sixth run's Needs Harshil). Whether `replayLive` should be wired into `readFeed`'s default branch, which is where a shop with no vendor is currently answered `null`: the discovery half fills `booking_endpoints` and nothing reads it, so five of that run's fixes are in code no guest can reach, and the same is true of `agentLive`, which is the long tail of the four fulfilment routes. Whether a `search_demand` pair should be able to name a town with no region at all, which is what the guard added that run drops rather than queue the whole catalog on: `operators.region` is nullable and `plan.ts`'s town lookup does not require one, and how many catalog rows carry a town and no region could not be counted without a `backend/data/outset.db`. Whether `openNow.ts` should still export `openState`, which judges a shop's hours by the guest's own browser clock and has no caller anywhere: the live path is `itemOpenState` and goes through the zone, so this is a trap for the next reader rather than a bug. Whether `harvest` in `replay.ts` should recurse into an object it has already counted, which would read a slot nested inside a slot twice.
