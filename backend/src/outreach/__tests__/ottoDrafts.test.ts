@@ -1,6 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { ARMS, BUMP_ASK_VERSION, BUMP_FORGOT_VERSION, BUMP_VERSION, COPY_LADDER, COPY_VERSION, FORGOT_VERSION, armOf, draftOttoBump, draftOttoCopy, plainName, type OttoOp } from "../ottoDrafts.ts";
+import { clickToken } from "../clicks.ts";
+import { recordingLink, ARMS, BUMP_ASK_VERSION, BUMP_FORGOT_VERSION, BUMP_VERSION, COPY_LADDER, COPY_VERSION, FORGOT_VERSION, armOf, draftOttoBump, draftOttoCopy, plainName, type OttoOp } from "../ottoDrafts.ts";
 import { readFileSync } from "node:fs";
 import { pickRung, placementRead, type PlacementResult } from "../placement.ts";
 
@@ -21,7 +22,7 @@ test("full: the 2 October note, word for word, with the 7 October booking-system
   assert.ok(c.body.includes("When everyone at " + op.name + " is busy with guests or you've closed for the day, where do the calls go?"), c.body);
   assert.ok(c.body.includes("For most operators it's voicemail, and the caller hangs up and books with the next place that picks up."), c.body);
   assert.ok(c.body.includes("I built Outset, a 24/7 customer service line for your phone. It picks up those calls, connects directly with your booking or reservation system, and answers only from your own company info, prices and terms, so it never makes anything up, then takes the booking down for you. You get a summary of every call."), c.body);
-  assert.ok(c.body.includes("Here's a 40-second recording of it on a real call: https://onoutset.com/otto"), c.body);
+  assert.ok(c.body.includes("Here's a 40-second recording of it on a real call: https://onoutset.com/otto?r="), c.body);
   assert.ok(c.body.includes("I'll set it up on your line for free, and you only keep it if it books you a guest. Worth a quick reply?"), c.body);
   assert.equal(c.variant, COPY_VERSION);
 });
@@ -43,7 +44,10 @@ test("the ladder steps down: the recording goes, then everything but three sente
 test("the recording is the only link above the sign-off, hyperlinked as a phrase in the html", () => {
   const c = copy();
   assert.equal(c.body.split("https://onoutset.com/otto").length - 1, 1, c.body);
-  assert.ok(c.html.includes('<a href="https://onoutset.com/otto">give it a listen</a>'), c.html);
+  const otto = recordingLink("info@clockwiseescape.com");
+  assert.equal(otto, "https://onoutset.com/otto?r=" + clickToken("info@clockwiseescape.com"), "the link carries the recipient's token");
+  assert.ok(/\?r=[0-9a-f]{12}$/.test(otto) && !otto.includes("@"), "a short code, never the address");
+  assert.ok(c.html.includes('<a href="' + otto + '">give it a listen</a>'), c.html);
   assert.equal((c.html.match(/<a /g) || []).length, 2, "recording and unsubscribe, nothing else");
   assert.equal((copy({}, "min").html.match(/<a /g) || []).length, 1, "min: unsubscribe only");
   assert.ok(!/<img|<table|font-family/i.test(c.html), "no logo, no layout, no styling that reads as a newsletter");
@@ -195,12 +199,12 @@ test("A/B/C: each arm's first email and the follow-up that goes with it", () => 
   assert.ok(!c1.body.includes("onoutset.com/otto") && !/recording/i.test(c1.body), c1.body);
   const c2 = draftOttoBump(op, to, { subject, firstVariant: c1.variant });
   assert.equal(c2.variant, BUMP_FORGOT_VERSION);
-  assert.ok(c2.body.includes("Shoot, forgot to put this in my last email. Here's a 40-second recording of it on a real call: https://onoutset.com/otto"), c2.body);
-  assert.ok(c2.html.includes('<a href="https://onoutset.com/otto">give it a listen</a>'), c2.html);
+  assert.ok(c2.body.includes("Shoot, forgot to put this in my last email. Here's a 40-second recording of it on a real call: " + recordingLink(to)), c2.body);
+  assert.ok(c2.html.includes('<a href="' + recordingLink(to) + '">give it a listen</a>'), c2.html);
   // B: the first email asks; the follow-up sends what it asked to send, and keeps the no-link sign-off.
   const b2 = draftOttoBump(op, to, { subject, firstVariant: copy({}, "ask").variant });
   assert.equal(b2.variant, BUMP_ASK_VERSION);
-  assert.ok(b2.body.includes("Here's the recording in case it's quicker than replying: https://onoutset.com/otto. It's a real call, about 40 seconds."), b2.body);
+  assert.ok(b2.body.includes("Here's the recording in case it's quicker than replying: " + recordingLink(to) + ". It's a real call, about 40 seconds."), b2.body);
   assert.ok(b2.body.includes("I can set one up for " + op.name + " for free so you can call it yourself."), b2.body);
   assert.ok(b2.body.includes('just reply "stop"') && !b2.body.includes("unsubscribe"), b2.body);
   assert.equal((b2.html.match(/<a /g) || []).length, 1, "the recording, nothing else");

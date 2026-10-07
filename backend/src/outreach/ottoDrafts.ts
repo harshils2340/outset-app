@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { LIVE_CALENDAR, vendorLabel } from "./drafts.ts";
 import { mailPostal, unsubPageUrl } from "../lib/unsub.ts";
+import { clickToken } from "./clicks.ts";
 import { bestAddress, greeting } from "./owner.ts";
 import { db, nowIso } from "../db/client.ts";
 
@@ -120,6 +121,14 @@ export const COPY_LADDER: { style: CopyStyle; version: string }[] = [
 ];
 
 /**
+ * The recording's link, carrying the recipient's token (clicks.ts) so the page can say who opened it and pressed
+ * play. /otto keeps its query through the redirect to the home page, where the recording is.
+ */
+export function recordingLink(to: string): string {
+  return "https://onoutset.com/otto" + (to ? "?r=" + clickToken(to) : "");
+}
+
+/**
  * The A/B/C test, first emails from 7 October 2026 (Harshil: "A/B/C test this for a week"). Each arm is a first
  * email and the follow-up that goes with it:
  *
@@ -154,7 +163,7 @@ export function draftOttoCopy(op: OttoOp, email?: string, opts?: { greet?: strin
   // cannot miss. A caller with no catalog at hand (the cloud sender, from the published pool) passes the name
   // that was found for it, or null for "Hi,".
   const hi = opts && "greet" in opts ? (opts.greet ? "Hi " + opts.greet + "," : "Hi,") : to ? greeting(op, to) : "Hi,";
-  const OTTO = "https://onoutset.com/otto";
+  const OTTO = recordingLink(to);
   const name = plainName(op.name);
   const subject = "Missed calls at " + name;
   const question = "When everyone at " + name + " is busy with guests or you've closed for the day, where do the calls go?";
@@ -239,7 +248,7 @@ export function draftOttoBump(op: OttoOp, email: string, opts: { greet?: string 
   const to = (email || "").trim().toLowerCase();
   const hi = opts.greet ? "Hi " + opts.greet + "," : "Hi,";
   const subject = /^re:/i.test(opts.subject) ? opts.subject : "Re: " + opts.subject;
-  const OTTO = "https://onoutset.com/otto";
+  const OTTO = recordingLink(to);
   const name = plainName(op.name);
   const arm = armOf(opts.firstVariant);
   if (arm === "ask") {

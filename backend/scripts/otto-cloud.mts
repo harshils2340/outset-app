@@ -10,6 +10,7 @@ import { recordRun, rungFor, type RampState } from "../src/outreach/ramp.ts";
 import { MAILBOX_ERROR, NETWORK_ERROR, dayStartIso, pickIdentity } from "../src/outreach/mailboxes.ts";
 import { archiveBounceNotices, collectBounces, collectReplies, markRedirect, markReplied, suppressBounce } from "../src/outreach/bounceSweep.ts";
 import { pickRung, placementMatrix, placementRead } from "../src/outreach/placement.ts";
+import { clickStrength, hotLeads } from "../src/outreach/clicks.ts";
 import {
   BUMP_KIND, RESEND_KIND, armStats, bumpCandidates, handedOffOperators, loadRamp, mailedIndex, poolCandidates, recordTouch, repliedOperators, resendCandidates, saveRamp, sentTodayByMailbox, type PoolRow,
 } from "../src/outreach/touches.ts";
@@ -41,6 +42,8 @@ type OttoState = RampState & {
   placement?: { day: string; version: string; summary: string; hold: boolean };
   /** Days the A/B/C report has already gone to Harshil, so a re-run of the same day does not send it twice. */
   abcReported?: string[];
+  /** Where the last run's "who opened the recording" read stopped, so a lead is reported once. */
+  clicksSince?: string;
 };
 const notifyTo = (process.env.OUTREACH_ALERT_TO || "harshils2340@gmail.com").trim();
 
@@ -132,20 +135,42 @@ if (state.ranDays.includes(today) && !dry && !resume) {
 
 // The A/B/C test's report, by email: after a week of first emails (13 October) and again a week later (20 October),
 // once every arm's follow-up has had time to go out and be answered.
+// Who opened the recording yesterday: the warmest businesses on the list, to call while it is fresh
+// (src/outreach/clicks.ts). Read from where the last run left off, so a re-run never reports one twice.
+if (!dry) {
+  try {
+    const from = state.clicksSince || new Date(Date.now() - 36 * 3600_000).toISOString();
+    const until = new Date().toISOString();
+    const leads = await hotLeads(from, await repliedOperators());
+    const label = (e: string[]) => (e.includes("demo") ? "clicked Book a demo" : e.includes("listen30") ? "listened past 30 seconds" : e.includes("play") ? "pressed play" : "opened the page, did not play");
+    const warm = leads.filter((l) => clickStrength(l.events) >= 2);
+    console.log(`otto-cloud: ${leads.length} recipient(s) opened the recording since ${from.slice(0, 16)}, ${warm.length} played it`);
+    if (warm.length)
+      await notify(`Otto: ${warm.length} business${warm.length === 1 ? "" : "es"} played the recording, call ${warm.length === 1 ? "it" : "them"} today`,
+        "These opened the recording from the pitch and pressed play. Nobody has replied yet, so a call today, while they remember it, is the best shot at a conversation.\n\n" +
+        leads.map((l) => `${label(l.events).toUpperCase()}: ${l.name} (${[l.city, l.region].filter(Boolean).join(", ")})\n   phone ${l.phone || "none on file"}, email ${l.email}, first opened ${l.first_at.slice(0, 16)} UTC`).join("\n\n") +
+        "\n\nAn opener: \"Hi, it's Harshil from Outset, I sent you the recording of the call line. Did you get a chance to hear it?\"");
+    state.clicksSince = until;
+    await saveRamp("otto", state);
+  } catch (e) {
+    console.error("otto-cloud: could not read who opened the recording: " + (e as Error).message);
+  }
+}
+
 const ABC_SINCE = "2026-10-06T04:00:00Z";
 const ABC_REPORT_DAYS = ["2026-10-13", "2026-10-20"];
 if (!dry && ABC_REPORT_DAYS.includes(today) && !(state.abcReported || []).includes(today)) {
   try {
     const rows = await armStats(ABC_SINCE);
     const pct = (a: number, b: number) => (b ? ((100 * a) / b).toFixed(1) + "%" : "-");
-    const table = rows.map((r) => `${r.arm}: ${r.sent} first emails, ${r.bounced} bounced, ${r.followed} followed up, ${r.replied} replied (${pct(r.replied, r.sent - r.bounced)} of delivered)` +
+    const table = rows.map((r) => `${r.arm}: ${r.sent} first emails, ${r.bounced} bounced, ${r.opened} opened the recording's page, ${r.played} played it, ${r.followed} followed up, ${r.replied} replied (${pct(r.replied, r.sent - r.bounced)} of delivered)` +
       (r.names.length ? "\n   replied: " + r.names.join(", ") : "")).join("\n");
     await notify(`Otto A/B/C test, ${today === ABC_REPORT_DAYS[0] ? "one week in" : "final"}`,
       "Every business first emailed since 6 October, by the version it got:\n\n" + table +
       "\n\nA full: the full pitch with the recording link, then \"free test line\" three days later.\n" +
       "B ask: no link, \"Can I send you a 40-second recording?\", then the recording three days later.\n" +
       "C forgot: the pitch without the recording, then the next day \"Shoot, forgot to put this in my last email\" with the link.\n" +
-      "Replies count any human answer, a no included: the names are there so you can see which were interested." +
+      "Replies count any human answer, a no included: the names are there so you can see which were interested. Opens and plays are counted from 8 October, when the recording link started carrying each recipient's code." +
       (today === ABC_REPORT_DAYS[0] ? "\n\nThe last week's follow-ups are still going out; the final numbers come on " + ABC_REPORT_DAYS[1] + "." : ""));
     state.abcReported = [...(state.abcReported || []), today];
     await saveRamp("otto", state);

@@ -389,5 +389,48 @@
     })();
   </script>
   <script src="/otto-call.js"></script>
+<script>
+/* The outreach funnel (backend/src/outreach/clicks.ts): a pitch's recording link carries r, the recipient's
+   twelve-character token. This page tells the API it was opened, that the recording was played and heard past
+   thirty seconds, and that "Book a demo" was clicked, so the daily run can tell Harshil whom to call. Only this
+   script reports, so a mail scanner that fetches the link without running it counts for nothing. Never blocks
+   the page: sendBeacon, and every failure ignored. */
+(function () {
+  try {
+    var API = "https://outset-api.onrender.com/t";
+    var q = new URLSearchParams(location.search);
+    var r = (q.get("r") || "").toLowerCase();
+    var store = null;
+    try { store = window.sessionStorage; } catch (e) {}
+    if (/^[0-9a-f]{12}$/.test(r)) {
+      try { store && store.setItem("outset_r", r); } catch (e) {}
+      q.delete("r");
+      try { history.replaceState(null, "", location.pathname + (q.toString() ? "?" + q : "") + location.hash); } catch (e) {}
+    } else {
+      r = "";
+      try { r = (store && store.getItem("outset_r")) || ""; } catch (e) {}
+    }
+    var send = function (e) {
+      try {
+        var body = JSON.stringify({ e: e, r: r, p: location.pathname, ref: (document.referrer || "").slice(0, 200) });
+        if (navigator.sendBeacon) navigator.sendBeacon(API, body);
+        else fetch(API, { method: "POST", body: body, keepalive: true, mode: "no-cors" });
+      } catch (x) {}
+    };
+    send("view");
+    var a = document.getElementById("audio"), played = false, heard = false;
+    if (a) {
+      a.addEventListener("play", function () { if (!played) { played = true; send("play"); } });
+      a.addEventListener("timeupdate", function () { if (!heard && a.currentTime >= 30) { heard = true; send("listen30"); } });
+    }
+    document.addEventListener("click", function (ev) {
+      var l = ev.target && ev.target.closest ? ev.target.closest('a[href*="cal.com/"]') : null;
+      if (!l) return;
+      send("demo");
+      if (r && l.href.indexOf("metadata") < 0) l.href += (l.href.indexOf("?") < 0 ? "?" : "&") + "metadata[r]=" + r;
+    }, true);
+  } catch (e) {}
+})();
+</script>
 </body>
 </html>
