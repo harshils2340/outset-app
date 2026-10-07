@@ -121,3 +121,32 @@ test("forDate rewrites the day the widget happened to be discovered on", () => {
   assert.ok(ep);
   assert.equal(forDate(ep, "2026-10-20").url, "https://ex.test/avail?date=2026-10-20&n=3");
 });
+
+test("a child's fare never heads a slot an adult is reading", async () => {
+  /**
+   * `lib/fares.ts` exists because a headline has to be a price the reader could pay, and the cheapest row of
+   * a list is a concession every time. Only the key was tested here, and a key almost never spells the word:
+   * `\bchild\b` finds no boundary against `child_price` or `childPrice`, so the name beside the figure was
+   * the only place the word ever appeared and nothing looked there.
+   */
+  const domain = stubShop("https://ex.test/avail?date=2026-01-01", [
+    { time: LATE, name: "Child", price: 25 },
+    { time: LATE, name: "Adult", price: 60 },
+  ]);
+  const read = await replayLive(domain, { from: new Date(), days: 1 });
+  assert.deepEqual(read?.departures.map((d) => [d.item, d.fromPrice]), [["Adult", 60]]);
+  assert.deepEqual(read?.departures[0]?.rates.map((r) => r.label), ["Adult"]);
+});
+
+test("a slot whose only published fare is a concession is offered with no price", async () => {
+  // The time is real and the figure is not ours to quote, which is what "price on request" is for.
+  const domain = stubShop("https://ex.test/avail?date=2026-01-01", [{ time: LATE, title: "Senior rate", price: 19 }]);
+  const read = await replayLive(domain, { from: new Date(), days: 1 });
+  assert.deepEqual(read?.departures.map((d) => [d.time, d.fromPrice, d.rates.length]), [[LATE, null, 0]]);
+});
+
+test("a price under a snake_case key is still a price", async () => {
+  const domain = stubShop("https://ex.test/avail?date=2026-01-01", [{ time: LATE, name: "General admission", unit_price: 44 }]);
+  const read = await replayLive(domain, { from: new Date(), days: 1 });
+  assert.equal(read?.departures[0]?.fromPrice, 44);
+});

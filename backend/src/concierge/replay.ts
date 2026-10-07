@@ -155,6 +155,17 @@ function harvest(node: unknown, out: Found[], depth = 0): void {
         if (price == null && PRICE_KEY.test(k) && !isConcessionFare(k)) price = money(v);
         if (label == null && LABEL_KEY.test(k) && typeof v === "string" && v.length > 1 && v.length < 70) label = v;
       }
+      /**
+       * A fare the guest cannot buy is not this slot's price.
+       *
+       * The key was tested and the name was not, and a key almost never carries the word: `child_price` and
+       * `childPrice` both read as an ordinary price, because `\bchild\b` finds no word boundary against an
+       * underscore or a capital. So a payload with `{"time":"19:00","name":"Child","price":25}` beside its
+       * adult row at $60 headlined the slot at $25, and the cheapest-variant rule below then threw the adult
+       * row away: the card's only rate was a child's ticket. That is the lie of omission `lib/fares.ts` was
+       * written to stop, and it says there that both readers of this kind of data should use the rule.
+       */
+      if (price != null && label && isConcessionFare(label)) price = null;
       out.push({ time, price, label });
     }
   }
