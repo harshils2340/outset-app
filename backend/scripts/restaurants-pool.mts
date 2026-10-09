@@ -16,7 +16,8 @@ import { ensureTouchTables } from "../src/outreach/touches.ts";
  * run (scripts/otto-cloud.mts) mails first.
  *
  *   1. Overture Maps (open data, read in place with DuckDB, no key): every open restaurant or caterer in the box
- *      with a website and a phone. Big chains go (Overture's brand field, or a name seen at 15+ places), and a
+ *      with a website and a phone, in Canada (the box's edge caught a Bermuda grill) and with Overture's
+ *      confidence at 0.7 or more (a 0.6 row was a financial fund filed as canadian_restaurant). Big chains go (Overture's brand field, or a name seen at 15+ places), and a
  *      group with several locations on one website is one row, so one inbox gets one email.
  *   2. The restaurant's own website, read politely (robots.txt, one request at a time per host, src/discover/
  *      polite.ts): the home page and up to two contact or about pages, for a published address. Overture's own
@@ -42,7 +43,7 @@ const BOXES: Record<string, { west: number; south: number; east: number; north: 
 const box = BOXES[boxId];
 if (!box) throw new Error("unknown box " + boxId);
 const RELEASE = process.env.OVERTURE_RELEASE || "2026-08-19.0";
-const cache = `/tmp/overture-restaurants-${boxId}-${RELEASE}.json`;
+const cache = `/tmp/overture-restaurants-v2-${boxId}-${RELEASE}.json`;
 
 type Place = { id: string; name: string; category: string; website: string | null; email: string | null; phone: string | null; city: string | null; region: string | null; brand: string | null; confidence: number };
 
@@ -59,7 +60,8 @@ async function overture(): Promise<Place[]> {
       WHERE bbox.xmin BETWEEN ${box.west} AND ${box.east} AND bbox.ymin BETWEEN ${box.south} AND ${box.north}
         AND (categories.primary LIKE '%restaurant%' OR categories.primary IN ('caterer', 'pizza_place', 'food_truck'))
         AND websites[1] IS NOT NULL AND phones[1] IS NOT NULL
-        AND coalesce(operating_status, 'open') = 'open'`,
+        AND coalesce(operating_status, 'open') = 'open'
+        AND addresses[1].country = 'CA' AND confidence >= 0.7`,
   );
   const rows = (reader.getRowObjects() as unknown as Place[]).map((r) => ({ ...r, confidence: Number(r.confidence) || 0 }));
   writeFileSync(cache, JSON.stringify(rows));

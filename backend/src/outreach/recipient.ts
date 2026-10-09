@@ -14,6 +14,7 @@ import { hostPageAddress } from "./guards.ts";
  *   another business one address on several listings, named for one of them: Skeggy's Axe House at
  *                    sangokurasake@gmail.com
  *   department       an inbox for donations, jobs, billing, the webmaster or the press, not anyone who decides
+ *                    (orders@ is not one: at a restaurant or caterer it is the inbox the owner reads)
  *   public           a city, county, state, school district or army-corps facility: not a business
  *   corporate chain  a location of a national brand run from head office (Dave & Buster's, Massage Envy)
  *
@@ -35,7 +36,7 @@ export type PoolContext = {
 const squash = (s: string | null | undefined) => (s || "").toLowerCase().normalize("NFKD").replace(/[^a-z]/g, "");
 const tokens = (s: string) => s.toLowerCase().normalize("NFKD").replace(/[^a-z0-9 ]/g, " ").split(/\s+/).filter((w) => w.length >= 4);
 
-const DEPARTMENT = /^(abuse|privacy|legal|careers?|jobs?|hr|hiring|recruit(ing|ment)?|accounting|accounts|ap|ar|billing|invoices?|payroll|press|media|pr|webmaster|web|security|compliance|donations?|donate|giving|development|volunteers?|lostandfound|orders?|orderservice|returns|warranty|dmca|unsubscribe)@/i;
+const DEPARTMENT = /^(abuse|privacy|legal|careers?|jobs?|hr|hiring|recruit(ing|ment)?|accounting|accounts|ap|ar|billing|invoices?|payroll|press|media|pr|webmaster|web|security|compliance|donations?|donate|giving|development|volunteers?|lostandfound|orderservice|returns|warranty|dmca|unsubscribe)@/i;
 const PUBLIC_HOST = /\.(gov|mil|edu|gc\.ca)$|\.gov\.[a-z]{2}$|\.k12\.|\.(state|ci|co|city|town|cityof)\.[a-z]{2}\.us$|^[a-z-]+\.[a-z]{2}\.us$|^(city|town|village|county|township)of[a-z-]+\.|army\.mil$/;
 const PUBLIC_NAME = /\b(city of|town of|village of|county of|township of|parks? (and|&) rec(reation)?|recreation department|municipal|army corps|state park|provincial park|national park)\b/i;
 /** Head-office domains of national chains; a franchisee on its own domain is not on this list. */
