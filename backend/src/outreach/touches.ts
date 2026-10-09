@@ -46,6 +46,8 @@ export type PoolRow = {
    * to every family instead of just water, so reply rate can be compared by vertical: `outreach_sends` joined
    * back to this column by `operator_id` is that comparison, no new table needed. */
   family: string | null;
+  /** Overture's category for a restaurant (pakistani_restaurant, caterer); null for the activity catalog. */
+  category?: string | null;
   /** The front desk the pitch would have gone to, kept when the owners lookup (scripts/owners-pool.mts) found a better mailbox. */
   desk_email?: string | null;
   /** When the owners lookup read this business's own site, set whether or not it found anyone, so a rerun skips it. */
@@ -83,6 +85,8 @@ const DDL = [
     synced_at timestamptz not null default now()
   )`,
   "alter table outreach_pool add column if not exists family text",
+  // Restaurants (scripts/restaurants-pool.mts) carry Overture's own category, which the pitch reads (ottoDrafts.ts).
+  "alter table outreach_pool add column if not exists category text",
   ...OWNER_COLUMNS_DDL,
   "create index if not exists outreach_pool_order on outreach_pool (completeness desc nulls last)",
   `create table if not exists outreach_sends (
@@ -234,7 +238,8 @@ export async function saveRamp(campaign: string, state: RampState): Promise<void
  * named mailbox (jeff@, a personal gmail) goes before a desk inbox (info@, bookings@): the owner decides, the
  * front desk forwards. Completeness breaks the remaining ties, as before.
  */
-export const FAMILY_ORDER = ["indoor", "motorsport", "play", "wellness", "food", "outdoor", "water", "air"];
+// Restaurants first (Harshil, 9 October 2026: "lets switch to restaurants").
+export const FAMILY_ORDER = ["restaurant", "indoor", "motorsport", "play", "wellness", "food", "outdoor", "water", "air"];
 export const DESK_INBOX = "^(info|hello|hi|contact|contactus|book|booknow|booking|bookings|reservation|reservations|res|sales|office|admin|support|help|team|staff|mail|email|events|inquiries|enquiries|general|frontdesk|guestservices|customerservice|service)$";
 
 /**

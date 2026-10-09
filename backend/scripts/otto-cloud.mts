@@ -180,7 +180,7 @@ if (!dry && ABC_REPORT_DAYS.includes(today) && !(state.abcReported || []).includ
 }
 
 const asCopy = (r: PoolRow, style: CopyStyle = "full") => draftOttoCopy(
-  { id: r.operator_id, domain: r.domain, name: r.name, email: r.email, phone: r.phone, city: r.city, region: r.region, calendar_vendor: r.calendar_vendor, family: r.family },
+  { id: r.operator_id, domain: r.domain, name: r.name, email: r.email, phone: r.phone, city: r.city, region: r.region, calendar_vendor: r.calendar_vendor, family: r.family, category: r.category },
   r.email, { greet: r.greet, style });
 
 // Inbox placement, every sending day: every rung of the approved copy ladder (ottoDrafts.ts COPY_LADDER) and the
@@ -200,7 +200,7 @@ const armRung = (arm: CopyStyle): CopyStyle => (arm === "forgot" ? "nolink" : ar
 if (!dry) {
   const pool = await poolCandidates(ids.length);
   const bumpSamples = (arm: CopyStyle) => pool.map((r) => {
-    const op = { id: r.operator_id, domain: r.domain, name: r.name, email: r.email, phone: r.phone, city: r.city, region: r.region, calendar_vendor: r.calendar_vendor, family: r.family };
+    const op = { id: r.operator_id, domain: r.domain, name: r.name, email: r.email, phone: r.phone, city: r.city, region: r.region, calendar_vendor: r.calendar_vendor, family: r.family, category: r.category };
     const first = asCopy(r, arm);
     const c = draftOttoBump(op, r.email, { greet: r.greet, subject: first.subject, firstVariant: first.variant });
     return { subject: c.subject, text: c.body, html: c.html };
@@ -355,7 +355,7 @@ async function sendBatch(limit: number, quota: Record<string, number>): Promise<
       out.skipped++;
       continue;
     }
-    const op = { id: r.operator_id, domain: r.domain, name: r.name, email: r.email, phone: r.phone, city: r.city, region: r.region, calendar_vendor: r.calendar_vendor, family: r.family };
+    const op = { id: r.operator_id, domain: r.domain, name: r.name, email: r.email, phone: r.phone, city: r.city, region: r.region, calendar_vendor: r.calendar_vendor, family: r.family, category: r.category };
     // The greeting belongs to the pool's address; a follow-up to an older address opens plainly.
     const greet = !bump || to === r.email.trim().toLowerCase() ? r.greet : null;
     const thread = bump && !dry ? await threads.find(from, to, new Date(r.last_at || Date.now())).catch(() => null) : null;

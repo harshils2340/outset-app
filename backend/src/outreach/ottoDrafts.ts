@@ -22,6 +22,8 @@ export type OttoOp = {
   calendar_vendor: string | null;
   /** outreach_pool.family: what the first line says the team is busy with. */
   family?: string | null;
+  /** outreach_pool.category: the place's own category from Overture, for restaurants (pakistani_restaurant, caterer). */
+  category?: string | null;
 };
 
 function esc(s: string): string {
@@ -154,6 +156,21 @@ export const ARMS: CopyStyle[] = ["full", "ask", "forgot"];
  * back toward the Promotions tab, and the 5 October canary proved a reworded opening alone can do it. Change
  * the wording only with a placement test of the new copy beside this one (placementMatrix in placement.ts).
  */
+/**
+ * Restaurants (Harshil, 9 October 2026: "lets switch to restaurants"). Activity businesses read ~900 pitches and
+ * not one opened the recording; the one real lead was a restaurant group. Same note, same shape Gmail keeps in
+ * Primary, in a restaurant's own terms: orders, reservations, the menu and catering. A Greater Toronto restaurant
+ * also hears that Harshil is in Brampton and can come by, and a South Asian kitchen that the line answers in
+ * Urdu, Hindi and Punjabi.
+ */
+const GTA = /^(brampton|mississauga|toronto|north york|scarborough|etobicoke|york|east york|vaughan|woodbridge|concord|maple|markham|richmond hill|thornhill|unionville|stouffville|aurora|newmarket|king city|caledon|bolton|oakville|burlington|milton|georgetown|halton hills|hamilton|stoney creek|ancaster|dundas|ajax|pickering|whitby|oshawa|courtice|bowmanville)$/i;
+const SOUTH_ASIAN = /pakistani|indian|bangladeshi|afghan|sri_lankan|nepalese|himalayan|halal|punjabi|biryani|karahi|tandoor|desi|dhaba/i;
+function restaurantFacts(op: OttoOp): { local: boolean; desi: boolean } {
+  const local = (op.region || "").toUpperCase() === "ON" && GTA.test((op.city || "").trim());
+  const desi = SOUTH_ASIAN.test((op.category || "") + " " + op.name);
+  return { local, desi };
+}
+
 export function draftOttoCopy(op: OttoOp, email?: string, opts?: { greet?: string | null; style?: CopyStyle }): { subject: string; body: string; html: string; variant: string } {
   const to = (email || "").trim().toLowerCase();
   const style: CopyStyle = opts?.style || "full";
@@ -167,15 +184,29 @@ export function draftOttoCopy(op: OttoOp, email?: string, opts?: { greet?: strin
   const name = plainName(op.name);
   const subject = "Missed calls at " + name;
   const question = "When everyone at " + name + " is busy with guests or you've closed for the day, where do the calls go?";
-  const pain = "For most operators it's voicemail, and the caller hangs up and books with the next place that picks up.";
-  const what = "I built Outset, a 24/7 customer service line for your phone. " + whatOttoDoes(op.calendar_vendor) + " You get a summary of every call.";
+  const restaurant = op.family === "restaurant";
+  const { local, desi } = restaurantFacts(op);
+  const tongues = desi ? " It also answers in Urdu, Hindi and Punjabi." : "";
+  const pain = restaurant
+    ? "For most restaurants it's voicemail, and the caller orders from the next place that picks up."
+    : "For most operators it's voicemail, and the caller hangs up and books with the next place that picks up.";
+  const what = restaurant
+    ? "I built Outset, a 24/7 customer service line for restaurants. It picks up those calls, takes orders and reservations, answers questions from your own menu, and sends catering inquiries straight to you." + tongues + " You get a summary of every call."
+    : "I built Outset, a 24/7 customer service line for your phone. " + whatOttoDoes(op.calendar_vendor) + " You get a summary of every call.";
   const hearText = "Here's a 40-second recording of it on a real call: " + OTTO;
   const hearHtml = "Here's a 40-second recording of it on a real call: " + link(OTTO, "give it a listen");
-  const offer = "I'll set it up on your line for free, and you only keep it if it books you a guest. Worth a quick reply?";
-  const minWhat = "I built Outset, a 24/7 customer service line that picks up when your team can't, connects directly with " + yourSystem(op.calendar_vendor) + ", and answers only from your own info.";
+  const offer = restaurant
+    ? (local ? "I'm based in Brampton, so I can come by and set it up on your line for free. You only keep it if it brings you orders. Worth a quick reply?"
+      : "I'll set it up on your line for free, and you only keep it if it brings you orders. Worth a quick reply?")
+    : "I'll set it up on your line for free, and you only keep it if it books you a guest. Worth a quick reply?";
+  const minWhat = restaurant
+    ? "I built Outset, a 24/7 customer service line that picks up when your team can't, takes orders and reservations, and answers from your own menu." + tongues
+    : "I built Outset, a 24/7 customer service line that picks up when your team can't, connects directly with " + yourSystem(op.calendar_vendor) + ", and answers only from your own info.";
   const minOffer = "I'll set it up for " + name + " for free. Worth a quick reply?";
   if (style === "ask") {
-    const pitch = "I built Outset, a 24/7 customer service line that picks up those calls, connects directly with " + yourSystem(op.calendar_vendor) + ", and answers only from your own info.";
+    const pitch = restaurant
+      ? "I built Outset, a 24/7 customer service line for restaurants. It picks up those calls, takes orders and reservations, and answers from your own menu." + tongues
+      : "I built Outset, a 24/7 customer service line that picks up those calls, connects directly with " + yourSystem(op.calendar_vendor) + ", and answers only from your own info.";
     const ask = "Can I send you a 40-second recording of it on a real call?";
     const sig = askSignOff();
     const body = [hi, "", question, "", pitch + " " + ask, "", ...sig.lines].join("\n");

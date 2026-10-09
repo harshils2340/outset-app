@@ -62,7 +62,8 @@ await withTx(async (c) => {
     const chunk = rows.slice(i, i + 500);
     await c.query(poolUpsertSql(chunk.length), chunk.flat());
   }
-  await c.query("delete from outreach_pool where synced_at < $1::timestamptz", [started]);
+  // Restaurants are not in this catalog: scripts/restaurants-pool.mts publishes them on Render, so they stay.
+  await c.query("delete from outreach_pool where synced_at < $1::timestamptz and family is distinct from 'restaurant'", [started]);
 });
 const named = rows.filter((r) => r[11]).length;
 const [kept] = await query<{ n: number }>("select count(*)::int as n from outreach_pool where owners_checked_at is not null and owner_source is not null");

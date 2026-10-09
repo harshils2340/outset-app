@@ -226,3 +226,26 @@ test("a first email's arm is read off its variant", () => {
   assert.equal(armOf(COPY_VERSION + "-nolink"), "full", "a fallback rung follows up like the full pitch");
   assert.equal(armOf(null), "full");
 });
+
+test("restaurants get the same note in a restaurant's own terms", () => {
+  const r = (o: Partial<OttoOp> = {}, style?: "ask" | "full" | "nolink" | "min" | "forgot") =>
+    draftOttoCopy({ ...op, name: "Karahi Corner", domain: "karahicorner.ca", family: "restaurant", category: "pakistani_restaurant", city: "Brampton", region: "ON", ...o }, "info@karahicorner.ca", style ? { style, greet: null } : { greet: null });
+  const full = r();
+  assert.equal(full.subject, "Missed calls at Karahi Corner");
+  assert.ok(full.body.includes("When everyone at Karahi Corner is busy with guests or you've closed for the day, where do the calls go?"), "the question Gmail keeps in Primary");
+  assert.ok(full.body.includes("For most restaurants it's voicemail, and the caller orders from the next place that picks up."), full.body);
+  assert.ok(full.body.includes("takes orders and reservations, answers questions from your own menu, and sends catering inquiries straight to you."), full.body);
+  assert.ok(full.body.includes("It also answers in Urdu, Hindi and Punjabi."), "a South Asian kitchen hears the languages");
+  assert.ok(full.body.includes("I'm based in Brampton, so I can come by"), "a GTA restaurant hears Harshil is local");
+  assert.ok(!full.body.includes("books you a guest") && !full.body.includes("operators"), full.body);
+  const far = r({ city: "Dallas", region: "TX", category: "pizza_restaurant", name: "Tony's Pizza" });
+  assert.ok(!far.body.includes("Brampton") && !far.body.includes("Urdu"), far.body);
+  assert.ok(far.body.includes("you only keep it if it brings you orders"), far.body);
+  assert.ok(r({}, "ask").body.includes("takes orders and reservations, and answers from your own menu. It also answers in Urdu, Hindi and Punjabi. Can I send you a 40-second recording"), r({}, "ask").body);
+  for (const style of ["full", "ask", "nolink", "min", "forgot"] as const) {
+    const b = r({}, style).body;
+    assert.ok(!b.includes("—") && !/!/.test(b), style);
+  }
+  // an activity business is untouched
+  assert.ok(copy().body.includes("books with the next place that picks up"), copy().body);
+});
