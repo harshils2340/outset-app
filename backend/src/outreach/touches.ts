@@ -248,8 +248,10 @@ export const DESK_INBOX = "^(info|hello|hi|contact|contactus|book|booknow|bookin
  */
 export const POOL_UNTOUCHED = `not exists (select 1 from outreach_sends s where s.kind = $2 and s.operator_id = p.operator_id and s.status in ('sent', 'handoff', 'replied'))
         and not exists (select 1 from outreach_sends s where s.kind = $2 and s.email = p.email)`;
-/** The send order above. `$3` is FAMILY_ORDER, `$4` is DESK_INBOX. */
+/** The send order above. `$3` is FAMILY_ORDER, `$4` is DESK_INBOX. Brampton and Mississauga restaurants lead the
+ * restaurants: Harshil is in Brampton and can walk in on anyone who replies. */
 export const POOL_ORDER = `coalesce(array_position($3::text[], p.family), 99),
+        coalesce(p.family = 'restaurant' and p.city ~* '^(brampton|mississauga)$', false) desc,
         coalesce(p.family = 'indoor' and (p.name ilike '%escape%' or p.website ilike '%escape%'), false) desc,
         (split_part(p.email, '@', 1) ~* $4),
         p.completeness desc nulls last, p.operator_id`;

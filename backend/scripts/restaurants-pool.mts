@@ -138,13 +138,18 @@ const byDomain = new Map<string, Place>();
 let chains = 0, platform = 0;
 for (const p of places) {
   if (p.brand || (nameCount.get(p.name.toLowerCase()) || 0) >= 15) { chains++; continue; }
+  // Overture files the odd non-restaurant under a restaurant category (a gold fund as canadian_restaurant).
+  // Narrow on purpose: "Church Pizza", "Old School" and "SCHOOL Restaurant" are restaurants.
+  if (/\b(fund|food bank|insurance|realty|real estate|law office|dental|clinic|pharmacy|driving school)\b|chinese school/i.test(p.name)) { platform++; continue; }
   const h = host(p.website);
   if (!h || NOT_OWN_SITE.test(h)) { platform++; continue; }
   const prev = byDomain.get(h);
   if (!prev || p.confidence > prev.confidence) byDomain.set(h, p); // one row per website, so one email per group
 }
 const known = new Set((await query<{ domain: string }>("select lower(domain) as domain from outreach_pool")).map((r) => r.domain));
-const queue = [...byDomain.entries()].filter(([h]) => !known.has(h)).slice(0, limit);
+// --names "A,B": only these places, to put back rows removed by mistake without rereading every site.
+const only = arg("names") ? new Set(arg("names").split(",").map((n) => n.trim().toLowerCase())) : null;
+const queue = [...byDomain.entries()].filter(([h, p]) => !known.has(h) && (!only || only.has(p.name.toLowerCase()))).slice(0, limit);
 console.log(`restaurants-pool: ${chains} chain locations and ${platform} platform pages skipped; ${byDomain.size} restaurant websites, ${queue.length} not yet in the pool`);
 
 let done = 0, withEmail = 0, written = 0;
