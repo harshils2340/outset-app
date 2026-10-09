@@ -148,41 +148,56 @@ const queue = [...byDomain.entries()].filter(([h]) => !known.has(h)).slice(0, li
 console.log(`restaurants-pool: ${chains} chain locations and ${platform} platform pages skipped; ${byDomain.size} restaurant websites, ${queue.length} not yet in the pool`);
 
 let done = 0, withEmail = 0, written = 0;
-const out: (string | number | null)[][] = [];
+let pending: (string | number | null)[][] = [];
+const sample: string[] = [];
+
+/** Upsert what has been found so far. Called every 100 finds and at the end, so a crash loses at most that. */
+async function flush(): Promise<void> {
+  if (dry || !pending.length) { pending = []; return; }
+  const chunk = pending;
+  pending = [];
+  const cols = 12;
+  const tuples = chunk.map((_, k) => "(" + Array.from({ length: cols }, (_, j) => "$" + (k * cols + j + 1)).join(", ") + ", now())").join(", ");
+  await query(
+    `insert into outreach_pool (operator_id, catalog_id, domain, name, website, email, phone, city, region, completeness, family, category, synced_at)
+     values ${tuples}
+     on conflict (operator_id) do update set name = excluded.name, website = excluded.website, phone = excluded.phone,
+       city = excluded.city, region = excluded.region, completeness = excluded.completeness, category = excluded.category,
+       email = case when outreach_pool.owner_source is not null then outreach_pool.email else excluded.email end, synced_at = now()`,
+    chunk.flat(),
+  );
+  written += chunk.length;
+}
+
+/**
+ * A site gets 30 seconds in all. On 9 October 2026 a handful of sites never answered and never failed, the
+ * workers waiting on them held no timer, and Node exited with "unsettled top-level await" after 7,500 sites,
+ * before anything was written. The timer here keeps the process alive and moves the worker on.
+ */
+function withDeadline<T>(p: Promise<T>, ms: number, fallback: T): Promise<T> {
+  let t: NodeJS.Timeout;
+  return Promise.race([p.catch(() => fallback), new Promise<T>((r) => { t = setTimeout(() => r(fallback), ms); })]).finally(() => clearTimeout(t));
+}
+
 async function worker() {
   for (;;) {
     const next = queue.shift();
     if (!next) return;
     const [h, p] = next;
-    const email = await findEmail(p);
+    const email = await withDeadline(findEmail(p), 30_000, null);
     done++;
     if (email) {
       withEmail++;
       const id = "rest-" + createHash("sha1").update(h).digest("hex").slice(0, 16);
-      out.push([id, "r-" + h.replace(/[^a-z0-9]+/g, "-"), h, p.name, p.website, email, p.phone, p.city, p.region, Math.round(p.confidence * 100), "restaurant", p.category]);
+      pending.push([id, "r-" + h.replace(/[^a-z0-9]+/g, "-"), h, p.name, p.website, email, p.phone, p.city, p.region, Math.round(p.confidence * 100), "restaurant", p.category]);
+      if (sample.length < 15) sample.push(`  ${p.name} (${p.city}) ${email} [${p.category}]`);
+      if (pending.length >= 100) await flush();
     }
-    if (done % 100 === 0) console.log(`restaurants-pool: ${done} sites read, ${withEmail} with an address`);
+    if (done % 100 === 0) console.log(`restaurants-pool: ${done} sites read, ${withEmail} with an address, ${written} written`);
   }
 }
 await Promise.all(Array.from({ length: CONCURRENCY }, worker));
-
-if (!dry && out.length) {
-  for (let i = 0; i < out.length; i += 400) {
-    const chunk = out.slice(i, i + 400);
-    const cols = 12;
-    const tuples = chunk.map((_, k) => "(" + Array.from({ length: cols }, (_, j) => "$" + (k * cols + j + 1)).join(", ") + ", now())").join(", ");
-    await query(
-      `insert into outreach_pool (operator_id, catalog_id, domain, name, website, email, phone, city, region, completeness, family, category, synced_at)
-       values ${tuples}
-       on conflict (operator_id) do update set name = excluded.name, website = excluded.website, phone = excluded.phone,
-         city = excluded.city, region = excluded.region, completeness = excluded.completeness, category = excluded.category,
-         email = case when outreach_pool.owner_source is not null then outreach_pool.email else excluded.email end, synced_at = now()`,
-      chunk.flat(),
-    );
-    written += chunk.length;
-  }
-}
+await flush();
 console.log(`restaurants-pool: done. ${done} sites read, ${withEmail} with a published address, ${dry ? "dry run, nothing written" : written + " written to outreach_pool"}`);
-const sample = out.slice(0, 15).map((r) => `  ${r[3]} (${r[7]}) ${r[5]} [${r[11]}]`);
 if (sample.length) console.log(sample.join("\n"));
 process.exit(0);
