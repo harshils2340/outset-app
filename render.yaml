@@ -1,7 +1,8 @@
 services:
   # The guest site, onoutset.com. Render builds it from every push to main and serves dist from its CDN; nothing
-  # goes through GitHub Actions. Deep links (/activities, /operators, a shared listing) are rewritten to app.html so the
-  # app routes them. Backend and docs changes do not trigger a site build.
+  # goes through GitHub Actions. The marketplace is only the real app paths (/activities, /operators, /admin,
+  # /listing/*), rewritten to app.html. Any other path that is not a real file opens the home page. Backend and
+  # docs changes do not trigger a site build.
   - type: web
     name: outset-web
     runtime: static
@@ -13,12 +14,12 @@ services:
     # dist. They are not committed: about 14,500 files that every sync would rewrite. A failure there fails the
     # build on purpose, because a deploy with no sitemap drops the whole site out of the index.
     # onoutset.com's home is the Otto page (public/otto.html, moved to index.html). The marketplace app is
-    # app.html, and only /activities, /operators, /admin and /listing/* rewrite to it. Any other path with no
-    # file of its own rewrites to the home page. The copies run after build-pages, so its links land in the app
+    # copied to app.html and only served on the paths listed below. 404.html is the home page, so a missing
+    # file opens that page and not the catalog. The copies run after build-pages, so its links land in the app
     # shell, and the home forwards any old root link in the app's shapes (#o=, #remove=, #claim=, #paid=) to
     # /activities or /operators. otto.html is moved, not copied, so the old /otto.html address falls through to
     # its redirect below instead of serving a second copy.
-    buildCommand: npm ci && npx vite build --base=/ && npx tsx scripts/build-pages.mts && cp dist/index.html dist/404.html && cp dist/index.html dist/app.html && mv dist/otto.html dist/index.html && rm -f dist/claim-index.json
+    buildCommand: npm ci && npx vite build --base=/ && npx tsx scripts/build-pages.mts && cp dist/index.html dist/app.html && mv dist/otto.html dist/index.html && cp dist/index.html dist/404.html && rm -f dist/claim-index.json
     staticPublishPath: dist
     buildFilter:
       ignoredPaths:
@@ -38,7 +39,7 @@ services:
         source: /otto.html
         destination: /
       # Clean URLs for the standalone marketing and legal pages: without these the catch-all below sends /about
-      # to the home page. A real static file is still served directly; these just make the extensionless URL resolve.
+      # home. A real static file is still served directly; these just make the extensionless URL resolve.
       - type: rewrite
         source: /features
         destination: /features.html
@@ -61,7 +62,7 @@ services:
         source: /privacy
         destination: /privacy.html
       # One page per shop, so a clinic hears their own call instead of the home page.
-      # Files live in public/d/. Without this, the catch-all below would serve the home page at this URL.
+      # Files live in public/d/. The catch-all below would otherwise send this URL home.
       - type: rewrite
         source: /albionfinchmedical
         destination: /d/albionfinchmedical.html
@@ -77,18 +78,27 @@ services:
         source: /activities
         destination: /app.html
       - type: rewrite
+        source: /activities/
+        destination: /app.html
+      - type: rewrite
         source: /operators
+        destination: /app.html
+      - type: rewrite
+        source: /operators/
         destination: /app.html
       - type: rewrite
         source: /admin
         destination: /app.html
       - type: rewrite
+        source: /admin/
+        destination: /app.html
+      - type: rewrite
         source: /listing/*
         destination: /app.html
-      # A path with no file and no route above is the home page. The marketplace is only the four routes above.
-      - type: rewrite
+      # Not a real page. Open the home page. The marketplace is only the paths above.
+      - type: redirect
         source: /*
-        destination: /index.html
+        destination: /
     # The site had only x-content-type-options. These are the rest of the cheap ones.
     # SAMEORIGIN rather than DENY because the operator dashboard previews the guest page in an iframe
     # (src/components/operator/OpPreview.tsx). geolocation stays on for the app's own "how far away" line
