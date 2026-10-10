@@ -60,6 +60,11 @@ services:
       - type: rewrite
         source: /privacy
         destination: /privacy.html
+      # One page per shop, so a clinic hears their own call instead of the marina sample on the home page.
+      # Files live in public/d/. The catch-all below would otherwise open the marketplace.
+      - type: rewrite
+        source: /albionfinchmedical
+        destination: /d/albionfinchmedical.html
       # /go was the concierge's own page and then a door to the site's agent overlay; it is retired. The
       # catch-all below would otherwise show the home under that URL as if it were a page of its own.
       - type: redirect

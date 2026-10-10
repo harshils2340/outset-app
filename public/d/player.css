@@ -1,0 +1,108 @@
+/* The sample-call player on the home page, drawn in the site's own system: a flat white card with the 2px ink
+   outline and 10px corners of .card, Manrope, forest for the controls and for Otto, ochre for the caller and the
+   timestamps, sand for the chips and the ticket. No shadow, glow, gradient fill or blur. Markup sits between the
+   CALL CARD markers in otto.html and behaviour is otto-call.js; every id and oc- class here is read or toggled
+   by that script. The oc- prefix is deliberate: the page's inline styles own short global names (.who, .track).
+   Only site.css tokens and plain white are used, so the card follows the palette when it changes. */
+
+.callcol { container: oc / inline-size; }
+#call { scroll-margin-top: 96px; }
+
+/* The card. */
+.oc { background: var(--white); color: var(--ink); border: 2px solid var(--ink); border-radius: 10px; overflow: hidden; line-height: 1.45; }
+
+/* Header: text only, flush left. What this is, the business it is for, and where playback stands. No avatar or
+   mark; Otto is named by the OTTO speaker label in the transcript. A grid, so the subtitle runs under the chip and
+   the header keeps one height whatever the chip says. */
+.oc-hd { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "title chip" "sub sub"; align-items: center; column-gap: .8rem; padding: 1rem 1.25rem; border-bottom: 1px solid var(--line); }
+.oc-title { grid-area: title; min-width: 0; font-size: 1rem; font-weight: 600; line-height: 1.3; color: var(--ink); }
+.oc-sub { grid-area: sub; min-width: 0; font-size: .84rem; line-height: 1.4; color: var(--ink-3); }
+.oc-chip { grid-area: chip; justify-self: end; padding: .2rem .5rem; border-radius: 4px; background: var(--band); color: var(--ink); font-size: .68rem; font-weight: 700; letter-spacing: .07em; line-height: 1.5; text-transform: uppercase; white-space: nowrap; transition: background-color .2s, color .2s; }
+.oc.playing .oc-chip { background: var(--forest-tint); color: var(--forest-deep); }
+.oc.failed .oc-chip { background: var(--ochre-tint); color: var(--ochre); }
+
+/* Transcript, the hero of the card. Fixed height, set by fitCaption() for the longest turn at the current
+   width, so the card never grows, shrinks or clips as the call moves. Spoken words fill from ink-3 to ink. */
+.oc-cap { position: relative; height: 13rem; overflow: hidden; padding: 1.15rem 1.25rem 3.6rem; }
+.oc-prev { min-height: 1.5em; margin-bottom: .85rem; font-size: .9rem; line-height: 1.5; color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.oc-prev b { margin-right: .55rem; }
+.oc-prev b, .oc-spk b { font-size: .7rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+.oc-prev .otto, .oc-spk.otto { color: var(--forest); }
+.oc-prev .caller, .oc-spk.caller { color: var(--ochre); }
+.oc-now { font-size: 1.3rem; font-weight: 600; line-height: 1.45; letter-spacing: -.01em; color: var(--ink); }
+.oc-now.idle { color: var(--ink-3); }
+.oc-spk { display: flex; align-items: center; gap: .6rem; height: 1rem; margin-bottom: .4rem; letter-spacing: 0; }
+.oc-spk b { line-height: 1; }
+.oc-wd { --p: 0%; background: linear-gradient(90deg, var(--ink) var(--p), var(--ink-3) var(--p)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+/* One slim, flat meter beside the speaker's name, in the speaker's colour; it rests flat when nobody talks. */
+.oc-meter { display: inline-flex; align-items: center; gap: 2px; height: 12px; }
+.oc-meter i { display: block; width: 2px; height: 12px; border-radius: 1px; background: currentColor; transform: scaleY(.17); }
+
+/* Controls: a forest play square, an outlined restart square, the scrub rail and the clock. */
+.oc-bar { display: grid; grid-template-columns: 48px 48px minmax(0, 1fr) auto; grid-template-areas: "play restart scrub time"; align-items: center; column-gap: .75rem; padding: .85rem 1.25rem .95rem; border-top: 1px solid var(--line); }
+.oc-play, .oc-restart { width: 48px; height: 48px; display: grid; place-items: center; padding: 0; border-radius: 6px; cursor: pointer; -webkit-tap-highlight-color: transparent; transition: background-color .15s, border-color .15s; }
+.oc-play { grid-area: play; border: 0; background: var(--forest); color: var(--white); }
+.oc-play:hover { background: var(--forest-press); }
+.oc-play .ic { width: 18px; height: 18px; margin-left: 2px; }
+.oc-pause { display: none; gap: 5px; }
+.oc-pause i { display: block; width: 4px; height: 16px; border-radius: 1px; background: currentColor; }
+.oc-play.playing .ic { display: none; }
+.oc-play.playing .oc-pause { display: flex; }
+.oc-restart { grid-area: restart; border: 2px solid var(--ink); background: var(--white); color: var(--ink); }
+.oc-restart:hover { background: var(--band-soft); }
+.oc-restart svg { width: 18px; height: 18px; }
+.oc-play:disabled, .oc-restart:disabled { cursor: not-allowed; }
+.oc-play:disabled { background: var(--ink-3); }
+.oc-restart:disabled { border-color: var(--line); color: var(--ink-3); }
+.oc-play:focus-visible, .oc-restart:focus-visible { outline: 2px solid var(--forest); outline-offset: 3px; }
+/* The slider box is 44px tall for touch; only the 4px rail inside it is painted. */
+.oc-scrub { grid-area: scrub; position: relative; padding: 20px 0; border-radius: 4px; cursor: pointer; touch-action: none; -webkit-tap-highlight-color: transparent; }
+.oc-scrub:focus { outline: none; }
+.oc-scrub:focus-visible { outline: 2px solid var(--forest); outline-offset: 2px; }
+.oc-rail { position: relative; height: 4px; border-radius: 2px; background: var(--band-strong); }
+.oc-fill { position: absolute; left: 0; top: 0; bottom: 0; width: var(--at, 0%); border-radius: 2px; background: var(--forest); }
+.oc-knob { position: absolute; top: 50%; left: var(--at, 0%); width: 14px; height: 14px; margin: -7px 0 0 -7px; border-radius: 50%; background: var(--white); border: 2px solid var(--ink); transition: transform .12s; }
+.oc-scrub.drag .oc-knob { transform: scale(1.15); }
+.oc-tip { position: absolute; bottom: 100%; left: 0; transform: translate(-50%, -12px); padding: .15rem .45rem; border-radius: 4px; background: var(--ink); color: var(--white); font-size: .74rem; font-weight: 600; line-height: 1.4; font-variant-numeric: tabular-nums; white-space: nowrap; pointer-events: none; opacity: 0; transition: opacity .12s; }
+@media (hover: hover) { .oc-scrub:hover .oc-tip { opacity: 1; } }
+.oc-scrub.drag .oc-tip { opacity: 1; }
+.oc-time { grid-area: time; font-size: .88rem; font-weight: 500; line-height: 1.3; color: var(--ink-2); font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+/* What Otto is doing: one small chip pinned to the bottom of the transcript, inside padding that fitCaption()
+   counts, so it never covers a line and the card never changes size. The system's mark leads, the status trails:
+   a turning ring while Otto works on it, a forest check once it is done. Empty until the first action. */
+.oc-did { position: absolute; left: 1.25rem; right: 1.25rem; bottom: 1rem; height: 2rem; display: flex; align-items: center; }
+.oc-did-chip { display: inline-flex; align-items: center; gap: .5rem; max-width: 100%; min-width: 0; padding: .3rem .5rem .3rem .3rem; border: 1.5px solid var(--line); border-radius: 6px; background: var(--white); color: var(--ink); font-size: .86rem; line-height: 1.35; transition: background-color .2s, border-color .2s; }
+.oc-did-chip.ok { background: var(--forest-tint); border-color: var(--forest-tint); }
+.oc-did-chip.oc-in { animation: oc-in .25s ease-out both; }
+.oc-did-chip.oc-out { animation: oc-out .3s ease-in both; }
+@keyframes oc-out { to { opacity: 0; transform: translateY(-4px); } }
+@keyframes oc-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+.oc-did-mark { width: 20px; height: 20px; border-radius: 5px; flex: none; display: grid; place-items: center; overflow: hidden; }
+.oc-did-mark img { width: 20px; height: 20px; object-fit: contain; }
+.oc-did-mark svg { width: 13px; height: 13px; fill: none; stroke: var(--white); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.oc-did-mark.sms, .oc-did-mark.chart, .oc-did-mark.cal, .oc-did-mark.book { background: var(--forest); }
+.oc-did-mark.mail { background: var(--ochre); }
+.oc-did-chip b { flex: none; font-weight: 700; }
+.oc-did-chip.wait b { font-weight: 600; color: var(--ink-2); }
+.oc-did-detail { min-width: 0; color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.oc-did-st { width: 16px; height: 16px; flex: none; border-radius: 50%; display: grid; place-items: center; }
+.oc-did-chip.wait .oc-did-st { border: 2px solid var(--line); border-top-color: var(--forest); animation: oc-spin .8s linear infinite; }
+.oc-did-chip.ok .oc-did-st { background: var(--forest); }
+.oc-did-st svg { width: 10px; height: 10px; fill: none; stroke: var(--white); stroke-width: 3.2; stroke-linecap: round; stroke-linejoin: round; }
+@keyframes oc-spin { to { transform: rotate(360deg); } }
+
+/* A narrow card (a phone, or the hero column on a small laptop). */
+@container oc (max-width: 520px) {
+  .oc-hd { column-gap: .7rem; padding: .9rem 1rem; }
+  .oc-cap { padding: 1rem 1rem 3.4rem; }
+  .oc-did { left: 1rem; right: 1rem; bottom: .85rem; }
+  .oc-now { font-size: 1.15rem; }
+  .oc-bar { grid-template-columns: 48px 48px minmax(0, 1fr); grid-template-areas: "scrub scrub scrub" "play restart time"; row-gap: .15rem; padding: .3rem 1rem .9rem; }
+  .oc-time { justify-self: end; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .oc * { transition: none !important; }
+  .oc-did-chip.oc-in { animation: none; }
+  .oc-did-chip.wait .oc-did-st { animation: none; }
+}
