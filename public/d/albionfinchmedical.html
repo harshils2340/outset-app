@@ -59,7 +59,7 @@
 </header>
 <main class="wrap">
   <h1>Maya picks up when the desk is with a patient.</h1>
-  <p class="lead">The same call in English, Punjabi, Hindi, or Gujarati. Sunita moves her visit with Dr. Gupta. Maya opens the chart, has her say the visit back, then books Friday, October 30 at 4:30 PM.</p>
+  <p class="lead">The same visit in English, Punjabi, Hindi, or Gujarati. Maya opens the chart, has them say the visit back, then books Friday, October 30 at 4:30 PM.</p>
   <div class="langs" role="tablist" aria-label="Call language">
     <button type="button" role="tab" data-lang="en" aria-selected="false">English</button>
     <button type="button" role="tab" data-lang="pa" aria-selected="false">Punjabi</button>
@@ -85,26 +85,26 @@
           <div class="oc-scrub" id="scrub" role="slider" tabindex="0" aria-label="Call position" aria-valuemin="0" aria-valuemax="36" aria-valuenow="0" aria-valuetext="0:00 of 0:35"><div class="oc-rail"><span class="oc-fill"></span><span class="oc-knob"></span><span class="oc-tip" id="tip">0:00</span></div></div>
           <span class="oc-time"><span id="cur">0:00</span> / <span id="dur">0:35</span></span>
         </div>
-        <audio id="audio" preload="metadata" src="/d/albionfinchmedical.m4a?v=talk"></audio>
+        <audio id="audio" preload="metadata" src="/d/albionfinchmedical.m4a?v=names"></audio>
       </section>
     </div>
   </div>
-  <p class="note">Sample call for this clinic. Sunita Mehra is not a real patient. Prepared by <a href="/">Outset</a>.</p>
+  <p class="note">Sample calls for this clinic. Jason, Jaspreet, Sunita, and Bharti are not real patients. Prepared by <a href="/">Outset</a>.</p>
 </main>
-<script src="/d/albionfinchmedical.js?v=talk"></script>
-<script src="/d/albionfinchmedical-en.js?v=talk"></script>
-<script src="/d/albionfinchmedical-pa.js?v=talk"></script>
-<script src="/d/albionfinchmedical-gu.js?v=talk"></script>
-<script src="/d/player.js?v=talk"></script>
+<script src="/d/albionfinchmedical.js?v=names"></script>
+<script src="/d/albionfinchmedical-en.js?v=names"></script>
+<script src="/d/albionfinchmedical-pa.js?v=names"></script>
+<script src="/d/albionfinchmedical-gu.js?v=names"></script>
+<script src="/d/player.js?v=names"></script>
 <script>
 (function () {
   var packs = {
-    hi: { W: window.CALL_W, SPK: window.CALL_SPK, ACTS: window.CALL_ACTS, DUR: window.CALL_DUR, LABEL: window.CALL_LABEL, src: "/d/albionfinchmedical.m4a?v=talk" }
+    hi: { W: window.CALL_W, SPK: window.CALL_SPK, ACTS: window.CALL_ACTS, DUR: window.CALL_DUR, LABEL: window.CALL_LABEL, src: "/d/albionfinchmedical.m4a?v=names" }
   };
   ["en", "pa", "gu"].forEach(function (id) {
     var c = window.CALLS && window.CALLS[id];
     if (!c) return;
-    packs[id] = { W: c.W, SPK: c.SPK, ACTS: c.ACTS, DUR: c.DUR, LABEL: c.LABEL, src: "/d/albionfinchmedical-" + id + ".m4a?v=talk" };
+    packs[id] = { W: c.W, SPK: c.SPK, ACTS: c.ACTS, DUR: c.DUR, LABEL: c.LABEL, src: "/d/albionfinchmedical-" + id + ".m4a?v=names" };
   });
   document.querySelectorAll("[data-lang]").forEach(function (btn) {
     btn.addEventListener("click", function () {
