@@ -5,13 +5,13 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex">
 <title>Albion Finch Medical Centre · Priya on the phones</title>
-<meta name="description" content="Hear Priya pick up for Albion Finch Medical Centre, switch to Hindi, and book a visit with Dr. Gupta.">
+<meta name="description" content="Hear Priya pick up for Albion Finch Medical Centre in English, Punjabi, Hindi, or Gujarati, and book a visit with Dr. Gupta.">
 <link rel="canonical" href="https://onoutset.com/albionfinchmedical">
 <link rel="icon" href="/favicon.svg">
 <meta name="theme-color" content="#004a59">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&family=Noto+Sans+Devanagari:wght@500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&family=Noto+Sans+Devanagari:wght@500;600;700&family=Noto+Sans+Gujarati:wght@500;600;700&family=Noto+Sans+Gurmukhi:wght@500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/d/player.css">
 <style>
   :root {
@@ -22,7 +22,10 @@
     --white: #ffffff;
   }
   * { box-sizing: border-box; }
-  body { margin: 0; background: var(--band); color: var(--ink); font-family: Manrope, "Noto Sans Devanagari", sans-serif; }
+  body { margin: 0; background: var(--band); color: var(--ink); font-family: Manrope, "Noto Sans Devanagari", "Noto Sans Gurmukhi", "Noto Sans Gujarati", sans-serif; }
+  .langs { display: flex; gap: 2px; margin: 0 0 14px; }
+  .langs button { appearance: none; background: transparent; border: 0; border-bottom: 2px solid transparent; margin: 0; padding: 8px 12px; font: inherit; font-size: .92rem; font-weight: 600; color: var(--ink-3); cursor: pointer; }
+  .langs button[aria-selected="true"] { color: #004a59; border-bottom-color: #004a59; }
   .bar { height: 6px; background: #004a59; }
   .wrap { max-width: 720px; margin: 0 auto; padding: 0 24px; }
   header.letter { padding: 28px 0 8px; }
@@ -56,7 +59,13 @@
 </header>
 <main class="wrap">
   <h1>Priya picks up when the desk is with a patient.</h1>
-  <p class="lead">Sunita phones in Hindi to move her visit with Dr. Gupta. Priya opens the chart and has Sunita say the visit back, then books the earliest time in the afternoon she asked for, Friday, October 30 at 4:30 PM.</p>
+  <p class="lead">The same call in English, Punjabi, Hindi, or Gujarati. Sunita moves her visit with Dr. Gupta. Priya opens the chart, has her say the visit back, then books Friday, October 30 at 4:30 PM.</p>
+  <div class="langs" role="tablist" aria-label="Call language">
+    <button type="button" role="tab" data-lang="en" aria-selected="false">English</button>
+    <button type="button" role="tab" data-lang="pa" aria-selected="false">Punjabi</button>
+    <button type="button" role="tab" data-lang="hi" aria-selected="true">Hindi</button>
+    <button type="button" role="tab" data-lang="gu" aria-selected="false">Gujarati</button>
+  </div>
   <div class="stage">
     <div class="callcol" id="callcol">
       <section class="oc" id="call" aria-labelledby="ocTitle">
@@ -82,7 +91,37 @@
   </div>
   <p class="note">Sample call for this clinic. Sunita Mehra is not a real patient. Prepared by <a href="/">Outset</a>.</p>
 </main>
-<script src="/d/albionfinchmedical.js?v=window"></script>
-<script src="/d/player.js"></script>
+<script src="/d/albionfinchmedical.js?v=langs"></script>
+<script src="/d/albionfinchmedical-en.js?v=langs"></script>
+<script src="/d/albionfinchmedical-pa.js?v=langs"></script>
+<script src="/d/albionfinchmedical-gu.js?v=langs"></script>
+<script src="/d/player.js?v=langs"></script>
+<script>
+(function () {
+  var packs = {
+    hi: { W: window.CALL_W, SPK: window.CALL_SPK, ACTS: window.CALL_ACTS, DUR: window.CALL_DUR, LABEL: window.CALL_LABEL, src: "/d/albionfinchmedical.m4a?v=langs" }
+  };
+  ["en", "pa", "gu"].forEach(function (id) {
+    var c = window.CALLS && window.CALLS[id];
+    if (!c) return;
+    packs[id] = { W: c.W, SPK: c.SPK, ACTS: c.ACTS, DUR: c.DUR, LABEL: c.LABEL, src: "/d/albionfinchmedical-" + id + ".m4a?v=langs" };
+  });
+  document.querySelectorAll("[data-lang]").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      var pack = packs[btn.getAttribute("data-lang")];
+      if (!pack || !pack.W || !window.OutsetCallLoad) return;
+      window.CALL_W = pack.W;
+      window.CALL_SPK = pack.SPK;
+      window.CALL_ACTS = pack.ACTS;
+      window.CALL_DUR = pack.DUR;
+      window.CALL_LABEL = pack.LABEL;
+      document.querySelectorAll("[data-lang]").forEach(function (other) {
+        other.setAttribute("aria-selected", other === btn ? "true" : "false");
+      });
+      window.OutsetCallLoad(pack.src);
+    });
+  });
+})();
+</script>
 </body>
 </html>

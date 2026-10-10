@@ -238,4 +238,37 @@
       audio.addEventListener("ended", function () { setPlaying(false); st.textContent = "Call ended"; restMeter(); showActs(CUE_DUR, false); });
       audio.addEventListener("error", failed);
       if (audio.error) failed();
+
+      /* A language tab on a shop page swaps the recording without binding the controls a second time. */
+      window.OutsetCallLoad = function (src) {
+        audio.pause();
+        W = window.CALL_W;
+        SPK = window.CALL_SPK;
+        turns = SPK.map(function (who, ti) { return { who: who, words: W.filter(function (x) { return x[3] === ti; }) }; });
+        turns.forEach(function (t) { t.text = t.words.map(function (x) { return x[2]; }).join(" "); });
+        LABEL = window.CALL_LABEL;
+        CUE_DUR = window.CALL_DUR || 62;
+        ACTS = window.CALL_ACTS;
+        starts = turns.map(function (t) { return Math.max(0, t.words[0][0] - 0.08); });
+        active = -1;
+        spans = [];
+        shownAct = "";
+        lastCt = -9;
+        lastSec = -1;
+        fitW = -1;
+        call.classList.remove("failed", "playing");
+        play.disabled = false;
+        restart.disabled = false;
+        setPlaying(false);
+        st.textContent = "Ready";
+        did.textContent = "";
+        cur.textContent = "0:00";
+        scrub.style.setProperty("--at", "0%");
+        scrub.setAttribute("aria-valuenow", "0");
+        audio.src = src;
+        audio.load();
+        preview();
+        showActs(0, false);
+        fitCaption(true);
+      };
 })();
