@@ -66,6 +66,12 @@ services:
       - type: rewrite
         source: /albionfinchmedical
         destination: /d/albionfinchmedical.html
+      - type: rewrite
+        source: /saferlighting
+        destination: /d/saferlighting.html
+      - type: rewrite
+        source: /saferlighting/punjabi
+        destination: /d/saferlighting-punjabi.html
       # /go was the concierge's own page and then a door to the site's agent overlay; it is retired. The
       # catch-all below would otherwise show the home under that URL as if it were a page of its own.
       - type: redirect
