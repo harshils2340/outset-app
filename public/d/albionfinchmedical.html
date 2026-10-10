@@ -85,26 +85,26 @@
           <div class="oc-scrub" id="scrub" role="slider" tabindex="0" aria-label="Call position" aria-valuemin="0" aria-valuemax="36" aria-valuenow="0" aria-valuetext="0:00 of 0:35"><div class="oc-rail"><span class="oc-fill"></span><span class="oc-knob"></span><span class="oc-tip" id="tip">0:00</span></div></div>
           <span class="oc-time"><span id="cur">0:00</span> / <span id="dur">0:35</span></span>
         </div>
-        <audio id="audio" preload="metadata" src="/d/albionfinchmedical.m4a?v=full"></audio>
+        <audio id="audio" preload="metadata" src="/d/albionfinchmedical.m4a?v=thanks"></audio>
       </section>
     </div>
   </div>
   <p class="note">Sample calls for this clinic. Jason Wright, Jaspreet Kaur, Sunita Mehra, and Bharti Patel are not real patients. Prepared by <a href="/">Outset</a>.</p>
 </main>
-<script src="/d/albionfinchmedical.js?v=full"></script>
-<script src="/d/albionfinchmedical-en.js?v=full"></script>
-<script src="/d/albionfinchmedical-pa.js?v=full"></script>
-<script src="/d/albionfinchmedical-gu.js?v=full"></script>
-<script src="/d/player.js?v=full"></script>
+<script src="/d/albionfinchmedical.js?v=thanks"></script>
+<script src="/d/albionfinchmedical-en.js?v=thanks"></script>
+<script src="/d/albionfinchmedical-pa.js?v=thanks"></script>
+<script src="/d/albionfinchmedical-gu.js?v=thanks"></script>
+<script src="/d/player.js?v=thanks"></script>
 <script>
 (function () {
   var packs = {
-    hi: { W: window.CALL_W, SPK: window.CALL_SPK, ACTS: window.CALL_ACTS, DUR: window.CALL_DUR, LABEL: window.CALL_LABEL, src: "/d/albionfinchmedical.m4a?v=full" }
+    hi: { W: window.CALL_W, SPK: window.CALL_SPK, ACTS: window.CALL_ACTS, DUR: window.CALL_DUR, LABEL: window.CALL_LABEL, src: "/d/albionfinchmedical.m4a?v=thanks" }
   };
   ["en", "pa", "gu"].forEach(function (id) {
     var c = window.CALLS && window.CALLS[id];
     if (!c) return;
-    packs[id] = { W: c.W, SPK: c.SPK, ACTS: c.ACTS, DUR: c.DUR, LABEL: c.LABEL, src: "/d/albionfinchmedical-" + id + ".m4a?v=full" };
+    packs[id] = { W: c.W, SPK: c.SPK, ACTS: c.ACTS, DUR: c.DUR, LABEL: c.LABEL, src: "/d/albionfinchmedical-" + id + ".m4a?v=thanks" };
   });
   document.querySelectorAll("[data-lang]").forEach(function (btn) {
     btn.addEventListener("click", function () {
